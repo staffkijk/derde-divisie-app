@@ -1,0 +1,39 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "derde-divisie-app",
+          "appId": "1:183305663290:android:1dc837d62a546f519c5603",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "derde-divisie-app",
+          "configurations": {
+            "android": "1:183305663290:android:1dc837d62a546f519c5603",
+            "ios": "1:183305663290:ios:a3fe7fce5fcf5afa9c5603",
+            "macos": "1:183305663290:ios:a3fe7fce5fcf5afa9c5603",
+            "web": "1:183305663290:web:686546c7cf3419389c5603",
+            "windows": "1:183305663290:web:fb0f9d29956bf5539c5603"
+          }
+        }
+      }
+    }
+  },
+  "hosting": {
+    "public": "build/web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "183305663290",
+    "project_id": "derde-divisie-app",
+    "storage_bucket": "derde-divisie-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:183305663290:android:1dc837d62a546f519c5603",
+        "android_client_info": {
+          "package_name": "com.example.derde_divisie"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBGGqcvU1IQc_BRIIgf9fJZAvn2DHNvVkU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
