@@ -120,25 +120,70 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Derde Divisie App',
+      title: 'Derde Divisie',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: derdeDivisieGroen),
         useMaterial3: true,
-        scaffoldBackgroundColor: const Color(0xFFFAF3F0),
         fontFamily: 'Roboto',
-        appBarTheme: AppBarTheme(
-          backgroundColor: derdeDivisieGroen,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: derdeDivisieGroen,
+          primary: derdeDivisieGroen,
+          secondary: const Color(0xFF153B2A),
+          surface: Colors.white,
+        ),
+        scaffoldBackgroundColor: const Color(0xFFF3F6F1),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFF153B2A),
           foregroundColor: Colors.white,
+          elevation: 0,
+          centerTitle: false,
+        ),
+        cardTheme: CardThemeData(
+          color: Colors.white,
+          elevation: 0,
+          margin: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(22),
+            side: const BorderSide(color: Color(0xFFE3EADF)),
+          ),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: Colors.white,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: Color(0xFFD7E1D2)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(color: derdeDivisieGroen, width: 1.6),
+          ),
         ),
         bottomNavigationBarTheme: BottomNavigationBarThemeData(
           selectedItemColor: derdeDivisieGroen,
-          unselectedItemColor: Colors.grey,
+          unselectedItemColor: Colors.grey.shade600,
+          type: BottomNavigationBarType.fixed,
+          backgroundColor: Colors.white,
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
             backgroundColor: derdeDivisieGroen,
             foregroundColor: Colors.white,
+            elevation: 0,
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+          ),
+        ),
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: OutlinedButton.styleFrom(
+            foregroundColor: const Color(0xFF153B2A),
+            side: const BorderSide(color: Color(0xFFD7E1D2)),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),
