@@ -1,38 +1,121 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
+  <head>
+    <base href="$FLUTTER_BASE_HREF">
 
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge">
 
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
+    <!-- Voorkomt layout-issues én refresh-loops -->
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
-  <base href="$FLUTTER_BASE_HREF">
+    <meta name="description" content="Volg standen, voorspellingen en statistieken in de Derde Divisie A & B.">
 
-  <meta charset="UTF-8">
-  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+    <title>Derde Divisie App</title>
+    <link rel="manifest" href="manifest.json">
 
-  <!-- iOS meta tags & icons -->
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="derde_divisie">
-  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+    <!-- PWA / iOS -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Derde Divisie App">
+    <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
-  <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png"/>
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="favicon.png">
 
-  <title>derde_divisie</title>
-  <link rel="manifest" href="manifest.json">
-</head>
-<body>
-  <script src="flutter_bootstrap.js" async></script>
-</body>
+    <!-- Preload belangrijkste assets -->
+    <link rel="preload" href="main.dart.js" as="script">
+    <link rel="preload" href="assets/AssetManifest.json" as="fetch" crossorigin="anonymous">
+    <link rel="preload" href="assets/FontManifest.json" as="fetch" crossorigin="anonymous">
+
+    <!-- Splash style -->
+    <style id="splash-screen-style">
+      html, body {
+        height: 100%;
+        margin: 0;
+        background-color: #ffffff;
+      }
+      .center {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+      }
+    </style>
+
+    <!-- Splash remover -->
+    <script id="splash-screen-script">
+      function removeSplashFromWeb() {
+        document.getElementById("splash")?.remove();
+        document.body.style.background = "transparent";
+      }
+      window.addEventListener('flutter-first-frame', removeSplashFromWeb);
+    </script>
+
+    <!-- Forceer nieuwe Service Worker direct te activeren + PWA-herstart -->
+    <script>
+      (function () {
+        if (!('serviceWorker' in navigator)) return;
+
+        // 👉 Uniek versienummer: wijzig dit bij elke nieuwe release
+        const swVersion = 'v2025-10-31-5';
+
+        // Herlaad de pagina maximaal 1x per sessie bij activatie van een nieuwe SW
+        let reloaded = sessionStorage.getItem('sw-reloaded') === '1';
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (reloaded) return;
+          reloaded = true;
+          sessionStorage.setItem('sw-reloaded', '1');
+
+          // kleine delay om race conditions te vermijden
+          setTimeout(() => {
+            // Voor PWA fullscreen mode (mobiel)
+            if (window.matchMedia('(display-mode: standalone)').matches) {
+              window.location.href = '/'; // volledig herstarten
+            } else {
+              window.location.reload();
+            }
+          }, 100);
+        });
+
+        // ✅ Registreer de service worker met versieparameter
+        navigator.serviceWorker.register('flutter_service_worker.js?v=' + swVersion)
+          .then((reg) => {
+            // check nu direct op updates
+            reg.update();
+
+            const activateWaiting = () => {
+              if (reg.waiting) {
+                reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+              }
+            };
+
+            // Als er al een 'waiting' worker is (na deploy), activeer hem meteen
+            activateWaiting();
+
+            // Wanneer er een nieuwe SW gevonden/installeert, activeer na 'installed'
+            reg.addEventListener('updatefound', () => {
+              const sw = reg.installing;
+              if (!sw) return;
+              sw.addEventListener('statechange', () => {
+                if (sw.state === 'installed') activateWaiting();
+              });
+            });
+          })
+          .catch((err) => console.error('SW registratie fout:', err));
+      })();
+    </script>
+  </head>
+
+  <body>
+    <picture id="splash">
+      <source srcset="splash/img/light-1x.png 1x, splash/img/light-2x.png 2x, splash/img/light-3x.png 3x, splash/img/light-4x.png 4x" media="(prefers-color-scheme: light)">
+      <source srcset="splash/img/dark-1x.png 1x, splash/img/dark-2x.png 2x, splash/img/dark-3x.png 3x, splash/img/dark-4x.png 4x" media="(prefers-color-scheme: dark)">
+      <img class="center" src="splash/img/light-1x.png" alt="Derde Divisie logo">
+    </picture>
+
+    <!-- Flutter Web bootstrap -->
+    <script src="flutter_bootstrap.js" async></script>
+  </body>
 </html>

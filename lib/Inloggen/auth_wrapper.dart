@@ -1,67 +1,79 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import '../home_screen.dart';
-import 'login_screen.dart';
 
-class AuthWrapper extends StatefulWidget {
-  const AuthWrapper({Key? key}) : super(key: key);
+import 'package:derde_divisie/Inloggen/login_screen.dart';
+import 'package:derde_divisie/prediction_screen.dart';
+import 'package:derde_divisie/moderator/moderator_menu_screen.dart';
 
-  @override
-  State<AuthWrapper> createState() => _AuthWrapperState();
-}
 
-class _AuthWrapperState extends State<AuthWrapper> {
-  bool? isModerator; // ✅ <-- hier toevoegen
+class HomeScreen extends StatelessWidget {
+  final bool isModerator;
 
-  @override
-  void initState() {
-    super.initState();
-    _checkModeratorStatus();
-  }
+  const HomeScreen({super.key, required this.isModerator});
 
-  Future<void> _checkModeratorStatus() async {
-    User? user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      setState(() {
-        isModerator = false;
-      });
-      return;
-    }
+  void _signOut(BuildContext context) async {
+    final navigator = Navigator.of(context); // Sla Navigator vooraf op
 
-    try {
-      DocumentSnapshot userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
+    await FirebaseAuth.instance.signOut();
 
-      setState(() {
-        isModerator = userDoc.get('isModerator') == true;
-      });
-    } catch (e) {
-      setState(() {
-        isModerator = false;
-      });
-    }
+    navigator.pushReplacement(
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return const LoginScreen();
-        }
-
-        if (isModerator == null) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
-
-        return HomeScreen(isModerator: isModerator!); // ✅ hier werkt het nu
-      },
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Welkom'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () => _signOut(context),
+          ),
+        ],
+      ),
+      body: ListView(
+        children: [
+          ListTile(
+            leading: const Icon(Icons.sports_soccer),
+            title: const Text('Voorspellen Divisie A'),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const PredictionScreen(divisie: 'A'),
+                ),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.sports_soccer),
+            title: const Text('Voorspellen Divisie B'),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const PredictionScreen(divisie: 'B'),
+                ),
+              );
+            },
+          ),
+          if (isModerator)
+            ListTile(
+              leading: const Icon(Icons.admin_panel_settings),
+              title: const Text('Moderatorpaneel'),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const ModeratorMenuScreen(),
+                  ),
+                );
+              },
+            ),
+        ],
+      ),
     );
   }
 }

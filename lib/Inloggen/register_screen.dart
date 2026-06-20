@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../utils/gemeenten.dart'; // voor autocomplete gemeenten
+import '../screens/juridisch_scherm.dart'; // ✅ toegevoegd
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -10,61 +12,144 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
+  final _formKey = GlobalKey<FormState>();
+
+  // Controllers
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
   final usernameController = TextEditingController();
+  final woonplaatsController = TextEditingController();
+
+  // Keuzes
+  String? geselecteerdeCompetitie;
+  String? geselecteerdeClub;
+  String? geselecteerdeAvatar;
+
+  // UI state
   String errorMessage = '';
+  bool isLoading = false;
+  bool akkoordMetVoorwaarden = false; // ✅ nieuw veld voor checkbox
+
+  // Gemeentenlijst (voor autocomplete)
+  late final Set<String> _gemeentenLower =
+      nederlandseGemeenten.map((g) => g.toLowerCase()).toSet();
+
+  // Competities
+  final List<String> competities = [
+    'Derde Divisie A',
+    'Derde Divisie B',
+    'Allebei',
+    'Geen voorkeur'
+  ];
+
+  // Clubs
+  final List<String> clubs = [
+    'Geen voorkeur',
+    'ADO\'20', 'ASWH', 'Blauw Geel\'38', 'DOVO', 'DVS\'33 Ermelo', 'Eemdijk',
+    'Excelsior\'31', 'FC Lisse', 'Gemert', 'Goes', 'Groene Ster', 'Harkemase Boys',
+    'Hercules', 'Hoogeveen', 'HSC\'21', 'Huizen', 'Kloetinge', 'Noordwijk', 'RBC',
+    'Rijnvogels', 'Rohda Raalte', 'SC Genemuiden', 'Scherpenzeel', 'Scheveningen',
+    'Sparta Nijkerk', 'Sportlust\'46', 'Staphorst', 'SteDoCo', 'sv Meerssen',
+    'TEC', 'TOGB', 'UDI\'19', 'UNA', 'Urk', 'VVSB', 'Zwaluwen'
+  ];
+
+  // Avatars (clublogo's + bal)
+  final List<String> avatars = [
+    'assets/images/logo_ADO20.png',
+    'assets/images/logo_ASWH.png',
+    'assets/images/logo_BlauwGeel38JUMBO.png',
+    'assets/images/logo_DOVO.png',
+    'assets/images/logo_DVS33Ermelo.png',
+    'assets/images/logo_Eemdijk.png',
+    'assets/images/logo_Excelsior31.png',
+    'assets/images/logo_FCLisse.png',
+    'assets/images/logo_Gemert.png',
+    'assets/images/logo_Goes.png',
+    'assets/images/logo_GroeneSter.png',
+    'assets/images/logo_HarkemaseBoys.png',
+    'assets/images/logo_Hercules.png',
+    'assets/images/logo_Hoogeveen.png',
+    'assets/images/logo_HSC21.png',
+    'assets/images/logo_Huizen.png',
+    'assets/images/logo_Kloetinge.png',
+    'assets/images/logo_Noordwijk.png',
+    'assets/images/logo_RBC.png',
+    'assets/images/logo_Rijnvogels.png',
+    'assets/images/logo_RohdaRaalte.png',
+    'assets/images/logo_SCGenemuiden.png',
+    'assets/images/logo_Scherpenzeel.png',
+    'assets/images/logo_Scheveningen.png',
+    'assets/images/logo_SpartaNijkerk.png',
+    'assets/images/logo_Sportlust46.png',
+    'assets/images/logo_Staphorst.png',
+    'assets/images/logo_SteDoCo.png',
+    'assets/images/logo_svMeerssen.png',
+    'assets/images/logo_TEC.png',
+    'assets/images/logo_TOGB.png',
+    'assets/images/logo_UDI19.png',
+    'assets/images/logo_UNA.png',
+    'assets/images/logo_Urk.png',
+    'assets/images/logo_VVSB.png',
+    'assets/images/logo_Zwaluwen.png',
+    'assets/images/profiel_bal.png',
+  ];
 
   @override
   void dispose() {
     emailController.dispose();
     passwordController.dispose();
     usernameController.dispose();
+    woonplaatsController.dispose();
     super.dispose();
   }
 
-  Future<bool> _checkUsernameExists(String username) async {
-    final snapshot = await FirebaseFirestore.instance
-        .collection('users')
-        .where('username', isEqualTo: username)
-        .get();
-    return snapshot.docs.isNotEmpty;
-  }
+  Future<void> _register() async {
+    if (!_formKey.currentState!.validate()) return;
 
-  Future<void> register() async {
-    final username = usernameController.text.trim();
-    final email = emailController.text.trim();
-    final password = passwordController.text.trim();
-
-    if (username.isEmpty || email.isEmpty || password.isEmpty) {
-      setState(() {
-        errorMessage = 'Alle velden zijn verplicht';
-      });
+    if (!akkoordMetVoorwaarden) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Je moet akkoord gaan met de voorwaarden om verder te gaan.'),
+          backgroundColor: Colors.red,
+        ),
+      );
       return;
     }
 
-    if (password.length < 6) {
-      setState(() {
-        errorMessage = 'Wachtwoord moet minimaal 6 tekens bevatten';
-      });
-      return;
-    }
-
-    if (await _checkUsernameExists(username)) {
-      setState(() {
-        errorMessage = 'Gebruikersnaam bestaat al';
-      });
-      return;
-    }
+    setState(() {
+      errorMessage = '';
+      isLoading = true;
+    });
 
     try {
       final userCredential = await FirebaseAuth.instance
-          .createUserWithEmailAndPassword(email: email, password: password);
+          .createUserWithEmailAndPassword(
+        email: emailController.text.trim(),
+        password: passwordController.text.trim(),
+      );
+
+      final canoniekGemeente = _canoniekeGemeente(woonplaatsController.text);
 
       await FirebaseFirestore.instance
           .collection('users')
           .doc(userCredential.user!.uid)
-          .set({'username': username, 'email': email});
+          .set({
+        'username': usernameController.text.trim(),
+        'email': emailController.text.trim(),
+        'isModerator': false,
+        'heeftGebruikersnaamGewijzigd': false,
+        'avatarUrl': geselecteerdeAvatar ?? 'assets/images/profiel_bal.png',
+        'woonplaats': canoniekGemeente,
+        'favorieteCompetitie': geselecteerdeCompetitie,
+        'favorieteClub': geselecteerdeClub,
+        'punten_A': 0,
+        'punten_B': 0,
+        'totalen': 0,
+        'eigenPoules': 0,
+        'gejoinedePoules': 0,
+        'voorspellingenZichtbaar': true,
+        'aangemaaktOp': FieldValue.serverTimestamp(),
+      });
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -72,38 +157,274 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
       Navigator.pop(context);
     } on FirebaseAuthException catch (e) {
-      setState(() {
-        errorMessage = e.message ?? 'Onbekende fout';
-      });
+      setState(() => errorMessage = e.message ?? 'Onbekende fout');
+    } finally {
+      setState(() => isLoading = false);
     }
+  }
+
+  String? _canoniekeGemeente(String? input) {
+    if (input == null) return null;
+    final lower = input.trim().toLowerCase();
+    if (lower.isEmpty) return null;
+    if (!_gemeentenLower.contains(lower)) return null;
+    return nederlandseGemeenten.firstWhere((g) => g.toLowerCase() == lower);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Registreren')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            TextField(
-              controller: usernameController,
-              decoration: const InputDecoration(labelText: 'Gebruikersnaam'),
-            ),
-            TextField(
-              controller: emailController,
-              decoration: const InputDecoration(labelText: 'E-mail'),
-            ),
-            TextField(
-              controller: passwordController,
-              decoration: const InputDecoration(labelText: 'Wachtwoord'),
-              obscureText: true,
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(onPressed: register, child: const Text('Registreer')),
-            if (errorMessage.isNotEmpty)
-              Text(errorMessage, style: const TextStyle(color: Colors.red)),
-          ],
+      backgroundColor: const Color(0xFFF7F8FA),
+      appBar: AppBar(
+        title: const Text('Account aanmaken'),
+        backgroundColor: Colors.green.shade700,
+        centerTitle: true,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Image.asset(
+                  'assets/derde_divisie_logo_icon.png',
+                  height: 90,
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Registreer om mee te doen aan de Derde Divisie Voorspelpoule!',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 15),
+              ),
+              const SizedBox(height: 24),
+
+              // Gebruikersnaam
+              TextFormField(
+                controller: usernameController,
+                decoration: const InputDecoration(
+                  labelText: 'Gebruikersnaam *',
+                  prefixIcon: Icon(Icons.person),
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) =>
+                    value == null || value.trim().isEmpty ? 'Verplicht veld' : null,
+              ),
+              const SizedBox(height: 16),
+
+              // E-mail
+              TextFormField(
+                controller: emailController,
+                decoration: const InputDecoration(
+                  labelText: 'E-mailadres *',
+                  prefixIcon: Icon(Icons.email),
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Verplicht veld';
+                  }
+                  if (!value.contains('@')) {
+                    return 'Ongeldig e-mailadres';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+
+              // Wachtwoord
+              TextFormField(
+                controller: passwordController,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'Wachtwoord *',
+                  prefixIcon: Icon(Icons.lock),
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) =>
+                    value == null || value.length < 6 ? 'Minimaal 6 tekens' : null,
+              ),
+              const SizedBox(height: 16),
+
+              // Gemeente (optioneel)
+              Autocomplete<String>(
+                optionsBuilder: (TextEditingValue value) {
+                  final input = value.text.trim().toLowerCase();
+                  if (input.isEmpty) return const Iterable<String>.empty();
+                  return nederlandseGemeenten
+                      .where((g) => g.toLowerCase().contains(input));
+                },
+                onSelected: (selection) => woonplaatsController.text = selection,
+                fieldViewBuilder:
+                    (context, controller, focusNode, onEditingComplete) {
+                  controller.text = woonplaatsController.text;
+                  return TextFormField(
+                    controller: controller,
+                    focusNode: focusNode,
+                    onEditingComplete: onEditingComplete,
+                    decoration: const InputDecoration(
+                      labelText: 'Gemeente (optioneel)',
+                      prefixIcon: Icon(Icons.location_on),
+                      border: OutlineInputBorder(),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
+
+              // Favoriete competitie
+              DropdownButtonFormField<String>(
+                decoration: const InputDecoration(
+                  labelText: 'Favoriete competitie *',
+                  prefixIcon: Icon(Icons.sports_soccer),
+                  border: OutlineInputBorder(),
+                ),
+                value: geselecteerdeCompetitie,
+                items: competities
+                    .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                    .toList(),
+                onChanged: (v) => setState(() => geselecteerdeCompetitie = v),
+                validator: (value) =>
+                    value == null ? 'Selecteer een competitie' : null,
+              ),
+              const SizedBox(height: 16),
+
+              // Favoriete club
+              DropdownButtonFormField<String>(
+                decoration: const InputDecoration(
+                  labelText: 'Favoriete club *',
+                  prefixIcon: Icon(Icons.shield),
+                  border: OutlineInputBorder(),
+                ),
+                value: geselecteerdeClub,
+                items: clubs
+                    .map((t) => DropdownMenuItem(value: t, child: Text(t)))
+                    .toList(),
+                onChanged: (v) => setState(() => geselecteerdeClub = v),
+                validator: (value) =>
+                    value == null ? 'Selecteer een club' : null,
+              ),
+              const SizedBox(height: 24),
+
+              const Text(
+                'Kies je profielfoto:',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+
+              // ✅ Horizontale avatarselectie
+              SizedBox(
+                height: 95,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: avatars.length,
+                  itemBuilder: (context, index) {
+                    final path = avatars[index];
+                    final isSelected = path == geselecteerdeAvatar;
+                    return GestureDetector(
+                      onTap: () => setState(() => geselecteerdeAvatar = path),
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 8),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color:
+                                isSelected ? Colors.green : Colors.grey.shade300,
+                            width: isSelected ? 3 : 1,
+                          ),
+                        ),
+                        child: CircleAvatar(
+                          radius: 40,
+                          backgroundImage: AssetImage(path),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // ✅ Checkbox voor akkoord
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Checkbox(
+                    value: akkoordMetVoorwaarden,
+                    onChanged: (v) =>
+                        setState(() => akkoordMetVoorwaarden = v ?? false),
+                    activeColor: Colors.green.shade700,
+                  ),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                const JuridischScherm(scrollTo: 'privacy'),
+                          ),
+                        );
+                      },
+                      child: const Text.rich(
+                        TextSpan(
+                          text: 'Ik ga akkoord met de ',
+                          children: [
+                            TextSpan(
+                              text:
+                                  'Privacyverklaring en Gebruiksvoorwaarden',
+                              style: TextStyle(
+                                decoration: TextDecoration.underline,
+                                color: Colors.blue,
+                              ),
+                            ),
+                          ],
+                        ),
+                        style: TextStyle(fontSize: 14),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 8),
+
+              if (errorMessage.isNotEmpty)
+                Text(
+                  errorMessage,
+                  style: const TextStyle(color: Colors.red),
+                  textAlign: TextAlign.center,
+                ),
+
+              const SizedBox(height: 12),
+
+              ElevatedButton.icon(
+                onPressed: isLoading ? null : _register,
+                icon: isLoading
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.check),
+                label: Text(
+                  isLoading ? 'Bezig met registreren...' : 'Account aanmaken',
+                  style: const TextStyle(fontSize: 16),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green.shade700,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

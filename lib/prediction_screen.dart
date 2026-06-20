@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import 'screens/wedstrijden_scherm_derde_divisie_a.dart';
-import 'screens/wedstrijden_scherm_derde_divisie_ab.dart';
 import 'screens/wedstrijden_scherm_derde_divisie_b.dart';
 
 class PredictionScreen extends StatelessWidget {
@@ -20,16 +19,16 @@ class PredictionScreen extends StatelessWidget {
       case 'B':
         child = const WedstrijdenSchermDerdeDivisieB(divisie: 'B');
         break;
-      case 'AB':
-        child = const WedstrijdenSchermDerdeDivisieAB();
-        break;
       default:
         child = const Center(child: Text('Onbekende divisie'));
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text('Voorspellen – Divisie $divisie')),
-      body: child,
-    );
+  appBar: AppBar(
+    title: Text('Wedstrijden voorspellen – Divisie $divisie'),
+  ),
+  body: child,
+);
+
   }
 }

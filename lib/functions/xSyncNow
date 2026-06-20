@@ -1,0 +1,101 @@
+// functions/xSyncNow.js
+// Firebase Cloud Function: haalt originele tweets van @Derde_Div op (geen replies of retweets)
+// en schrijft ze naar Firestore (collectie: x_posts).
+
+import fetch from "node-fetch";
+import admin from "firebase-admin";
+import functions from "firebase-functions";
+
+admin.initializeApp();
+const db = admin.firestore();
+
+export const xSyncNow = functions
+  .region("europe-west1")
+  .https.onRequest((req, res) => {
+    // ✅ CORS headers toestaan
+    res.set("Access-Control-Allow-Origin", "*");
+    res.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+
+    if (req.method === "OPTIONS") return res.status(204).send("");
+
+    (async () => {
+      try {
+        const bearer = process.env.TWITTER_BEARER;
+        if (!bearer) throw new Error("TWITTER_BEARER ontbreekt in environment");
+
+        // 1️⃣ Vraag het user-ID van @Derde_Div op
+        const userRes = await fetch(
+          "https://api.twitter.com/2/users/by/username/Derde_Div",
+          { headers: { Authorization: `Bearer ${bearer}` } }
+        );
+        if (!userRes.ok)
+          throw new Error(`User lookup failed: ${userRes.statusText}`);
+        const userData = await userRes.json();
+        const userId = userData.data?.id;
+        if (!userId) throw new Error("Kon user-ID niet vinden voor @Derde_Div");
+
+        // 2️⃣ Vraag originele tweets (geen replies/retweets)
+        const tweetUrl =
+          `https://api.twitter.com/2/users/${userId}/tweets` +
+          "?max_results=10" +
+          "&tweet.fields=created_at,referenced_tweets,entities,attachments" +
+          "&expansions=attachments.media_keys" +
+          "&media.fields=url,preview_image_url" +
+          "&exclude=replies,retweets";
+
+        const r = await fetch(tweetUrl, {
+          headers: { Authorization: `Bearer ${bearer}` },
+        });
+
+        if (!r.ok)
+          throw new Error(`Twitter API error: ${r.status} ${r.statusText}`);
+
+        const json = await r.json();
+        const tweets = json.data ?? [];
+        const mediaMap = new Map();
+
+        if (json.includes && json.includes.media) {
+          for (const m of json.includes.media) {
+            mediaMap.set(m.media_key, m.url || m.preview_image_url);
+          }
+        }
+
+        let added = 0;
+        for (const t of tweets) {
+          const id = t.id;
+          const ref = db.collection("x_posts").doc(id);
+          const exists = await ref.get();
+
+          if (!exists.exists) {
+            let mediaUrl = null;
+            if (t.attachments && t.attachments.media_keys?.length > 0) {
+              const firstKey = t.attachments.media_keys[0];
+              mediaUrl = mediaMap.get(firstKey) ?? null;
+            }
+
+            await ref.set({
+              text: t.text,
+              url: `https://x.com/Derde_Div/status/${id}`,
+              mediaUrl,
+              createdAt: admin.firestore.Timestamp.fromDate(
+                new Date(t.created_at)
+              ),
+            });
+
+            added++;
+          }
+        }
+
+        console.log(`✅ ${added} nieuwe originele tweets toegevoegd.`);
+        res.status(200).json({
+          ok: true,
+          count: added,
+          message: "✅ Originele tweets (geen replies/retweets) gesynchroniseerd.",
+        });
+      } catch (err) {
+        console.error("❌ xSyncNow error:", err);
+        res.status(500).json({ ok: false, error: err.message });
+      }
+    })();
+  });

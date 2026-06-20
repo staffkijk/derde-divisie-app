@@ -7,29 +7,32 @@ class UitlegScherm extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Speluitleg'),
+        title: const Text('Help & Info'),
       ),
       body: ListView(
+        padding: const EdgeInsets.all(16),
         children: [
-          ListTile(
-            title: const Text('Spelregels'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              Navigator.pushNamed(context, '/spelregels');
-            },
-          ),
-          ListTile(
-            title: const Text('Puntentelling'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
+          ElevatedButton.icon(
+            icon: const Icon(Icons.info_outline),
+            label: const Text('Puntentelling'),
+            onPressed: () {
               Navigator.pushNamed(context, '/puntentelling');
             },
           ),
-          ListTile(
-            title: const Text('Veelgestelde vragen (FAQ)'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
+          const SizedBox(height: 12),
+          ElevatedButton.icon(
+            icon: const Icon(Icons.chat_bubble_outline),
+            label: const Text('FAQ'),
+            onPressed: () {
               Navigator.pushNamed(context, '/faq');
+            },
+          ),
+          const SizedBox(height: 12),
+          ElevatedButton.icon(
+            icon: const Icon(Icons.info),
+            label: const Text('Over de app'),
+            onPressed: () {
+              Navigator.pushNamed(context, '/over');
             },
           ),
         ],

@@ -9,13 +9,41 @@ class PuntentellingScherm extends StatelessWidget {
       appBar: AppBar(title: const Text('Puntentelling')),
       body: const Padding(
         padding: EdgeInsets.all(16.0),
-        child: Text(
-          'Uitslag correct 10 punten'
-          'Gelijkspel correct 7 punten'
-          'Winnaar correct 5 punten'
-          'Aantal doelpunten thuisteam correct 2 punten'
-          'Aantal doelpunten uitteam correct 2 punten'
-      
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '🔢 Punten per voorspelling:',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            SizedBox(height: 8),
+            Text('• Uitslag exact goed: 10 punten'),
+            Text('• Gelijkspel goed (niet exact): 7 punten'),
+            Text('• Winnaar goed: 5 punten'),
+            Text('• Doelpunten thuisteam goed: 2 punten'),
+            Text('• Doelpunten uitteam goed: 2 punten'),
+            SizedBox(height: 20),
+            Text(
+              '🏆 Bonuspunten aan het einde van het seizoen:',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            SizedBox(height: 8),
+            Text('• Kampioen correct voorspeld: 30 punten'),
+            Text('• Juiste eindpositie (anders dan kampioen): 10 punten'),
+            Text('• Eén plek ernaast: 6 punten'),
+            Text('• Twee plekken ernaast: 2 punten'),
+            SizedBox(height: 20),
+            Text(
+              '📊 Totale ranking:',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            SizedBox(height: 8),
+            Text(
+              '• Je kunt voorspellen voor Divisie A en/of B.\n'
+              '• Voor de algemene ranglijst telt alleen je hoogste score mee.\n'
+              '  (wedstrijdpunten + bonuspunten) uit A of B.',
+            ),
+          ],
         ),
       ),
     );
