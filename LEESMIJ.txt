@@ -1,0 +1,31 @@
+Vervang in je project dit bestand:
+
+lib/screens/dashboard_screen.dart
+
+Door het bestand in deze map:
+
+lib/screens/dashboard_screen.dart
+
+Wat is aangepast:
+- Hoofdpagina staat nu op seizoen 2026/2027.
+- Oude deelnemerslijst/logo-rotatie 2025/2026 is vervangen.
+- Alle 36 teams uit de aangeleverde afbeelding staan erin.
+- De teams worden nog niet verdeeld in A/B, omdat de indeling nog niet bekend is.
+- Ontbrekende logo's gebruiken automatisch assets/images/default_logo.png.
+
+Ontbrekende logo-bestanden die je later nog kunt toevoegen:
+- logo_ACV.png
+- logo_EVVEcht.png
+- logo_ExcelsiorMaassluis.png
+- logo_HVVHollandia.png
+- logo_Purmersteijn.png
+- logo_SVPoortugaal.png
+- logo_SVZW.png
+- logo_AchillesVeen.png
+- logo_Dongen.png
+
+Na vervangen:
+1. flutter analyze
+2. flutter run -d chrome
+3. Bij akkoord: flutter build web
+4. firebase deploy --only hosting

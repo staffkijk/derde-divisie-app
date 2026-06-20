@@ -8,6 +8,9 @@ import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
+/// ---------------------------
+/// Firestore veldmapping
+/// ---------------------------
 class MatchFieldMap {
   static const homeTeamKeys = ['thuisteam', 'homeTeam'];
   static const awayTeamKeys = ['uitteam', 'awayTeam'];
@@ -18,6 +21,9 @@ class MatchFieldMap {
   static const playedFlagKeys = ['verwerkt', 'gespeeld', 'isProcessed'];
 }
 
+/// ---------------------------
+/// Helpers
+/// ---------------------------
 int? _asInt(dynamic v) {
   if (v == null) return null;
   if (v is int) return v;
@@ -61,6 +67,9 @@ T? _firstOf<T>(
   return null;
 }
 
+/// ---------------------------
+/// Wedstrijdmodel
+/// ---------------------------
 class _M {
   final String? home;
   final String? away;
@@ -84,8 +93,12 @@ class _M {
   int? get goalDiff => (sh != null && sa != null) ? (sh! - sa!).abs() : null;
 }
 
+/// ---------------------------
+/// Firestore: lees `matches`
+/// ---------------------------
 Future<List<_M>> _loadMatchesFromFirestore() async {
-  final snapshot = await FirebaseFirestore.instance.collection('matches').get();
+  final fs = FirebaseFirestore.instance;
+  final snapshot = await fs.collection('matches').get();
   if (snapshot.docs.isEmpty) return <_M>[];
 
   return snapshot.docs.map((doc) {
@@ -111,6 +124,9 @@ Future<List<_M>> _loadMatchesFromFirestore() async {
   }).toList();
 }
 
+/// ---------------------------
+/// Statistieken berekening
+/// ---------------------------
 class _Stats {
   final int totalMatches;
   final int playedMatches;
@@ -145,15 +161,9 @@ _Stats _computeStats(List<_M> ms) {
   final played = ms.where((m) => m.played && m.sh != null && m.sa != null).toList();
   final total = ms.length;
 
-  int totalGoals = 0;
-  int goalsA = 0;
-  int goalsB = 0;
-  int playedA = 0;
-  int playedB = 0;
-  int biggestDiff = -1;
-  int mostTotal = -1;
-  List<_M> biggestWins = [];
-  List<_M> mostGoalsMatches = [];
+  int totalGoals = 0, goalsA = 0, goalsB = 0, playedA = 0, playedB = 0;
+  int biggestDiff = -1, mostTotal = -1;
+  List<_M> biggestWins = [], mostGoalsMatches = [];
 
   for (final m in played) {
     final tg = m.totalGoals!;
@@ -184,6 +194,10 @@ _Stats _computeStats(List<_M> ms) {
     }
   }
 
+  final avgGoalsTotal = played.isEmpty ? 0.0 : totalGoals / played.length;
+  final avgGoalsA = playedA == 0 ? 0.0 : goalsA / playedA;
+  final avgGoalsB = playedB == 0 ? 0.0 : goalsB / playedB;
+
   return _Stats(
     totalMatches: total,
     playedMatches: played.length,
@@ -192,78 +206,95 @@ _Stats _computeStats(List<_M> ms) {
     totalGoals: totalGoals,
     goalsA: goalsA,
     goalsB: goalsB,
-    avgGoalsTotal: played.isEmpty ? 0 : totalGoals / played.length,
-    avgGoalsA: playedA == 0 ? 0 : goalsA / playedA,
-    avgGoalsB: playedB == 0 ? 0 : goalsB / playedB,
+    avgGoalsTotal: avgGoalsTotal,
+    avgGoalsA: avgGoalsA,
+    avgGoalsB: avgGoalsB,
     biggestWins: biggestWins,
     mostGoalsMatches: mostGoalsMatches,
   );
 }
 
-class RotatingLogo extends StatefulWidget {
-  const RotatingLogo({super.key, this.size = 86});
+/// ---------------------------
+/// Deelnemende teams 2026/2027
+///
+/// Zolang de indeling A/B nog niet definitief is, tonen we alle 36 teams
+/// als gezamenlijke deelnemerslijst. Ontbrekende logo's vallen terug op
+/// assets/images/default_logo.png, zodat de app niet vastloopt.
+/// ---------------------------
+class _SeasonTeam {
+  final String name;
+  final String logoAsset;
 
-  final double size;
+  const _SeasonTeam(this.name, this.logoAsset);
+}
+
+const String _defaultTeamLogo = 'assets/images/default_logo.png';
+
+const List<_SeasonTeam> _seasonTeams20262027 = [
+  _SeasonTeam('ACV', 'assets/images/logo_ACV.png'),
+  _SeasonTeam("ADO'20", 'assets/images/logo_ADO20.png'),
+  _SeasonTeam("Blauw Geel '38", 'assets/images/logo_BlauwGeel38JUMBO.png'),
+  _SeasonTeam("DVS'33 Ermelo", 'assets/images/logo_DVS33Ermelo.png'),
+  _SeasonTeam('EVV Echt', 'assets/images/logo_EVVEcht.png'),
+  _SeasonTeam("Excelsior '31", 'assets/images/logo_Excelsior31.png'),
+  _SeasonTeam('Excelsior Maassluis', 'assets/images/logo_ExcelsiorMaassluis.png'),
+  _SeasonTeam('FC Lisse', 'assets/images/logo_FCLisse.png'),
+  _SeasonTeam('FC Rijnvogels', 'assets/images/logo_Rijnvogels.png'),
+  _SeasonTeam('Harkemase Boys', 'assets/images/logo_HarkemaseBoys.png'),
+  _SeasonTeam('HVV Hollandia', 'assets/images/logo_Hollandia.png'),
+  _SeasonTeam('Purmersteijn', 'assets/images/logo_Purmersteijn.png'),
+  _SeasonTeam('RBC', 'assets/images/logo_RBC.png'),
+  _SeasonTeam('RKSV Groene Ster', 'assets/images/logo_GroeneSter.png'),
+  _SeasonTeam('SC Genemuiden', 'assets/images/logo_SCGenemuiden.png'),
+  _SeasonTeam("Sportlust '46", 'assets/images/logo_Sportlust46.png'),
+  _SeasonTeam('SV Poortugaal', 'assets/images/logo_Poortugaal.png'),
+  _SeasonTeam('SV TEC', 'assets/images/logo_TEC.png'),
+  _SeasonTeam('SVZW', 'assets/images/logo_SVZW.png'),
+  _SeasonTeam('TOGB', 'assets/images/logo_TOGB.png'),
+  _SeasonTeam("UDI'19", 'assets/images/logo_UDI19.png'),
+  _SeasonTeam('USV Hercules', 'assets/images/logo_Hercules.png'),
+  _SeasonTeam('VV Achilles Veen', 'assets/images/logo_AchillesVeen.png'),
+  _SeasonTeam('VV Dongen', 'assets/images/logo_dongen.png'),
+  _SeasonTeam('VV DOVO', 'assets/images/logo_DOVO.png'),
+  _SeasonTeam('VV Eemdijk', 'assets/images/logo_Eemdijk.png'),
+  _SeasonTeam('VV Gemert', 'assets/images/logo_Gemert.png'),
+  _SeasonTeam('VV Goes', 'assets/images/logo_Goes.png'),
+  _SeasonTeam('VV Hoogeveen', 'assets/images/logo_Hoogeveen.png'),
+  _SeasonTeam('VV Noordwijk', 'assets/images/logo_Noordwijk.png'),
+  _SeasonTeam('VV Scherpenzeel', 'assets/images/logo_Scherpenzeel.png'),
+  _SeasonTeam('VV Sparta Nijkerk', 'assets/images/logo_SpartaNijkerk.png'),
+  _SeasonTeam('VV Staphorst', 'assets/images/logo_Staphorst.png'),
+  _SeasonTeam('VV UNA', 'assets/images/logo_UNA.png'),
+  _SeasonTeam('VV Zwaluwen', 'assets/images/logo_Zwaluwen.png'),
+  _SeasonTeam('VVSB', 'assets/images/logo_VVSB.png'),
+];
+
+/// ---------------------------
+/// RotatingLogo
+/// ---------------------------
+class RotatingLogo extends StatefulWidget {
+  const RotatingLogo({super.key});
 
   @override
   State<RotatingLogo> createState() => _RotatingLogoState();
 }
 
 class _RotatingLogoState extends State<RotatingLogo> {
-  static const List<String> _allLogos = [
-    'assets/images/logo_ADO20.png',
-    'assets/images/logo_ASWH.png',
-    'assets/images/logo_BlauwGeel38JUMBO.png',
-    'assets/images/logo_DOVO.png',
-    'assets/images/logo_DVS33Ermelo.png',
-    'assets/images/logo_Eemdijk.png',
-    'assets/images/logo_Excelsior31.png',
-    'assets/images/logo_FCLisse.png',
-    'assets/images/logo_Gemert.png',
-    'assets/images/logo_Goes.png',
-    'assets/images/logo_GroeneSter.png',
-    'assets/images/logo_HarkemaseBoys.png',
-    'assets/images/logo_Hercules.png',
-    'assets/images/logo_Hoogeveen.png',
-    'assets/images/logo_HSC21.png',
-    'assets/images/logo_Huizen.png',
-    'assets/images/logo_Kloetinge.png',
-    'assets/images/logo_Noordwijk.png',
-    'assets/images/logo_RBC.png',
-    'assets/images/logo_Rijnvogels.png',
-    'assets/images/logo_RohdaRaalte.png',
-    'assets/images/logo_SCGenemuiden.png',
-    'assets/images/logo_Scherpenzeel.png',
-    'assets/images/logo_Scheveningen.png',
-    'assets/images/logo_SpartaNijkerk.png',
-    'assets/images/logo_Sportlust46.png',
-    'assets/images/logo_Staphorst.png',
-    'assets/images/logo_SteDoCo.png',
-    'assets/images/logo_svMeerssen.png',
-    'assets/images/logo_TEC.png',
-    'assets/images/logo_TOGB.png',
-    'assets/images/logo_UDI19.png',
-    'assets/images/logo_UNA.png',
-    'assets/images/logo_Urk.png',
-    'assets/images/logo_VVSB.png',
-    'assets/images/logo_Zwaluwen.png',
-  ];
-
-  late List<String> _logos;
+  late List<_SeasonTeam> _teams;
   int _index = 0;
   Timer? _timer;
 
   @override
   void initState() {
     super.initState();
-    _logos = List<String>.from(_allLogos)..shuffle(Random());
+    _teams = List<_SeasonTeam>.from(_seasonTeams20262027)..shuffle(Random());
     _timer = Timer.periodic(const Duration(seconds: 2), (_) {
       if (!mounted) return;
       setState(() {
         _index++;
-        if (_index >= _logos.length) {
+        if (_index >= _teams.length) {
           _index = 0;
-          _logos.shuffle(Random());
+          _teams.shuffle(Random());
         }
       });
     });
@@ -277,37 +308,50 @@ class _RotatingLogoState extends State<RotatingLogo> {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 320),
-      child: Image.asset(
-        _logos[_index],
-        key: ValueKey(_logos[_index]),
-        width: widget.size,
-        height: widget.size,
-        fit: BoxFit.contain,
-        errorBuilder: (_, __, ___) => Icon(
-          Icons.shield_outlined,
-          size: widget.size * .72,
-          color: const Color(0xFF2F8F3B),
+    final team = _teams[_index];
+    return Column(
+      children: [
+        SizedBox(
+          width: 120,
+          height: 120,
+          child: Image.asset(
+            team.logoAsset,
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) => Image.asset(
+              _defaultTeamLogo,
+              fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) => const Icon(Icons.shield_outlined, size: 64),
+            ),
+          ),
         ),
-      ),
+        const SizedBox(height: 8),
+        Text(
+          team.name,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: Color(0xFF1B5E20),
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
     );
   }
 }
 
+/// ---------------------------
+/// DashboardScreen
+/// ---------------------------
 class DashboardScreen extends StatelessWidget {
+  final VoidCallback? onOpenStand;
+  final VoidCallback? onOpenPredict;
+  final VoidCallback? onOpenPoules;
+
   const DashboardScreen({
     super.key,
     this.onOpenStand,
     this.onOpenPredict,
     this.onOpenPoules,
   });
-
-  final VoidCallback? onOpenStand;
-  final VoidCallback? onOpenPredict;
-  final VoidCallback? onOpenPoules;
-
-  static const _cream = Color(0xFFF3F6F1);
 
   Future<void> _openUrl(BuildContext context, String url) async {
     final ok = await launchUrlString(url, mode: LaunchMode.externalApplication);
@@ -320,612 +364,362 @@ class DashboardScreen extends StatelessWidget {
 
   String _fmtDate(Timestamp ts) => DateFormat('d MMM yyyy', 'nl').format(ts.toDate());
 
-  Future<void> _shareApp() async {
-    const message = 'DerdeDiv.nl — volg de Derde Divisie en doe mee met de voorspelpoule.\nhttps://derdedev.nl';
-    await SharePlus.instance.share(
-      ShareParams(
-        text: message,
-        subject: 'DerdeDiv.nl',
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _cream,
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final isDesktop = constraints.maxWidth >= 980;
-          final isTablet = constraints.maxWidth >= 700 && !isDesktop;
-          final maxWidth = isDesktop ? 1180.0 : 760.0;
-
-          return SingleChildScrollView(
-            padding: EdgeInsets.symmetric(
-              horizontal: isDesktop ? 28 : 16,
-              vertical: isDesktop ? 28 : 18,
-            ),
-            child: Center(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: maxWidth),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _HeroPanel(
-                      isDesktop: isDesktop,
-                      onOpenStand: onOpenStand,
-                      onOpenPredict: onOpenPredict,
-                      onShare: _shareApp,
-                    ),
-                    const SizedBox(height: 18),
-                    _QuickActions(
-                      isTabletOrDesktop: isTablet || isDesktop,
-                      onOpenStand: onOpenStand,
-                      onOpenPredict: onOpenPredict,
-                      onOpenPoules: onOpenPoules,
-                      onOpenX: () => _openUrl(context, 'https://x.com/Derde_Div'),
-                    ),
-                    const SizedBox(height: 18),
-                    if (isDesktop)
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(flex: 5, child: _StatsCard()),
-                          const SizedBox(width: 18),
-                          Expanded(flex: 4, child: _XPostsCard(openUrl: _openUrl, fmtDate: _fmtDate)),
-                        ],
-                      )
-                    else ...[
-                      _StatsCard(),
-                      const SizedBox(height: 18),
-                      _XPostsCard(openUrl: _openUrl, fmtDate: _fmtDate),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _HeroPanel extends StatelessWidget {
-  static const _green = Color(0xFF2F8F3B);
-  static const _darkGreen = Color(0xFF153B2A);
-
-  final bool isDesktop;
-  final VoidCallback? onOpenStand;
-  final VoidCallback? onOpenPredict;
-  final VoidCallback onShare;
-
-  const _HeroPanel({
-    required this.isDesktop,
-    required this.onOpenStand,
-    required this.onOpenPredict,
-    required this.onShare,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final textBlock = Column(
-      crossAxisAlignment: isDesktop ? CrossAxisAlignment.start : CrossAxisAlignment.center,
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: .12),
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: Colors.white.withValues(alpha: .18)),
-          ),
-          child: const Text(
-            'Derde Divisie A & B',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
-          ),
-        ),
-        const SizedBox(height: 16),
-        Text(
-          'Alles rond de Derde Divisie op één plek.',
-          textAlign: isDesktop ? TextAlign.left : TextAlign.center,
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: isDesktop ? 38 : 28,
-            height: 1.05,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Text(
-          'Bekijk standen, programma, cijfers en ranglijsten. Meedoen met voorspellen kan zodra je bent ingelogd.',
-          textAlign: isDesktop ? TextAlign.left : TextAlign.center,
-          style: const TextStyle(color: Colors.white70, fontSize: 16, height: 1.45),
-        ),
-        const SizedBox(height: 20),
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          alignment: isDesktop ? WrapAlignment.start : WrapAlignment.center,
+  Widget _buildStatRow(String label, String value, {IconData? icon}) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Row(
           children: [
-            ElevatedButton.icon(
-              onPressed: onOpenStand,
-              icon: const Icon(Icons.leaderboard),
-              label: const Text('Bekijk standen'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: _darkGreen,
-              ),
-            ),
-            OutlinedButton.icon(
-              onPressed: onOpenPredict,
-              icon: const Icon(Icons.edit_calendar_outlined),
-              label: const Text('Voorspellen'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.white,
-                side: const BorderSide(color: Colors.white54),
-              ),
-            ),
-            OutlinedButton.icon(
-              onPressed: onShare,
-              icon: const Icon(Icons.ios_share),
-              label: const Text('Delen'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.white,
-                side: const BorderSide(color: Colors.white54),
-              ),
-            ),
+            if (icon != null) Icon(icon, size: 18, color: const Color(0xFF2E7D32)),
+            if (icon != null) const SizedBox(width: 8),
+            Expanded(child: Text(label)),
+            Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
           ],
         ),
-      ],
-    );
-
-    final logoBlock = Container(
-      width: isDesktop ? 230 : 150,
-      height: isDesktop ? 230 : 150,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(34),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: .16),
-            blurRadius: 24,
-            offset: const Offset(0, 16),
-          ),
-        ],
-      ),
-      child: Center(child: RotatingLogo(size: isDesktop ? 138 : 96)),
-    );
-
-    return Container(
-      padding: EdgeInsets.all(isDesktop ? 34 : 22),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [_darkGreen, _green],
-        ),
-        borderRadius: BorderRadius.circular(30),
-      ),
-      child: isDesktop
-          ? Row(
-              children: [
-                Expanded(child: textBlock),
-                const SizedBox(width: 28),
-                logoBlock,
-              ],
-            )
-          : Column(
-              children: [
-                logoBlock,
-                const SizedBox(height: 22),
-                textBlock,
-              ],
-            ),
-    );
-  }
-}
-
-class _QuickActions extends StatelessWidget {
-  final bool isTabletOrDesktop;
-  final VoidCallback? onOpenStand;
-  final VoidCallback? onOpenPredict;
-  final VoidCallback? onOpenPoules;
-  final VoidCallback onOpenX;
-
-  const _QuickActions({
-    required this.isTabletOrDesktop,
-    required this.onOpenStand,
-    required this.onOpenPredict,
-    required this.onOpenPoules,
-    required this.onOpenX,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final items = [
-      _QuickActionData(
-        icon: Icons.leaderboard_outlined,
-        title: 'Standen',
-        subtitle: 'A en B overzichtelijk naast elkaar.',
-        onTap: onOpenStand,
-      ),
-      _QuickActionData(
-        icon: Icons.edit_calendar_outlined,
-        title: 'Voorspellen',
-        subtitle: 'Log in en vul je uitslagen in.',
-        onTap: onOpenPredict,
-      ),
-      _QuickActionData(
-        icon: Icons.groups_2_outlined,
-        title: 'Poules',
-        subtitle: 'Maak of open je eigen poule.',
-        onTap: onOpenPoules,
-      ),
-      _QuickActionData(
-        icon: Icons.alternate_email,
-        title: '@Derde_Div',
-        subtitle: 'Laatste berichten en updates.',
-        onTap: onOpenX,
-      ),
-    ];
-
-    if (!isTabletOrDesktop) {
-      return Column(
-        children: items
-            .map((item) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: _QuickActionCard(data: item),
-                ))
-            .toList(),
       );
-    }
 
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: items.length,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 4,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 1.55,
-      ),
-      itemBuilder: (context, index) => _QuickActionCard(data: items[index]),
-    );
-  }
-}
-
-class _QuickActionData {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final VoidCallback? onTap;
-
-  const _QuickActionData({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-  });
-}
-
-class _QuickActionCard extends StatelessWidget {
-  static const _green = Color(0xFF2F8F3B);
-  static const _darkGreen = Color(0xFF153B2A);
-
-  final _QuickActionData data;
-
-  const _QuickActionCard({required this.data});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: InkWell(
-        borderRadius: BorderRadius.circular(22),
-        onTap: data.onTap,
+  Widget _seasonTeamsCard() => Card(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        elevation: 2,
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: _green.withValues(alpha: .10),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Icon(data.icon, color: _green),
+              Row(
+                children: const [
+                  Icon(Icons.groups_rounded, color: Color(0xFF43A047)),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Deelnemende teams 2026/2027',
+                      style: TextStyle(
+                        color: Color(0xFF2E7D32),
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 12),
-              Text(
-                data.title,
-                style: const TextStyle(
-                  color: _darkGreen,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 16,
-                ),
+              const SizedBox(height: 6),
+              const Text(
+                'De indeling van de Derde Divisie A en B volgt later. Tot die tijd tonen we alle bevestigde deelnemers gezamenlijk.',
+                style: TextStyle(color: Colors.black54, height: 1.35),
               ),
-              const SizedBox(height: 4),
-              Expanded(
-                child: Text(
-                  data.subtitle,
-                  style: const TextStyle(color: Colors.black54, height: 1.25),
-                ),
+              const SizedBox(height: 16),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final width = constraints.maxWidth;
+                  final crossAxisCount = width >= 1100
+                      ? 6
+                      : width >= 850
+                          ? 5
+                          : width >= 620
+                              ? 4
+                              : width >= 420
+                                  ? 3
+                                  : 2;
+
+                  return GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: _seasonTeams20262027.length,
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: crossAxisCount,
+                      mainAxisSpacing: 12,
+                      crossAxisSpacing: 12,
+                      childAspectRatio: 0.92,
+                    ),
+                    itemBuilder: (context, index) {
+                      final team = _seasonTeams20262027[index];
+                      return Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: const Color(0xFFE0E0E0)),
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Expanded(
+                              child: Image.asset(
+                                team.logoAsset,
+                                fit: BoxFit.contain,
+                                errorBuilder: (_, __, ___) => Image.asset(
+                                  _defaultTeamLogo,
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (_, __, ___) => const Icon(
+                                    Icons.shield_outlined,
+                                    size: 42,
+                                    color: Color(0xFF2E7D32),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              team.name,
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w700,
+                                height: 1.15,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                },
               ),
             ],
           ),
         ),
-      ),
-    );
-  }
-}
+      );
 
-class _StatsCard extends StatelessWidget {
-  static const _darkGreen = Color(0xFF153B2A);
+  Widget _statsCard() => FutureBuilder<List<_M>>(
+        future: _loadMatchesFromFirestore(),
+        builder: (context, snap) {
+          if (!snap.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<List<_M>>(
-      future: _loadMatchesFromFirestore(),
-      builder: (context, snap) {
-        if (!snap.hasData) {
-          return const _PanelCard(
-            title: 'Cijfers',
-            icon: Icons.query_stats_outlined,
-            child: SizedBox(
-              height: 160,
-              child: Center(child: CircularProgressIndicator()),
+          final s = _computeStats(snap.data!);
+
+          final biggestWinLines = s.biggestWins.isEmpty
+              ? const ['n.v.t.']
+              : s.biggestWins.map((m) => '${m.home} ${m.sh}-${m.sa} ${m.away}').toList();
+
+          final mostGoalsLines = s.mostGoalsMatches.isEmpty
+              ? const ['n.v.t.']
+              : s.mostGoalsMatches
+                  .map((m) => '${m.home} ${m.sh}-${m.sa} ${m.away} (${m.totalGoals} goals)')
+                  .toList();
+
+          return Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            elevation: 2,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: const [
+                      Icon(Icons.bar_chart, color: Color(0xFF43A047)),
+                      SizedBox(width: 8),
+                      Text(
+                        'Statistieken',
+                        style: TextStyle(
+                          color: Color(0xFF2E7D32),
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  _buildStatRow('⚽ Totaal doelpunten', '${s.totalGoals}'),
+                  _buildStatRow('Doelpunten Derde Divisie A', '${s.goalsA}'),
+                  _buildStatRow('Doelpunten Derde Divisie B', '${s.goalsB}'),
+                  const Divider(),
+                  _buildStatRow('Gemiddeld aantal doelpunten', s.avgGoalsTotal.toStringAsFixed(2)),
+                  _buildStatRow('Gem. per wedstrijd Divisie A', s.avgGoalsA.toStringAsFixed(2)),
+                  _buildStatRow('Gem. per wedstrijd Divisie B', s.avgGoalsB.toStringAsFixed(2)),
+                  const Divider(),
+                  const Text('Grootste overwinning:', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ...biggestWinLines.map((t) => Text(t)),
+                  const SizedBox(height: 8),
+                  const Text('Meeste goals in één wedstrijd:', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ...mostGoalsLines.map((t) => Text(t)),
+                ],
+              ),
             ),
           );
-        }
+        },
+      );
 
-        final s = _computeStats(snap.data!);
-        final biggestWinLines = s.biggestWins.isEmpty
-            ? const ['n.v.t.']
-            : s.biggestWins.map((m) => '${m.home} ${m.sh}-${m.sa} ${m.away}').toList();
-        final mostGoalsLines = s.mostGoalsMatches.isEmpty
-            ? const ['n.v.t.']
-            : s.mostGoalsMatches
-                .map((m) => '${m.home} ${m.sh}-${m.sa} ${m.away} (${m.totalGoals} goals)')
-                .toList();
-
-        return _PanelCard(
-          title: 'Cijfers van het seizoen',
-          icon: Icons.query_stats_outlined,
+  Widget _xPostsCard(BuildContext context) => Card(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        elevation: 2,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: [
-                  _MetricTile(label: 'Wedstrijden', value: '${s.playedMatches}/${s.totalMatches}'),
-                  _MetricTile(label: 'Doelpunten', value: '${s.totalGoals}'),
-                  _MetricTile(label: 'Gemiddelde', value: s.avgGoalsTotal.toStringAsFixed(2)),
+              Row(
+                children: const [
+                  Icon(Icons.article_outlined, color: Color(0xFF43A047)),
+                  SizedBox(width: 8),
+                  Text(
+                    'Laatste berichten van @Derde_Div',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF2E7D32),
+                    ),
+                  ),
                 ],
               ),
-              const SizedBox(height: 16),
-              _StatLine(label: 'Doelpunten Divisie A', value: '${s.goalsA}'),
-              _StatLine(label: 'Doelpunten Divisie B', value: '${s.goalsB}'),
-              _StatLine(label: 'Gem. Divisie A', value: s.avgGoalsA.toStringAsFixed(2)),
-              _StatLine(label: 'Gem. Divisie B', value: s.avgGoalsB.toStringAsFixed(2)),
-              const Divider(height: 28),
-              const Text(
-                'Grootste overwinning',
-                style: TextStyle(color: _darkGreen, fontWeight: FontWeight.w800),
-              ),
               const SizedBox(height: 6),
-              ...biggestWinLines.take(4).map((t) => Text(t, style: const TextStyle(height: 1.35))),
-              const SizedBox(height: 14),
-              const Text(
-                'Meeste goals in één wedstrijd',
-                style: TextStyle(color: _darkGreen, fontWeight: FontWeight.w800),
+              GestureDetector(
+                onTap: () => _openUrl(context, 'https://x.com/Derde_Div'),
+                child: const Text(
+                  '🔗 Volg @Derde_Div op X →',
+                  style: TextStyle(
+                    color: Color(0xFF43A047),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
               ),
-              const SizedBox(height: 6),
-              ...mostGoalsLines.take(4).map((t) => Text(t, style: const TextStyle(height: 1.35))),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
+              const SizedBox(height: 8),
+              StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('x_posts')
+                    .orderBy('createdAt', descending: true)
+                    .limit(3)
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
 
-class _XPostsCard extends StatelessWidget {
-  final Future<void> Function(BuildContext, String) openUrl;
-  final String Function(Timestamp) fmtDate;
+                  final docs = snapshot.data?.docs ?? [];
+                  if (docs.isEmpty) return const Text('Nog geen berichten gevonden.');
 
-  const _XPostsCard({required this.openUrl, required this.fmtDate});
+                  return SizedBox(
+                    height: 400,
+                    child: ListView.builder(
+                      itemCount: docs.length,
+                      itemBuilder: (context, i) {
+                        final data = docs[i].data() as Map<String, dynamic>;
+                        final text = data['text'] ?? '';
+                        final mediaUrl = data['mediaUrl'] as String?;
+                        final url = data['url'] as String?;
+                        final created = data['createdAt'] as Timestamp?;
 
-  @override
-  Widget build(BuildContext context) {
-    return _PanelCard(
-      title: 'Laatste berichten',
-      icon: Icons.article_outlined,
-      trailing: TextButton.icon(
-        onPressed: () => openUrl(context, 'https://x.com/Derde_Div'),
-        icon: const Icon(Icons.open_in_new, size: 16),
-        label: const Text('@Derde_Div'),
-      ),
-      child: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('x_posts')
-            .orderBy('createdAt', descending: true)
-            .limit(3)
-            .snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const SizedBox(
-              height: 160,
-              child: Center(child: CircularProgressIndicator()),
-            );
-          }
-
-          final docs = snapshot.data?.docs ?? [];
-          if (docs.isEmpty) {
-            return const Text('Nog geen berichten gevonden.');
-          }
-
-          return Column(
-            children: List.generate(docs.length, (i) {
-              final data = docs[i].data() as Map<String, dynamic>;
-              final text = (data['text'] ?? '').toString();
-              final mediaUrl = data['mediaUrl'] as String?;
-              final url = data['url'] as String?;
-              final created = data['createdAt'] as Timestamp?;
-
-              return Padding(
-                padding: EdgeInsets.only(bottom: i == docs.length - 1 ? 0 : 12),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(18),
-                  onTap: url == null || url.isEmpty ? null : () => openUrl(context, url),
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF7FAF5),
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: const Color(0xFFE3EADF)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (created != null)
-                          Text(
-                            fmtDate(created),
-                            style: const TextStyle(color: Colors.black45, fontSize: 12),
-                          ),
-                        if (mediaUrl != null && mediaUrl.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 8, bottom: 8),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(14),
-                              child: Image.network(
-                                mediaUrl,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                              ),
+                        return Card(
+                          margin: const EdgeInsets.symmetric(vertical: 6),
+                          elevation: 1,
+                          child: Padding(
+                            padding: const EdgeInsets.all(10),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (created != null)
+                                  Text(
+                                    _fmtDate(created),
+                                    style: const TextStyle(color: Colors.grey, fontSize: 12),
+                                  ),
+                                if (mediaUrl != null && mediaUrl.isNotEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 8),
+                                    child: Image.network(mediaUrl, fit: BoxFit.cover),
+                                  ),
+                                Text(text, style: const TextStyle(height: 1.3)),
+                                if (url != null && url.isNotEmpty)
+                                  TextButton(
+                                    onPressed: () => _openUrl(context, url),
+                                    child: const Text('Bekijk op X →'),
+                                  ),
+                              ],
                             ),
                           ),
-                        Text(
-                          text,
-                          maxLines: 6,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(height: 1.35),
-                        ),
-                      ],
+                        );
+                      },
                     ),
-                  ),
-                ),
-              );
-            }),
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _PanelCard extends StatelessWidget {
-  static const _darkGreen = Color(0xFF153B2A);
-
-  final String title;
-  final IconData icon;
-  final Widget child;
-  final Widget? trailing;
-
-  const _PanelCard({
-    required this.title,
-    required this.icon,
-    required this.child,
-    this.trailing,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(icon, color: const Color(0xFF2F8F3B)),
-                const SizedBox(width: 9),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: const TextStyle(
-                      color: _darkGreen,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 18,
-                    ),
-                  ),
-                ),
-                if (trailing != null) trailing!,
-              ],
-            ),
-            const SizedBox(height: 14),
-            child,
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _MetricTile extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _MetricTile({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 126,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF7FAF5),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE3EADF)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: const TextStyle(color: Colors.black54, fontSize: 12)),
-          const SizedBox(height: 5),
-          Text(
-            value,
-            style: const TextStyle(
-              color: Color(0xFF153B2A),
-              fontWeight: FontWeight.w900,
-              fontSize: 21,
-            ),
+                  );
+                },
+              ),
+            ],
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatLine extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _StatLine({required this.label, required this.value});
+        ),
+      );
 
   @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Expanded(child: Text(label)),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.w800)),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Scaffold(
+        backgroundColor: const Color(0xFFFAF5F3),
+        body: LayoutBuilder(
+          builder: (context, constraints) {
+            final isWide = constraints.maxWidth > 800;
+            return Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 1180),
+                  child: Column(
+                    children: [
+                      const Text(
+                        'Derde Divisie seizoen 2026/2027',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Color(0xFF2E7D32),
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Alle deelnemende teams op één plek. De competitie-indeling wordt later toegevoegd.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.black54),
+                      ),
+                      const SizedBox(height: 22),
+                      const RotatingLogo(),
+                      const SizedBox(height: 16),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          const message =
+                              '🏆 Doe mee met de Derde Divisie Voorspelpoule!\n'
+                              'Voorspel uitslagen, daag je vrienden uit en klim in de ranglijst.\n'
+                              '👉 Download de app of volg @Derde_Div op X!';
+                          SharePlus.instance.share(
+                            ShareParams(
+                              text: message,
+                              subject: 'Daag je vrienden uit!',
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.emoji_events_rounded, color: Colors.white),
+                        label: const Text(
+                          'Daag je vrienden uit',
+                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF2E7D32),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      _seasonTeamsCard(),
+                      const SizedBox(height: 24),
+                      if (isWide)
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(child: _statsCard()),
+                            const SizedBox(width: 16),
+                            Expanded(child: _xPostsCard(context)),
+                          ],
+                        )
+                      else ...[
+                        _statsCard(),
+                        const SizedBox(height: 24),
+                        _xPostsCard(context),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      );
 }

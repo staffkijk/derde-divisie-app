@@ -43,3 +43,12 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Local secrets
+tools/serviceAccountKey.json
+
+# Temporary Excel files
+tools/~$*.xlsx
+
+# Node dependencies
+node_modules/

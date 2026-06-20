@@ -5,3 +5,8 @@
 # Xcode-related
 **/dgph
 **/xcuserdata/
+# Firebase admin sleutel
+tools/serviceAccountKey.json
+
+# Eventueel lokale importbestanden
+tools/*.xlsx
