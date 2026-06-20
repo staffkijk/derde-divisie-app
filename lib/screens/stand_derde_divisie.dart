@@ -11,14 +11,15 @@ final Logger _log = Logger('StandDerdeDivisie');
 /// Voorbeeld:
 /// 'Derde Divisie A': ["Kloetinge", "Sportlust'46"],
 const Map<String, List<String>> kPeriodeKampioenen = {
-  'Derde Divisie A': ['Rohda Raalte', 'Sparta Nijkerk'],
-  'Derde Divisie B': ['Kloetinge','FC Lisse']
+  'Derde Divisie A': ['DVS33 Ermelo','Sparta Nijkerk','ADO20'],
+  'Derde Divisie B': ['VVSB','FC Lisse','Rijnvogels']
 };
 
 
 /// Normaliseer clubnaam naar dezelfde code-vorm als in de tabel
-String _normName(String s) =>
-    s.replaceAll(' ', '').replaceAll("'", '').toLowerCase();
+String _normName(String s) => s
+    .toLowerCase()
+    .replaceAll(RegExp(r'[^a-z0-9]'), '');
 
 int _toInt(dynamic v) {
   if (v is int) return v;
@@ -299,10 +300,11 @@ class StandDerdeDivisie extends StatelessWidget {
 
               final docs = snapshot.data!.docs;
 
-              final clubs = docs.map((doc) {
+                final clubs = docs.map((doc) {
                 final data = doc.data() as Map<String, dynamic>;
                 final naam = (data['club'] ?? '').toString();
-                final code = naam.replaceAll(' ', '').replaceAll("'", '').toLowerCase();
+                final code = _normName(naam);
+                final docCode = _normName(doc.id);
                 final gespeeld = _toInt(data['gespeeld']);
                 final punten = _toInt(data['punten']);
                 final dv = _toInt(data['doelpuntenVoor'] ?? data['dv']);
@@ -313,6 +315,7 @@ class StandDerdeDivisie extends StatelessWidget {
                   'doc': data,
                   'naam': naam,
                   'code': code,
+                  'docCode': docCode,
                   'gespeeld': gespeeld,
                   'punten': punten,
                   'doelpuntenVoor': dv,
@@ -375,7 +378,9 @@ class StandDerdeDivisie extends StatelessWidget {
 
                       final logoNaam =
                           'assets/images/logo_${(club['naam'] as String).replaceAll(' ', '')}.png';
-                      final isPeriodekampioen = periodeSet.contains(club['code']);
+                      final isPeriodekampioen =
+    periodeSet.contains(club['code']) ||
+    periodeSet.contains(club['docCode']);
                       final vorm = vormMap[club['code']] ?? [];
 
                       return Container(

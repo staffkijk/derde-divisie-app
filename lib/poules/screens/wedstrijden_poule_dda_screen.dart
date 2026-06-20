@@ -368,3 +368,4 @@ class _WedstrijdenPouleDdaScreenState extends State<WedstrijdenPouleDdaScreen> {
     );
   }
 }
+

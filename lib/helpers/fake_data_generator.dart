@@ -3,6 +3,7 @@
 // Admin-only tool: bulk fake accounts + retro & future predictions met strikte regels.
 // (versie aangepast: Dart/client Firestore heeft geen `listCollections()`; we verwijderen
 // subcollecties op basis van een lijst van bekende subcollectie-namen)
+// ignore_for_file: unused_element
 
 import 'dart:math';
 import 'package:flutter/material.dart';
@@ -300,7 +301,7 @@ Future<void> _createAccounts({int count = 60}) async {
       if (style < 0.25) {
         // voornaam + geboortejaar
         final year = 1970 + _rnd.nextInt(35);
-        username = '${first}${year}';
+        username = '$first$year';
       } else if (style < 0.45) {
         // kleine letters + club verwijzing
         final suffixes = ['fan', 'sup', 'boy', 'girl', 'support', 'rules'];
@@ -309,7 +310,7 @@ Future<void> _createAccounts({int count = 60}) async {
         // korte versie met random nummer of underscore
         final base = '${first.toLowerCase()}${last.substring(0, 1).toLowerCase()}';
         if (_rnd.nextBool()) {
-          username = '${base}${_rnd.nextInt(999)}';
+          username = '$base$_rnd.nextInt(999)';
         } else {
           username = '${base}_${_rnd.nextInt(99)}';
         }
@@ -320,7 +321,7 @@ Future<void> _createAccounts({int count = 60}) async {
             '${first.toLowerCase()}${endings[_rnd.nextInt(endings.length)]}${_rnd.nextInt(99).toString().padLeft(2, '0')}';
       } else {
         // naam + clubtag gecombineerd
-        username = '${first}${clubTag}';
+        username = '$first$clubTag';
         if (_rnd.nextDouble() < 0.4) username += '${_rnd.nextInt(99)}';
       }
 
@@ -608,7 +609,7 @@ Future<void> _createAccounts({int count = 60}) async {
       // In Flutter Firestore: listCollections() op DocumentReference bestaat niet.
       // Daarom werken we met een lijst van bekende subcollectienamen die je in je project gebruikt.
       // Pas deze lijst aan als je extra subcollecties hebt.
-      Future<void> _deleteSubcollections(DocumentReference docRef) async {
+      Future<void> deleteSubcollections(DocumentReference docRef) async {
         // Voeg hier subcollecties toe die je onder users gebruikt.
         final knownSubcollections = <String>[
           'voorspellingen',
@@ -671,7 +672,7 @@ Future<void> _createAccounts({int count = 60}) async {
       final usersSnap =
           await _firestore.collection('users').where('isFake', isEqualTo: true).get();
       for (final userDoc in usersSnap.docs) {
-        await _deleteSubcollections(userDoc.reference);
+        await deleteSubcollections(userDoc.reference);
         await userDoc.reference.delete();
       }
 

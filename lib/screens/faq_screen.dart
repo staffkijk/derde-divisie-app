@@ -29,6 +29,10 @@ class FaqScreen extends StatelessWidget {
             question: 'Kan ik de voorspellingen van anderen bekijken?',
             answer: 'Ja, als een gebruiker dit toestaat in zijn profiel. Na de deadline zijn alle voorspellingen zichtbaar.',
           ),
+          const FaqCard(
+            question: 'Moet ik zowel in poules als in de algemene voorspellingen uitslagen invullen?',
+            answer: 'JDit kan maar hoeft niet. Je kan per poule selecteren of je de algemene voorspellingen wil synchroniseren.',
+          ),
 
           const SizedBox(height: 24),
           const FaqSectionTitle(title: '👤 Profiel'),

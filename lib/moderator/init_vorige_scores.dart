@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
+
 Future<void> initVorigeScores() async {
   final firestore = FirebaseFirestore.instance;
 

@@ -11,7 +11,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 
 import 'firebase_options.dart';
-import 'Inloggen/login_screen.dart';
 import 'main_screen.dart';
 import 'screens/help_screen.dart';
 import 'screens/loading_screen.dart';
@@ -146,29 +145,9 @@ class MyApp extends StatelessWidget {
           ),
         ),
       ),
-      home: const AuthGate(),
+      home: const MainScreen(),
       routes: {
         '/help': (context) => const HelpScreen(),
-      },
-    );
-  }
-}
-
-class AuthGate extends StatelessWidget {
-  const AuthGate({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const LoadingScreen();
-        } else if (snapshot.hasData) {
-          return const MainScreen();
-        } else {
-          return const LoginScreen();
-        }
       },
     );
   }

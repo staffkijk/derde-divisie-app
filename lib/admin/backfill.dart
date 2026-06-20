@@ -33,7 +33,7 @@ Future<void> backfillDvDt({required String divisie, bool dryRun = true}) async {
   final Map<String, Map<String, dynamic>> matches = {};
   for (final s in res) {
     for (final doc in s.docs) {
-      matches[doc.id] = (doc.data() as Map<String, dynamic>);
+      matches[doc.id] = doc.data();
     }
   }
 

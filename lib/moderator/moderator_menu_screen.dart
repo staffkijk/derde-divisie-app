@@ -5,15 +5,13 @@ import 'package:flutter/material.dart';
 // Puntensysteem
 import 'package:derde_divisie/Puntensysteem/puntenverwerker.dart'
     show verwerkUitslagVoorWedstrijd;
-import 'package:derde_divisie/Puntensysteem/eindstand_puntenverwerker.dart'
-    show verwerkEindstandPunten;
 
 // Moderator services
 import 'package:derde_divisie/moderator/init_vorige_scores.dart';
 import 'package:derde_divisie/moderator/speelronde_reset_service.dart';
 import 'package:derde_divisie/moderator/standen_service.dart';
 import 'package:derde_divisie/moderator/periodestand_service.dart';
-import 'package:derde_divisie/moderator/reset_eindstand_punten.dart' as reset;
+
 
 // Helpers
 import 'package:derde_divisie/utils/teamcode_updater.dart';
@@ -36,6 +34,7 @@ class _ModeratorMenuScreenState extends State<ModeratorMenuScreen> {
 
   late Future<QuerySnapshot> _matchesFuture;
   bool _initialisatieKlaar = false;
+  // ignore: prefer_final_fields
   bool _busy = false;
 
   @override

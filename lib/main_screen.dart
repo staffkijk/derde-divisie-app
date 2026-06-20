@@ -12,6 +12,7 @@ import 'screens/profile_screen.dart';
 import 'moderator/moderator_menu_screen.dart';
 import 'poules/screens/poules_overzicht_screen.dart';
 import 'screens/prediction_overview_screen.dart';
+import 'Inloggen/login_screen.dart';
 
 
 // Nieuw: import voor changelog
@@ -110,7 +111,27 @@ class _MainScreenState extends State<MainScreen> {
     'Profiel',
   ];
 
-  void _onItemTapped(int index) {
+  Future<void> _onItemTapped(int index) async {
+    final loginNodig = index == 2 || index == 3 || index == 4;
+    final ingelogd = FirebaseAuth.instance.currentUser != null;
+
+    if (loginNodig && !ingelogd) {
+      final gelukt = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+      );
+
+      if (!mounted) return;
+
+      if (gelukt == true || FirebaseAuth.instance.currentUser != null) {
+        setState(() {
+          _selectedIndex = index;
+        });
+      }
+
+      return;
+    }
+
     setState(() {
       _selectedIndex = index;
     });

@@ -114,7 +114,7 @@ Wij verwerken o.a.:
 - Accountgegevens (gebruikersnaam, e-mailadres, wachtwoord)
 - Profielinformatie (favoriete competitie, club, woonplaats, profielfoto)
 - Voorspellingen en resultaten
-- Technische gegevens (IP-adres, apparaat, browser)
+- Technische gegevens (apparaat en browser)
 - Feedback of berichten die je ons stuurt
 
 Wij verzamelen geen gevoelige persoonsgegevens.
