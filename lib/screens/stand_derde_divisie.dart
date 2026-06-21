@@ -27,52 +27,52 @@ const Map<String, List<String>> kPeriodeKampioenen = {
   'Derde Divisie B': ['VVSB', 'FC Lisse', 'Rijnvogels'],
 };
 
-class _SeasonTeam {
+class SeasonTeam {
   final String name;
   final String logoAsset;
 
-  const _SeasonTeam(this.name, this.logoAsset);
+  const SeasonTeam(this.name, this.logoAsset);
 }
 
 const String _defaultTeamLogo = 'assets/images/default_logo.png';
 
-const List<_SeasonTeam> _seasonTeams20262027 = [
-  _SeasonTeam('ACV', 'assets/images/logo_ACV.png'),
-  _SeasonTeam("ADO'20", 'assets/images/logo_ADO20.png'),
-  _SeasonTeam("Blauw Geel '38", 'assets/images/logo_BlauwGeel38JUMBO.png'),
-  _SeasonTeam("DVS'33 Ermelo", 'assets/images/logo_DVS33Ermelo.png'),
-  _SeasonTeam('EVV Echt', 'assets/images/logo_EVVEcht.png'),
-  _SeasonTeam("Excelsior '31", 'assets/images/logo_Excelsior31.png'),
-  _SeasonTeam('Excelsior Maassluis', 'assets/images/logo_ExcelsiorMaassluis.png'),
-  _SeasonTeam('FC Lisse', 'assets/images/logo_FCLisse.png'),
-  _SeasonTeam('FC Rijnvogels', 'assets/images/logo_Rijnvogels.png'),
-  _SeasonTeam('Harkemase Boys', 'assets/images/logo_HarkemaseBoys.png'),
-  _SeasonTeam('HVV Hollandia', 'assets/images/logo_Hollandia.png'),
-  _SeasonTeam('Purmersteijn', 'assets/images/logo_Purmersteijn.png'),
-  _SeasonTeam('RBC', 'assets/images/logo_RBC.png'),
-  _SeasonTeam('RKSV Groene Ster', 'assets/images/logo_GroeneSter.png'),
-  _SeasonTeam('SC Genemuiden', 'assets/images/logo_SCGenemuiden.png'),
-  _SeasonTeam("Sportlust '46", 'assets/images/logo_Sportlust46.png'),
-  _SeasonTeam('SV Poortugaal', 'assets/images/logo_Poortugaal.png'),
-  _SeasonTeam('SV TEC', 'assets/images/logo_TEC.png'),
-  _SeasonTeam('SVZW', 'assets/images/logo_SVZW.png'),
-  _SeasonTeam('TOGB', 'assets/images/logo_TOGB.png'),
-  _SeasonTeam("UDI'19", 'assets/images/logo_UDI19.png'),
-  _SeasonTeam('USV Hercules', 'assets/images/logo_Hercules.png'),
-  _SeasonTeam('VV Achilles Veen', 'assets/images/logo_AchillesVeen.png'),
-  _SeasonTeam('VV Dongen', 'assets/images/logo_dongen.png'),
-  _SeasonTeam('VV DOVO', 'assets/images/logo_DOVO.png'),
-  _SeasonTeam('VV Eemdijk', 'assets/images/logo_Eemdijk.png'),
-  _SeasonTeam('VV Gemert', 'assets/images/logo_Gemert.png'),
-  _SeasonTeam('VV Goes', 'assets/images/logo_Goes.png'),
-  _SeasonTeam('VV Hoogeveen', 'assets/images/logo_Hoogeveen.png'),
-  _SeasonTeam('VV Noordwijk', 'assets/images/logo_Noordwijk.png'),
-  _SeasonTeam('VV Scherpenzeel', 'assets/images/logo_Scherpenzeel.png'),
-  _SeasonTeam('VV Sparta Nijkerk', 'assets/images/logo_SpartaNijkerk.png'),
-  _SeasonTeam('VV Staphorst', 'assets/images/logo_Staphorst.png'),
-  _SeasonTeam('VV UNA', 'assets/images/logo_UNA.png'),
-  _SeasonTeam('VV Zwaluwen', 'assets/images/logo_Zwaluwen.png'),
-  _SeasonTeam('VVSB', 'assets/images/logo_VVSB.png'),
+const List<SeasonTeam> seasonTeams20262027 = [
+  SeasonTeam('ACV', 'assets/images/logo_ACV.png'),
+  SeasonTeam("ADO'20", 'assets/images/logo_ADO20.png'),
+  SeasonTeam("Blauw Geel '38", 'assets/images/logo_BlauwGeel38JUMBO.png'),
+  SeasonTeam("DVS'33 Ermelo", 'assets/images/logo_DVS33Ermelo.png'),
+  SeasonTeam('EVV Echt', 'assets/images/logo_EVVEcht.png'),
+  SeasonTeam("Excelsior '31", 'assets/images/logo_Excelsior31.png'),
+  SeasonTeam('Excelsior Maassluis', 'assets/images/logo_ExcelsiorMaassluis.png'),
+  SeasonTeam('FC Lisse', 'assets/images/logo_FCLisse.png'),
+  SeasonTeam('FC Rijnvogels', 'assets/images/logo_Rijnvogels.png'),
+  SeasonTeam('Harkemase Boys', 'assets/images/logo_HarkemaseBoys.png'),
+  SeasonTeam('HVV Hollandia', 'assets/images/logo_Hollandia.png'),
+  SeasonTeam('Purmersteijn', 'assets/images/logo_Purmersteijn.png'),
+  SeasonTeam('RBC', 'assets/images/logo_RBC.png'),
+  SeasonTeam('RKSV Groene Ster', 'assets/images/logo_GroeneSter.png'),
+  SeasonTeam('SC Genemuiden', 'assets/images/logo_SCGenemuiden.png'),
+  SeasonTeam("Sportlust '46", 'assets/images/logo_Sportlust46.png'),
+  SeasonTeam('SV Poortugaal', 'assets/images/logo_Poortugaal.png'),
+  SeasonTeam('SV TEC', 'assets/images/logo_TEC.png'),
+  SeasonTeam('SVZW', 'assets/images/logo_SVZW.png'),
+  SeasonTeam('TOGB', 'assets/images/logo_TOGB.png'),
+  SeasonTeam("UDI'19", 'assets/images/logo_UDI19.png'),
+  SeasonTeam('USV Hercules', 'assets/images/logo_Hercules.png'),
+  SeasonTeam('VV Achilles Veen', 'assets/images/logo_AchillesVeen.png'),
+  SeasonTeam('VV Dongen', 'assets/images/logo_dongen.png'),
+  SeasonTeam('VV DOVO', 'assets/images/logo_DOVO.png'),
+  SeasonTeam('VV Eemdijk', 'assets/images/logo_Eemdijk.png'),
+  SeasonTeam('VV Gemert', 'assets/images/logo_Gemert.png'),
+  SeasonTeam('VV Goes', 'assets/images/logo_Goes.png'),
+  SeasonTeam('VV Hoogeveen', 'assets/images/logo_Hoogeveen.png'),
+  SeasonTeam('VV Noordwijk', 'assets/images/logo_Noordwijk.png'),
+  SeasonTeam('VV Scherpenzeel', 'assets/images/logo_Scherpenzeel.png'),
+  SeasonTeam('VV Sparta Nijkerk', 'assets/images/logo_SpartaNijkerk.png'),
+  SeasonTeam('VV Staphorst', 'assets/images/logo_Staphorst.png'),
+  SeasonTeam('VV UNA', 'assets/images/logo_UNA.png'),
+  SeasonTeam('VV Zwaluwen', 'assets/images/logo_Zwaluwen.png'),
+  SeasonTeam('VVSB', 'assets/images/logo_VVSB.png'),
 ];
 
 String _normName(String s) {
@@ -194,7 +194,7 @@ class StandEntry {
     required this.doelsaldo,
   });
 
-  factory StandEntry.fromSeasonTeam(_SeasonTeam team) {
+  factory StandEntry.fromSeasonTeam(SeasonTeam team) {
     return StandEntry(
       data: const {},
       naam: team.name,
@@ -560,7 +560,7 @@ class StandDerdeDivisie extends StatelessWidget {
   }
 
   List<StandEntry> _buildCurrentSeasonEntries() {
-    final teams = List<_SeasonTeam>.from(_seasonTeams20262027)
+    final teams = List<SeasonTeam>.from(seasonTeams20262027)
       ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
 
     final selectedTeams = _isDivisieA(divisie)

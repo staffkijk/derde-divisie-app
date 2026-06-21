@@ -416,7 +416,7 @@ class _ModeratorToolsScreenState extends State<ModeratorToolsScreen> {
         style: ElevatedButton.styleFrom(
           backgroundColor: color,
           foregroundColor: Colors.white,
-          disabledBackgroundColor: color.withOpacity(0.45),
+          disabledBackgroundColor: color.withValues(alpha: 0.45),
           disabledForegroundColor: Colors.white70,
           padding: const EdgeInsets.symmetric(vertical: 14),
           shape: RoundedRectangleBorder(
