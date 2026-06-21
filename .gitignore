@@ -52,3 +52,15 @@ tools/~$*.xlsx
 
 # Node dependencies
 node_modules/
+
+# Firebase/service account secrets
+tools/serviceAccountKey*.json
+**/serviceAccountKey*.json
+
+# Firestore exports / grote lokale backups
+firestore_exports/
+*.backup.json
+*.export.json
+
+# Tijdelijke Excel lock-bestanden
+~$*.xlsx

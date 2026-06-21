@@ -1,4 +1,4 @@
-// lib/screens/stand_derde_divisie_screen.dart
+// lib/screens/stand_derde_divisie.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
@@ -6,20 +6,78 @@ import 'package:derde_divisie/screens/periode_standen_screen.dart';
 
 final Logger _log = Logger('StandDerdeDivisie');
 
-/// ⬇️ Handmatig instellen van periodekampioenen per divisie
-/// Vul hier de clubnamen in zoals je ze normaal schrijft.
-/// Voorbeeld:
-/// 'Derde Divisie A': ["Kloetinge", "Sportlust'46"],
+const String kActueelSeizoenLabel = 'Actueel seizoen';
+const String kActueelSeizoenWaarde = 'actueel';
+
+const List<String> kArchiefSeizoenen = [
+  '2025-2026',
+  '2024-2025',
+  '2023-2024',
+  '2022-2023',
+  '2021-2022',
+  '2020-2021',
+  '2019-2020',
+  '2018-2019',
+  '2017-2018',
+  '2016-2017',
+];
+
 const Map<String, List<String>> kPeriodeKampioenen = {
-  'Derde Divisie A': ['DVS33 Ermelo','Sparta Nijkerk','ADO20'],
-  'Derde Divisie B': ['VVSB','FC Lisse','Rijnvogels']
+  'Derde Divisie A': ['DVS33 Ermelo', 'Sparta Nijkerk', 'ADO20'],
+  'Derde Divisie B': ['VVSB', 'FC Lisse', 'Rijnvogels'],
 };
 
+class _SeasonTeam {
+  final String name;
+  final String logoAsset;
 
-/// Normaliseer clubnaam naar dezelfde code-vorm als in de tabel
-String _normName(String s) => s
-    .toLowerCase()
-    .replaceAll(RegExp(r'[^a-z0-9]'), '');
+  const _SeasonTeam(this.name, this.logoAsset);
+}
+
+const String _defaultTeamLogo = 'assets/images/default_logo.png';
+
+const List<_SeasonTeam> _seasonTeams20262027 = [
+  _SeasonTeam('ACV', 'assets/images/logo_ACV.png'),
+  _SeasonTeam("ADO'20", 'assets/images/logo_ADO20.png'),
+  _SeasonTeam("Blauw Geel '38", 'assets/images/logo_BlauwGeel38JUMBO.png'),
+  _SeasonTeam("DVS'33 Ermelo", 'assets/images/logo_DVS33Ermelo.png'),
+  _SeasonTeam('EVV Echt', 'assets/images/logo_EVVEcht.png'),
+  _SeasonTeam("Excelsior '31", 'assets/images/logo_Excelsior31.png'),
+  _SeasonTeam('Excelsior Maassluis', 'assets/images/logo_ExcelsiorMaassluis.png'),
+  _SeasonTeam('FC Lisse', 'assets/images/logo_FCLisse.png'),
+  _SeasonTeam('FC Rijnvogels', 'assets/images/logo_Rijnvogels.png'),
+  _SeasonTeam('Harkemase Boys', 'assets/images/logo_HarkemaseBoys.png'),
+  _SeasonTeam('HVV Hollandia', 'assets/images/logo_Hollandia.png'),
+  _SeasonTeam('Purmersteijn', 'assets/images/logo_Purmersteijn.png'),
+  _SeasonTeam('RBC', 'assets/images/logo_RBC.png'),
+  _SeasonTeam('RKSV Groene Ster', 'assets/images/logo_GroeneSter.png'),
+  _SeasonTeam('SC Genemuiden', 'assets/images/logo_SCGenemuiden.png'),
+  _SeasonTeam("Sportlust '46", 'assets/images/logo_Sportlust46.png'),
+  _SeasonTeam('SV Poortugaal', 'assets/images/logo_Poortugaal.png'),
+  _SeasonTeam('SV TEC', 'assets/images/logo_TEC.png'),
+  _SeasonTeam('SVZW', 'assets/images/logo_SVZW.png'),
+  _SeasonTeam('TOGB', 'assets/images/logo_TOGB.png'),
+  _SeasonTeam("UDI'19", 'assets/images/logo_UDI19.png'),
+  _SeasonTeam('USV Hercules', 'assets/images/logo_Hercules.png'),
+  _SeasonTeam('VV Achilles Veen', 'assets/images/logo_AchillesVeen.png'),
+  _SeasonTeam('VV Dongen', 'assets/images/logo_dongen.png'),
+  _SeasonTeam('VV DOVO', 'assets/images/logo_DOVO.png'),
+  _SeasonTeam('VV Eemdijk', 'assets/images/logo_Eemdijk.png'),
+  _SeasonTeam('VV Gemert', 'assets/images/logo_Gemert.png'),
+  _SeasonTeam('VV Goes', 'assets/images/logo_Goes.png'),
+  _SeasonTeam('VV Hoogeveen', 'assets/images/logo_Hoogeveen.png'),
+  _SeasonTeam('VV Noordwijk', 'assets/images/logo_Noordwijk.png'),
+  _SeasonTeam('VV Scherpenzeel', 'assets/images/logo_Scherpenzeel.png'),
+  _SeasonTeam('VV Sparta Nijkerk', 'assets/images/logo_SpartaNijkerk.png'),
+  _SeasonTeam('VV Staphorst', 'assets/images/logo_Staphorst.png'),
+  _SeasonTeam('VV UNA', 'assets/images/logo_UNA.png'),
+  _SeasonTeam('VV Zwaluwen', 'assets/images/logo_Zwaluwen.png'),
+  _SeasonTeam('VVSB', 'assets/images/logo_VVSB.png'),
+];
+
+String _normName(String s) {
+  return s.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+}
 
 int _toInt(dynamic v) {
   if (v is int) return v;
@@ -28,15 +86,36 @@ int _toInt(dynamic v) {
 }
 
 int _calcDoelsaldo(Map<String, dynamic> d) {
-  final ds = d['doelsaldo'];
+  final ds = d['doelsaldo'] ?? d['goalDifference'];
   if (ds != null) return _toInt(ds);
-  final dv = _toInt(d['doelpuntenVoor'] ?? d['dv']);
-  final dt = _toInt(d['doelpuntenTegen'] ?? d['dt']);
+
+  final dv = _toInt(
+    d['doelpuntenVoor'] ??
+        d['goalsFor'] ??
+        d['dv'],
+  );
+
+  final dt = _toInt(
+    d['doelpuntenTegen'] ??
+        d['goalsAgainst'] ??
+        d['dt'],
+  );
+
   return dv - dt;
 }
 
-/// 🔹 Bereken alle vormen lokaal op basis van Firestore-data
-Map<String, List<String>> berekenVormPerTeam(List<Map<String, dynamic>> matches) {
+String _divisieCode(String divisie) {
+  if (divisie.toLowerCase().contains(' b')) return 'B';
+  return 'A';
+}
+
+bool _isDivisieA(String divisie) {
+  return _divisieCode(divisie) == 'A';
+}
+
+Map<String, List<String>> berekenVormPerTeam(
+  List<Map<String, dynamic>> matches,
+) {
   final Map<String, List<Map<String, dynamic>>> perTeam = {};
 
   for (final m in matches) {
@@ -44,13 +123,21 @@ Map<String, List<String>> berekenVormPerTeam(List<Map<String, dynamic>> matches)
     final away = (m['awayTeamCode'] ?? '').toString().toLowerCase();
 
     void add(String teamCode, bool isHome) {
-      final thuisGoals = m['uitslagThuis'] ?? 0;
-      final uitGoals = m['uitslagUit'] ?? 0;
-      final diff = isHome ? (thuisGoals - uitGoals) : (uitGoals - thuisGoals);
-      final result = diff > 0 ? 'W' : (diff == 0 ? 'G' : 'V');
+      if (teamCode.isEmpty) return;
+
+      final thuisGoals = _toInt(m['uitslagThuis']);
+      final uitGoals = _toInt(m['uitslagUit']);
+
+      final diff = isHome ? thuisGoals - uitGoals : uitGoals - thuisGoals;
+      final result = diff > 0
+          ? 'W'
+          : diff == 0
+              ? 'G'
+              : 'V';
+
       perTeam.putIfAbsent(teamCode, () => []);
       perTeam[teamCode]!.add({
-        'datum': (m['datum'] is Timestamp)
+        'datum': m['datum'] is Timestamp
             ? (m['datum'] as Timestamp).toDate()
             : DateTime(2000),
         'result': result,
@@ -62,20 +149,110 @@ Map<String, List<String>> berekenVormPerTeam(List<Map<String, dynamic>> matches)
   }
 
   final Map<String, List<String>> resultaat = {};
+
   perTeam.forEach((team, lijst) {
-    lijst.sort((a, b) => (b['datum'] as DateTime).compareTo(a['datum'] as DateTime));
+    lijst.sort(
+      (a, b) => (b['datum'] as DateTime).compareTo(a['datum'] as DateTime),
+    );
+
     resultaat[team] = lijst.take(5).map((e) => e['result'] as String).toList();
   });
 
   return resultaat;
 }
 
-/// 🔹 Vormvakjes met fade-in animatie
+class StandEntry {
+  final Map<String, dynamic> data;
+  final String naam;
+  final String code;
+  final String docCode;
+  final String? logoAsset;
+  final int positie;
+  final int gespeeld;
+  final int gewonnen;
+  final int gelijk;
+  final int verloren;
+  final int punten;
+  final int doelpuntenVoor;
+  final int doelpuntenTegen;
+  final int doelsaldo;
+
+  const StandEntry({
+    required this.data,
+    required this.naam,
+    required this.code,
+    required this.docCode,
+    required this.logoAsset,
+    required this.positie,
+    required this.gespeeld,
+    required this.gewonnen,
+    required this.gelijk,
+    required this.verloren,
+    required this.punten,
+    required this.doelpuntenVoor,
+    required this.doelpuntenTegen,
+    required this.doelsaldo,
+  });
+
+  factory StandEntry.fromSeasonTeam(_SeasonTeam team) {
+    return StandEntry(
+      data: const {},
+      naam: team.name,
+      code: _normName(team.name),
+      docCode: _normName(team.name),
+      logoAsset: team.logoAsset,
+      positie: 0,
+      gespeeld: 0,
+      gewonnen: 0,
+      gelijk: 0,
+      verloren: 0,
+      punten: 0,
+      doelpuntenVoor: 0,
+      doelpuntenTegen: 0,
+      doelsaldo: 0,
+    );
+  }
+
+  factory StandEntry.fromArchiveDoc(QueryDocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    final naam = (data['teamName'] ?? data['club'] ?? '').toString();
+
+    return StandEntry(
+      data: data,
+      naam: naam,
+      code: _normName(naam),
+      docCode: _normName(doc.id),
+      logoAsset: null,
+      positie: _toInt(data['position'] ?? data['positie']),
+      gespeeld: _toInt(data['played'] ?? data['gespeeld']),
+      gewonnen: _toInt(data['won'] ?? data['wins'] ?? data['gewonnen']),
+      gelijk: _toInt(data['drawn'] ?? data['draws'] ?? data['gelijk']),
+      verloren: _toInt(data['lost'] ?? data['losses'] ?? data['verloren']),
+      punten: _toInt(data['points'] ?? data['punten']),
+      doelpuntenVoor: _toInt(
+        data['goalsFor'] ??
+            data['doelpuntenVoor'] ??
+            data['dv'],
+      ),
+      doelpuntenTegen: _toInt(
+        data['goalsAgainst'] ??
+            data['doelpuntenTegen'] ??
+            data['dt'],
+      ),
+      doelsaldo: _calcDoelsaldo(data),
+    );
+  }
+}
+
 class VormVakjes extends StatefulWidget {
   final List<String> vorm;
   final bool compact;
 
-  const VormVakjes({super.key, required this.vorm, this.compact = false});
+  const VormVakjes({
+    super.key,
+    required this.vorm,
+    this.compact = false,
+  });
 
   @override
   State<VormVakjes> createState() => _VormVakjesState();
@@ -89,9 +266,17 @@ class _VormVakjesState extends State<VormVakjes>
   @override
   void initState() {
     super.initState();
-    _controller =
-        AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
-    _opacity = CurvedAnimation(parent: _controller, curve: Curves.easeIn);
+
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+
+    _opacity = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeIn,
+    );
+
     _controller.forward();
   }
 
@@ -117,6 +302,7 @@ class _VormVakjesState extends State<VormVakjes>
   @override
   Widget build(BuildContext context) {
     final size = widget.compact ? 9.0 : 12.0;
+
     return FadeTransition(
       opacity: _opacity,
       child: Row(
@@ -127,7 +313,7 @@ class _VormVakjesState extends State<VormVakjes>
             height: size,
             margin: const EdgeInsets.symmetric(horizontal: 1.5),
             decoration: BoxDecoration(
-              color: _kleur(v).withOpacity(0.9),
+              color: _kleur(v).withValues(alpha: 0.9),
               borderRadius: BorderRadius.circular(3),
             ),
           );
@@ -137,8 +323,18 @@ class _VormVakjesState extends State<VormVakjes>
   }
 }
 
-class StandDerdeDivisieScreen extends StatelessWidget {
+class StandDerdeDivisieScreen extends StatefulWidget {
   const StandDerdeDivisieScreen({super.key});
+
+  @override
+  State<StandDerdeDivisieScreen> createState() =>
+      _StandDerdeDivisieScreenState();
+}
+
+class _StandDerdeDivisieScreenState extends State<StandDerdeDivisieScreen> {
+  String _selectedSeason = kActueelSeizoenWaarde;
+
+  bool get _isActueel => _selectedSeason == kActueelSeizoenWaarde;
 
   @override
   Widget build(BuildContext context) {
@@ -148,50 +344,123 @@ class StandDerdeDivisieScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 16),
         children: [
-          Center(
-            child: ElevatedButton.icon(
-              icon: const Icon(Icons.bar_chart, size: 18),
-              label: const Text(
-                'Bekijk periodestanden',
-                style: TextStyle(fontSize: 14),
-              ),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-              ),
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const PeriodeStandenScreen(),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Wrap(
+              alignment: WrapAlignment.center,
+              runSpacing: 10,
+              spacing: 12,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.bar_chart, size: 18),
+                  label: const Text(
+                    'Bekijk periodestanden',
+                    style: TextStyle(fontSize: 14),
                   ),
-                );
-              },
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 8,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const PeriodeStandenScreen(),
+                      ),
+                    );
+                  },
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey.shade300),
+                    borderRadius: BorderRadius.circular(20),
+                    color: Colors.white,
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _selectedSeason,
+                      icon: const Icon(Icons.keyboard_arrow_down),
+                      items: [
+                        const DropdownMenuItem(
+                          value: kActueelSeizoenWaarde,
+                          child: Text(kActueelSeizoenLabel),
+                        ),
+                        ...kArchiefSeizoenen.map(
+                          (season) => DropdownMenuItem(
+                            value: season,
+                            child: Text(season),
+                          ),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        if (value == null) return;
+
+                        setState(() {
+                          _selectedSeason = value;
+                        });
+                      },
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 16),
-
+          Padding(
+            padding: const EdgeInsets.only(
+              left: 16,
+              right: 16,
+              bottom: 12,
+            ),
+            child: Text(
+              _isActueel
+                  ? 'Voorlopige deelnemerslijst seizoen 2026/2027'
+                  : 'Eindstand seizoen $_selectedSeason',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.grey.shade700,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
           if (!isWide) ...[
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 16),
               child: Text(
-                'Stand Divisie A',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                'Voorlopige lijst A',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
             const SizedBox(height: 8),
-            const StandDerdeDivisie(divisie: 'Derde Divisie A'),
+            StandDerdeDivisie(
+              divisie: 'Derde Divisie A',
+              seizoen: _selectedSeason,
+            ),
             const Divider(thickness: 1),
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 16),
               child: Text(
-                'Stand Divisie B',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                'Voorlopige lijst B',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
             const SizedBox(height: 8),
-            const StandDerdeDivisie(divisie: 'Derde Divisie B'),
+            StandDerdeDivisie(
+              divisie: 'Derde Divisie B',
+              seizoen: _selectedSeason,
+            ),
           ] else
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -201,17 +470,22 @@ class StandDerdeDivisieScreen extends StatelessWidget {
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
+                      children: [
                         Text(
-                          'Stand Divisie A',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          _isActueel ? 'Voorlopige lijst A' : 'Stand Divisie A',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                        SizedBox(height: 8),
-                        StandDerdeDivisie(divisie: 'Derde Divisie A'),
+                        const SizedBox(height: 8),
+                        StandDerdeDivisie(
+                          divisie: 'Derde Divisie A',
+                          seizoen: _selectedSeason,
+                        ),
                       ],
                     ),
                   ),
-                  // verticale scheidslijn
                   Container(
                     width: 1,
                     height: 700,
@@ -221,13 +495,19 @@ class StandDerdeDivisieScreen extends StatelessWidget {
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
+                      children: [
                         Text(
-                          'Stand Divisie B',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          _isActueel ? 'Voorlopige lijst B' : 'Stand Divisie B',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                        SizedBox(height: 8),
-                        StandDerdeDivisie(divisie: 'Derde Divisie B'),
+                        const SizedBox(height: 8),
+                        StandDerdeDivisie(
+                          divisie: 'Derde Divisie B',
+                          seizoen: _selectedSeason,
+                        ),
                       ],
                     ),
                   ),
@@ -242,244 +522,361 @@ class StandDerdeDivisieScreen extends StatelessWidget {
 
 class StandDerdeDivisie extends StatelessWidget {
   final String divisie;
+  final String seizoen;
 
-  const StandDerdeDivisie({super.key, required this.divisie});
+  const StandDerdeDivisie({
+    super.key,
+    required this.divisie,
+    required this.seizoen,
+  });
+
+  bool get _isActueel => seizoen == kActueelSeizoenWaarde;
+
+  Stream<QuerySnapshot> _archiveStandStream() {
+    return FirebaseFirestore.instance
+        .collection('standings_archive')
+        .doc(seizoen)
+        .collection('divisions')
+        .doc(_divisieCode(divisie))
+        .collection('teams')
+        .snapshots();
+  }
+
+  Future<Map<String, List<String>>> _vormMapFuture() async {
+    if (!_isActueel) return {};
+
+    final snap = await FirebaseFirestore.instance
+        .collection('matches')
+        .where('competitie', isEqualTo: divisie)
+        .where('verwerkt', isEqualTo: true)
+        .get();
+
+    final matches = snap.docs
+        .map((d) => d.data())
+        .cast<Map<String, dynamic>>()
+        .toList();
+
+    return berekenVormPerTeam(matches);
+  }
+
+  List<StandEntry> _buildCurrentSeasonEntries() {
+    final teams = List<_SeasonTeam>.from(_seasonTeams20262027)
+      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+
+    final selectedTeams = _isDivisieA(divisie)
+        ? teams.take(18).toList()
+        : teams.skip(18).toList();
+
+    return selectedTeams.map(StandEntry.fromSeasonTeam).toList();
+  }
+
+  List<StandEntry> _buildArchiveEntries(List<QueryDocumentSnapshot> docs) {
+    final entries = docs.map(StandEntry.fromArchiveDoc).where((entry) {
+      return entry.naam.trim().isNotEmpty;
+    }).toList();
+
+    entries.sort((a, b) {
+      if (a.positie > 0 && b.positie > 0) {
+        return a.positie.compareTo(b.positie);
+      }
+
+      int c;
+
+      c = b.punten.compareTo(a.punten);
+      if (c != 0) return c;
+
+      c = a.gespeeld.compareTo(b.gespeeld);
+      if (c != 0) return c;
+
+      c = b.doelsaldo.compareTo(a.doelsaldo);
+      if (c != 0) return c;
+
+      c = b.doelpuntenVoor.compareTo(a.doelpuntenVoor);
+      if (c != 0) return c;
+
+      return a.naam.compareTo(b.naam);
+    });
+
+    return entries;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isDesktop = screenWidth > 800;
-    final isNarrow = screenWidth < 360; // zeer smal (oude telefoons)
-
-    // Kolombreedtes dynamisch zodat het niet overloopt op mobiel
-    final double wPos = isDesktop ? 26 : 24;
-    final double wLogo = isDesktop ? 26 : 24;
-    final double wGap = isDesktop ? 6 : 4;
-    final double wStat = isDesktop ? 26 : 22; // G/W/G/V
-    final double wPoints = isDesktop ? 32 : 28; // Pnt
-    final double wDS = isDesktop ? 32 : 28; // DS
-    final double wDvDt = isDesktop ? 50 : 44; // DV-DT
-
-    // Set met genormaliseerde periodekampioenen voor de huidige divisie
-    final Set<String> periodeSet = {
-      for (final n in (kPeriodeKampioenen[divisie] ?? const [])) _normName(n)
-    };
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: FutureBuilder<List<QueryDocumentSnapshot>>(
-        future: FirebaseFirestore.instance
-            .collection('matches')
-            .where('competitie', isEqualTo: divisie)
-            .where('verwerkt', isEqualTo: true)
-            .get()
-            .then((snap) => snap.docs),
-        builder: (context, matchSnap) {
-          if (!matchSnap.hasData) {
+    if (_isActueel) {
+      return FutureBuilder<Map<String, List<String>>>(
+        future: _vormMapFuture(),
+        builder: (context, vormSnap) {
+          if (!vormSnap.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          final matches =
-              matchSnap.data!.map((d) => d.data() as Map<String, dynamic>).toList();
-          final vormMap = berekenVormPerTeam(matches);
-
-          return StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance
-                .collection('standen')
-                .where('competitie', isEqualTo: divisie)
-                .snapshots(),
-            builder: (context, snapshot) {
-              if (snapshot.hasError) {
-                _log.severe('🔥 Firestore-fout: ${snapshot.error}');
-                return const Center(child: Text('Fout bij laden van stand.'));
-              }
-
-              if (!snapshot.hasData) {
-                return const Center(child: CircularProgressIndicator());
-              }
-
-              final docs = snapshot.data!.docs;
-
-                final clubs = docs.map((doc) {
-                final data = doc.data() as Map<String, dynamic>;
-                final naam = (data['club'] ?? '').toString();
-                final code = _normName(naam);
-                final docCode = _normName(doc.id);
-                final gespeeld = _toInt(data['gespeeld']);
-                final punten = _toInt(data['punten']);
-                final dv = _toInt(data['doelpuntenVoor'] ?? data['dv']);
-                final dt = _toInt(data['doelpuntenTegen'] ?? data['dt']);
-                final ds = _calcDoelsaldo(data);
-
-                return {
-                  'doc': data,
-                  'naam': naam,
-                  'code': code,
-                  'docCode': docCode,
-                  'gespeeld': gespeeld,
-                  'punten': punten,
-                  'doelpuntenVoor': dv,
-                  'doelpuntenTegen': dt,
-                  'doelsaldo': ds,
-                };
-              }).toList();
-
-              clubs.sort((a, b) {
-                int c;
-                c = (_toInt(b['punten'])).compareTo(_toInt(a['punten']));
-                if (c != 0) return c;
-                c = (_toInt(a['gespeeld'])).compareTo(_toInt(b['gespeeld']));
-                if (c != 0) return c;
-                c = (_toInt(b['doelsaldo'])).compareTo(_toInt(a['doelsaldo']));
-                if (c != 0) return c;
-                c = (_toInt(b['doelpuntenVoor']))
-                    .compareTo(_toInt(a['doelpuntenVoor']));
-                if (c != 0) return c;
-                return (a['naam'] as String).compareTo(b['naam'] as String);
-              });
-
-              final showVorm = screenWidth > 380; // verberg bij smalle schermen
-              final showDvDt = !isNarrow; // DV-DT kolom verbergen op héél smal
-
-              return Column(
-                children: [
-                  _buildHeaderRow(
-                    isDesktop: isDesktop,
-                    isMobile: screenWidth < 600,
-                    wPos: wPos,
-                    wLogo: wLogo,
-                    wGap: wGap,
-                    wStat: wStat,
-                    wPoints: wPoints,
-                    wDS: wDS,
-                    wDvDt: wDvDt,
-                    showDvDt: showDvDt,
-                  ),
-                  const Divider(),
-                  ListView.separated(
-                    separatorBuilder: (_, __) =>
-                        Divider(height: 1, color: Colors.grey.shade200),
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: clubs.length,
-                    itemBuilder: (context, index) {
-                      final club = clubs[index];
-                      final data = club['doc'] as Map<String, dynamic>;
-                      final positie = index + 1;
-
-                      Color? bgColor;
-                      if (positie == 1) {
-                        bgColor = Colors.green.withAlpha(40);
-                      } else if (positie >= clubs.length - 1) {
-                        bgColor = Colors.red.withAlpha(50);
-                      } else if (positie >= clubs.length - 3) {
-                        bgColor = Colors.red.withAlpha(25);
-                      }
-
-                      final logoNaam =
-                          'assets/images/logo_${(club['naam'] as String).replaceAll(' ', '')}.png';
-                      final isPeriodekampioen =
-    periodeSet.contains(club['code']) ||
-    periodeSet.contains(club['docCode']);
-                      final vorm = vormMap[club['code']] ?? [];
-
-                      return Container(
-                        color: bgColor,
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            SizedBox(width: wPos, child: Text('$positie.')),
-                            SizedBox(
-                              width: wLogo,
-                              height: wLogo,
-                              child: Image.asset(
-                                logoNaam,
-                                fit: BoxFit.contain,
-                                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                              ),
-                            ),
-                            SizedBox(width: wGap),
-                            if (isDesktop)
-                              SizedBox(
-                                width: 150,
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Flexible(
-                                      child: Text(
-                                        club['naam'] as String,
-                                        style: const TextStyle(fontSize: 15.5),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    if (isPeriodekampioen)
-                                      const Padding(
-                                        padding: EdgeInsets.only(left: 3),
-                                        child: Text('🏅', style: TextStyle(fontSize: 13)),
-                                      ),
-                                  ],
-                                ),
-                              )
-                            else
-                              Expanded(
-                                flex: 2,
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Flexible(
-                                          child: Text(
-                                            club['naam'] as String,
-                                            style: const TextStyle(fontSize: 15.5),
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                        if (isPeriodekampioen)
-                                          const Padding(
-                                            padding: EdgeInsets.only(left: 3),
-                                            child: Text('🏅', style: TextStyle(fontSize: 13)),
-                                          ),
-                                      ],
-                                    ),
-                                    if (!isDesktop && showVorm && vorm.isNotEmpty)
-                                      const SizedBox(height: 2),
-                                    if (!isDesktop && showVorm && vorm.isNotEmpty)
-                                      VormVakjes(vorm: vorm, compact: true),
-                                  ],
-                                ),
-                              ),
-                            _buildStatText('${club['gespeeld']}', width: wStat),
-                            _buildStatText('${data['gewonnen'] ?? 0}', width: wStat),
-                            _buildStatText('${data['gelijk'] ?? 0}', width: wStat),
-                            _buildStatText('${data['verloren'] ?? 0}', width: wStat),
-                            _buildStatText('${club['punten']}', isBold: true, width: wPoints),
-                            _buildStatText('${club['doelsaldo']}', width: wDS),
-                            if (showDvDt)
-                              _buildStatText(
-                                '${club['doelpuntenVoor']}-${club['doelpuntenTegen']}',
-                                width: wDvDt,
-                              ),
-                            if (showVorm && isDesktop)
-                              const SizedBox(width: 8),
-                            if (showVorm && isDesktop)
-                              VormVakjes(vorm: vorm),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              );
-            },
+          return _buildTable(
+            context: context,
+            entries: _buildCurrentSeasonEntries(),
+            vormMap: vormSnap.data ?? {},
           );
         },
+      );
+    }
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: _archiveStandStream(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          _log.severe('Firestore-fout: ${snapshot.error}');
+          return const Center(
+            child: Text('Fout bij laden van stand.'),
+          );
+        }
+
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final entries = _buildArchiveEntries(snapshot.data!.docs);
+
+        if (entries.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text(
+              'Geen archiefstand gevonden voor $seizoen.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey.shade700),
+            ),
+          );
+        }
+
+        return _buildTable(
+          context: context,
+          entries: entries,
+          vormMap: const {},
+        );
+      },
+    );
+  }
+
+  Widget _buildTable({
+    required BuildContext context,
+    required List<StandEntry> entries,
+    required Map<String, List<String>> vormMap,
+  }) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isDesktop = screenWidth > 800;
+    final isNarrow = screenWidth < 360;
+
+    final bool showLogos = _isActueel;
+    final double wPos = isDesktop ? 26 : 24;
+    final double wLogo = showLogos ? (isDesktop ? 28 : 24) : 0;
+    final double wGap = showLogos ? (isDesktop ? 8 : 4) : 0;
+    final double wStat = isDesktop ? 26 : 22;
+    final double wPoints = isDesktop ? 32 : 28;
+    final double wDS = isDesktop ? 32 : 28;
+    final double wDvDt = isDesktop ? 50 : 44;
+
+    final Set<String> periodeSet = {
+      for (final n in (kPeriodeKampioenen[divisie] ?? const [])) _normName(n),
+    };
+
+    final showVorm = _isActueel && screenWidth > 380;
+    final showDvDt = !isNarrow;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Column(
+        children: [
+          _buildHeaderRow(
+            isDesktop: isDesktop,
+            isMobile: screenWidth < 600,
+            wPos: wPos,
+            wLogo: wLogo,
+            wGap: wGap,
+            wStat: wStat,
+            wPoints: wPoints,
+            wDS: wDS,
+            wDvDt: wDvDt,
+            showDvDt: showDvDt,
+          ),
+          const Divider(),
+          ListView.separated(
+            separatorBuilder: (_, __) {
+              return Divider(
+                height: 1,
+                color: Colors.grey.shade200,
+              );
+            },
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: entries.length,
+            itemBuilder: (context, index) {
+              final club = entries[index];
+              final positie = _isActueel || club.positie == 0
+                  ? index + 1
+                  : club.positie;
+
+              Color? bgColor;
+
+              if (!_isActueel) {
+                if (positie == 1) {
+                  bgColor = Colors.green.withAlpha(40);
+                } else if (positie >= entries.length - 1) {
+                  bgColor = Colors.red.withAlpha(50);
+                } else if (positie >= entries.length - 3) {
+                  bgColor = Colors.red.withAlpha(25);
+                }
+              }
+
+              final isPeriodekampioen = _isActueel &&
+                  (periodeSet.contains(club.code) ||
+                      periodeSet.contains(club.docCode));
+
+              final vorm = vormMap[club.code] ?? [];
+
+              return Container(
+                color: bgColor,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 3,
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: wPos,
+                      child: Text('$positie.'),
+                    ),
+                    if (showLogos)
+                      SizedBox(
+                        width: wLogo,
+                        height: wLogo,
+                        child: Image.asset(
+                          club.logoAsset ?? _defaultTeamLogo,
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) {
+                            return Image.asset(
+                              _defaultTeamLogo,
+                              fit: BoxFit.contain,
+                              errorBuilder: (_, __, ___) {
+                                return const Icon(
+                                  Icons.shield_outlined,
+                                  size: 22,
+                                  color: Color(0xFF2E7D32),
+                                );
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                    if (showLogos) SizedBox(width: wGap),
+                    if (isDesktop)
+                      SizedBox(
+                        width: 150,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Flexible(
+                              child: Text(
+                                club.naam,
+                                style: const TextStyle(fontSize: 15.5),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (isPeriodekampioen)
+                              const Padding(
+                                padding: EdgeInsets.only(left: 3),
+                                child: Text(
+                                  '🏅',
+                                  style: TextStyle(fontSize: 13),
+                                ),
+                              ),
+                          ],
+                        ),
+                      )
+                    else
+                      Expanded(
+                        flex: 2,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    club.naam,
+                                    style: const TextStyle(
+                                      fontSize: 15.5,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                if (isPeriodekampioen)
+                                  const Padding(
+                                    padding: EdgeInsets.only(left: 3),
+                                    child: Text(
+                                      '🏅',
+                                      style: TextStyle(fontSize: 13),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            if (showVorm && vorm.isNotEmpty)
+                              const SizedBox(height: 2),
+                            if (showVorm && vorm.isNotEmpty)
+                              VormVakjes(
+                                vorm: vorm,
+                                compact: true,
+                              ),
+                          ],
+                        ),
+                      ),
+                    _buildStatText(
+                      '${club.gespeeld}',
+                      width: wStat,
+                    ),
+                    _buildStatText(
+                      '${club.gewonnen}',
+                      width: wStat,
+                    ),
+                    _buildStatText(
+                      '${club.gelijk}',
+                      width: wStat,
+                    ),
+                    _buildStatText(
+                      '${club.verloren}',
+                      width: wStat,
+                    ),
+                    _buildStatText(
+                      '${club.punten}',
+                      isBold: true,
+                      width: wPoints,
+                    ),
+                    _buildStatText(
+                      '${club.doelsaldo}',
+                      width: wDS,
+                    ),
+                    if (showDvDt)
+                      _buildStatText(
+                        '${club.doelpuntenVoor}-${club.doelpuntenTegen}',
+                        width: wDvDt,
+                      ),
+                    if (showVorm && isDesktop)
+                      const SizedBox(width: 8),
+                    if (showVorm && isDesktop)
+                      VormVakjes(vorm: vorm),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildStatText(String text, {bool isBold = false, double width = 35}) {
+  Widget _buildStatText(
+    String text, {
+    bool isBold = false,
+    double width = 35,
+  }) {
     return Container(
       width: width,
       alignment: Alignment.centerRight,
@@ -512,9 +909,8 @@ class StandDerdeDivisie extends StatelessWidget {
         child: Row(
           children: [
             SizedBox(width: wPos),
-            SizedBox(width: wLogo),
-            SizedBox(width: wGap),
-            // Teamnaam-kolom: desktop vast, mobiel flexibel
+            if (wLogo > 0) SizedBox(width: wLogo),
+            if (wLogo > 0) SizedBox(width: wGap),
             if (isDesktop)
               const SizedBox(width: 150)
             else
@@ -524,32 +920,69 @@ class StandDerdeDivisie extends StatelessWidget {
               ),
             SizedBox(
               width: wStat,
-              child: const Text('G', textAlign: TextAlign.right, style: TextStyle(fontFamily: 'monospace')),
+              child: const Text(
+                'G',
+                textAlign: TextAlign.right,
+                style: TextStyle(fontFamily: 'monospace'),
+              ),
             ),
             SizedBox(
               width: wStat,
-              child: const Text('W', textAlign: TextAlign.right, style: TextStyle(fontFamily: 'monospace')),
+              child: const Text(
+                'W',
+                textAlign: TextAlign.right,
+                style: TextStyle(fontFamily: 'monospace'),
+              ),
             ),
             SizedBox(
               width: wStat,
-              child: const Text('G', textAlign: TextAlign.right, style: TextStyle(fontFamily: 'monospace')),
+              child: const Text(
+                'G',
+                textAlign: TextAlign.right,
+                style: TextStyle(fontFamily: 'monospace'),
+              ),
             ),
             SizedBox(
               width: wStat,
-              child: const Text('V', textAlign: TextAlign.right, style: TextStyle(fontFamily: 'monospace')),
+              child: const Text(
+                'V',
+                textAlign: TextAlign.right,
+                style: TextStyle(fontFamily: 'monospace'),
+              ),
             ),
             SizedBox(
               width: wPoints,
-              child: const Text('Pnt', textAlign: TextAlign.right, style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'monospace')),
+              child: const Text(
+                'Pnt',
+                textAlign: TextAlign.right,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'monospace',
+                ),
+              ),
             ),
             SizedBox(
               width: wDS,
-              child: const Text('DS', textAlign: TextAlign.right, style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'monospace')),
+              child: const Text(
+                'DS',
+                textAlign: TextAlign.right,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'monospace',
+                ),
+              ),
             ),
             if (showDvDt)
               SizedBox(
                 width: wDvDt,
-                child: const Text('DV-DT', textAlign: TextAlign.right, style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'monospace')),
+                child: const Text(
+                  'DV-DT',
+                  textAlign: TextAlign.right,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'monospace',
+                  ),
+                ),
               ),
           ],
         ),
