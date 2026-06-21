@@ -7,10 +7,10 @@ import 'package:derde_divisie/utils/team_code_mapping.dart';
 import 'package:derde_divisie/helpers/sync_service.dart';
 
 // schermen
-import '../../screens/voorspel_een_team_screen.dart';
+import 'package:derde_divisie/features/voorspellen/voorspel_een_team_screen.dart';
 import 'wedstrijden_poule_dda_screen.dart';
 import 'wedstrijden_poule_ddb_screen.dart';
-import '../../screens/bekijk_profiel_screen.dart';
+import 'package:derde_divisie/features/profiel/bekijk_profiel_screen.dart';
 import 'poule_voorspellingen_screen.dart';
 import 'edit_poule_screen.dart';
 

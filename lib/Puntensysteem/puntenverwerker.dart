@@ -2,7 +2,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:developer' as developer;
 
-import '../poules/services/poule_service.dart';
+import 'package:derde_divisie/data/services/poule_service.dart';
 import 'package:derde_divisie/features/moderator/periodestand_service.dart';
 // Alleen de puntentelling binnenhalen, niet de gelijknamige corrigeer/verwerk-helpers
 import 'package:derde_divisie/Puntensysteem/puntenlogica.dart' show berekenPunten;

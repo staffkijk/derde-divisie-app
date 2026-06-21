@@ -12,7 +12,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 
 import 'firebase_options.dart';
 import 'main_screen.dart';
-import 'screens/help_screen.dart';
+import 'package:derde_divisie/features/faq/help_screen.dart';
 import 'screens/loading_screen.dart';
 
 // Optioneel: backfill (alleen als je lib/admin/backfill.dart hebt)

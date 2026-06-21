@@ -1,8 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import '../screens/bekijk_profiel_screen.dart';
-import '../screens/bekijk_voorspellingen_screen.dart';
+import 'package:derde_divisie/features/profiel/bekijk_profiel_screen.dart';
+import 'package:derde_divisie/features/voorspellen/bekijk_voorspellingen_screen.dart';
 
 class RankingScreen extends StatelessWidget {
   const RankingScreen({super.key});

@@ -2,7 +2,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
-import 'package:derde_divisie/screens/periode_standen_screen.dart';
+import 'periode_standen_screen.dart';
 
 final Logger _log = Logger('StandDerdeDivisie');
 

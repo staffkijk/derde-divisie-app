@@ -3,11 +3,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-import '../prediction_screen.dart';
-import '../screens/eindstand_voorspelling_screen.dart';
-// Acties vanuit ranglijsten:
-import '../screens/bekijk_profiel_screen.dart';
-import '../screens/bekijk_voorspellingen_screen.dart';
+import 'package:derde_divisie/features/voorspellen/prediction_screen.dart';
+import 'package:derde_divisie/features/voorspellen/eindstand_voorspelling_screen.dart';
+import 'package:derde_divisie/features/profiel/bekijk_profiel_screen.dart';
+import 'package:derde_divisie/features/voorspellen/bekijk_voorspellingen_screen.dart';
 // ignore_for_file: deprecated_member_use
 
 

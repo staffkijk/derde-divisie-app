@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'register_screen.dart';
-import '../screens/juridisch_scherm.dart';
-import '../main_screen.dart';
+import 'package:derde_divisie/features/about/juridisch_scherm.dart';
+import 'package:derde_divisie/main_screen.dart';
 
 
 class LoginScreen extends StatefulWidget {

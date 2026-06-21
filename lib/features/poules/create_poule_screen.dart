@@ -3,8 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
-import '../models/poule_model.dart';
-import '../services/poule_service.dart';
+import 'package:derde_divisie/data/models/poule_model.dart';
+import 'package:derde_divisie/data/services/poule_service.dart';
 import 'poule_detail_screen.dart';
 
 // ⬇️ NIEUW: direct na aanmaken de backfill starten

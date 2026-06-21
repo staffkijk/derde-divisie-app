@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../utils/gemeenten.dart'; // voor autocomplete gemeenten
-import '../screens/juridisch_scherm.dart'; // ✅ toegevoegd
+import 'package:derde_divisie/core/utils/gemeenten.dart';
+import 'package:derde_divisie/features/about/juridisch_scherm.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});

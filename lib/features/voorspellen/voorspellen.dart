@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'prediction_screen.dart';
-import 'screens/eindstand_voorspelling_screen.dart';
+import 'package:derde_divisie/features/voorspellen/eindstand_voorspelling_screen.dart';
 
 class VoorspellenScreen extends StatelessWidget {
   const VoorspellenScreen({super.key});

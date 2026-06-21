@@ -8,11 +8,11 @@ import 'package:flutter/material.dart';
 import 'helpers/announcement_service.dart';
 import 'features/dashboard/dashboard_screen.dart';
 import 'features/derde_divisie/stand_derde_divisie_screen.dart';
-import 'screens/profile_screen.dart';
+import 'package:derde_divisie/features/profiel/profile_screen.dart';
 import 'features/moderator/moderator_menu_screen.dart';
-import 'poules/screens/poules_overzicht_screen.dart';
-import 'screens/prediction_overview_screen.dart';
-import 'Inloggen/login_screen.dart';
+import 'package:derde_divisie/features/poules/poules_overzicht_screen.dart';
+import 'package:derde_divisie/features/voorspellen/prediction_overview_screen.dart';
+import 'package:derde_divisie/features/auth/login_screen.dart';
 import 'loggboek/update_log_button.dart';
 
 class MainScreen extends StatefulWidget {

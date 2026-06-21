@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-
-import 'screens/wedstrijden_scherm_derde_divisie_a.dart';
-import 'screens/wedstrijden_scherm_derde_divisie_b.dart';
+import 'package:derde_divisie/features/derde_divisie/wedstrijden_scherm_derde_divisie_a.dart';
+import 'package:derde_divisie/features/derde_divisie/wedstrijden_scherm_derde_divisie_b.dart';
 
 class PredictionScreen extends StatelessWidget {
   final String divisie;

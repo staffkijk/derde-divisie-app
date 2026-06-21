@@ -3,11 +3,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import 'faq_screen.dart';
-import 'puntentelling_screen.dart';
-import '../uitleg/over_scherm.dart';
-import '../helpers/herbereken_standen_tool.dart';
-import '../helpers/x_tweet_sync.dart'; // ✅ tweet-sync
-import 'juridisch_scherm.dart'; // ✅ nieuw scherm voor privacy/voorwaarden/disclaimer
+import 'package:derde_divisie/features/voorspellen/puntentelling_screen.dart';
+import 'package:derde_divisie/features/about/over_scherm.dart';
+import 'package:derde_divisie/features/about/juridisch_scherm.dart';
+import 'package:derde_divisie/helpers/herbereken_standen_tool.dart';
+import 'package:derde_divisie/helpers/x_tweet_sync.dart';
 
 class HelpScreen extends StatefulWidget {
   const HelpScreen({super.key});

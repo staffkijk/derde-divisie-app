@@ -1,4 +1,4 @@
-import 'wedstrijd.dart';
+import '../models/wedstrijd.dart';
 
 
 List<Wedstrijd> wedstrijdenDerdeDivisieB = [

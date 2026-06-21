@@ -1,4 +1,4 @@
-import 'wedstrijd.dart';
+import '../models/wedstrijd.dart';
 import 'wedstrijden_dda.dart';
 import 'wedstrijden_ddb.dart';
 

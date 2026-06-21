@@ -4,9 +4,9 @@ import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import '../../../wedstrijd.dart';
-import '../../../wedstrijden_ddb.dart';
-import '../../widgets/voorspel_wedstrijd_card.dart';
+import 'package:derde_divisie/data/models/wedstrijd.dart';
+import 'package:derde_divisie/data/services/wedstrijden_ddb.dart';
+import 'package:derde_divisie/features/voorspellen/widgets/voorspel_wedstrijd_card.dart';
 
 class WedstrijdenPouleDdbScreen extends StatefulWidget {
   final String divisie;   // bv. "Derde Divisie B" of "Divisie B"

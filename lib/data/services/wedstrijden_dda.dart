@@ -1,4 +1,4 @@
-  import 'wedstrijd.dart';
+  import '../models/wedstrijd.dart';
 
   List<Wedstrijd> wedstrijdenDerdeDivisieA = [
   Wedstrijd(id: 'A1', speelronde: 1, datum: DateTime.parse('2025-08-16 14:30'), thuis: 'DOVO', uit: 'HSC21'),

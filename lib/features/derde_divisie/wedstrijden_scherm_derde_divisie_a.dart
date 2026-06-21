@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../wedstrijd.dart';
-import '../../wedstrijden_data.dart';
+import '../../data/models/wedstrijd.dart';
+import '../../data/services/wedstrijden_data.dart';
 import 'package:derde_divisie/helpers/sync_service.dart';
 
 class WedstrijdenSchermDerdeDivisieA extends StatefulWidget {
