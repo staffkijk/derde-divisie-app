@@ -6,10 +6,10 @@ import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:flutter/material.dart';
 
 import 'helpers/announcement_service.dart';
-import 'screens/dashboard_screen.dart';
-import 'screens/stand_derde_divisie.dart';
+import 'features/dashboard/dashboard_screen.dart';
+import 'features/derde_divisie/stand_derde_divisie_screen.dart';
 import 'screens/profile_screen.dart';
-import 'moderator/moderator_menu_screen.dart';
+import 'features/moderator/moderator_menu_screen.dart';
 import 'poules/screens/poules_overzicht_screen.dart';
 import 'screens/prediction_overview_screen.dart';
 import 'Inloggen/login_screen.dart';

@@ -1,7 +1,7 @@
 // lib/moderator/moderator_tools_screen.dart
 import 'package:flutter/material.dart';
 import 'package:derde_divisie/helpers/fake_data_generator.dart';
-import 'package:derde_divisie/moderator/mod_tools.dart' as tools;
+import 'package:derde_divisie/features/moderator/mod_tools.dart' as tools;
 
 class ModeratorToolsScreen extends StatefulWidget {
   const ModeratorToolsScreen({super.key});

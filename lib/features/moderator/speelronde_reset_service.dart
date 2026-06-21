@@ -2,9 +2,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:logging/logging.dart';
 
 // Gebruik dezelfde paden als in jouw project
-import '../Puntensysteem/puntenverwerker.dart' show resetWedstrijd;
-import 'standen_service.dart';
-import '../moderator/periodestand_service.dart';
+import 'package:derde_divisie/Puntensysteem/puntenverwerker.dart';
+import 'package:derde_divisie/features/moderator/standen_service.dart';
+import 'package:derde_divisie/features/moderator/periodestand_service.dart';
 
 final Logger _log = Logger('SpeelrondeResetService');
 

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../moderator/standen_service.dart';
+import 'package:derde_divisie/features/moderator/standen_service.dart';
 
 class HerberekenStandenTool extends StatefulWidget {
   const HerberekenStandenTool({super.key});

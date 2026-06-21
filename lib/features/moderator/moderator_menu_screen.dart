@@ -7,16 +7,16 @@ import 'package:derde_divisie/Puntensysteem/puntenverwerker.dart'
     show verwerkUitslagVoorWedstrijd;
 
 // Moderator services
-import 'package:derde_divisie/moderator/init_vorige_scores.dart';
-import 'package:derde_divisie/moderator/speelronde_reset_service.dart';
-import 'package:derde_divisie/moderator/standen_service.dart';
-import 'package:derde_divisie/moderator/periodestand_service.dart';
+import 'package:derde_divisie/features/moderator/init_vorige_scores.dart';
+import 'package:derde_divisie/features/moderator/speelronde_reset_service.dart';
+import 'package:derde_divisie/features/moderator/standen_service.dart';
+import 'package:derde_divisie/features/moderator/periodestand_service.dart';
 
 
 // Helpers
 import 'package:derde_divisie/utils/teamcode_updater.dart';
 
-import 'moderator_tools_screen.dart';
+import 'package:derde_divisie/features/moderator/moderator_tools_screen.dart';
 
 class ModeratorMenuScreen extends StatefulWidget {
   const ModeratorMenuScreen({super.key});

@@ -1,28 +1,29 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import '../helpers/club_logo_helper.dart';
+import 'package:derde_divisie/helpers/club_logo_helper.dart';
 
-class ModeratorScreenshotViewA extends StatelessWidget {
+
+
+class ModeratorScreenshotViewB extends StatelessWidget {
   final int speelronde;
 
-  const ModeratorScreenshotViewA({super.key, required this.speelronde});
+  const ModeratorScreenshotViewB({super.key, required this.speelronde});
 
   Future<List<Map<String, dynamic>>> _getProgrammaEnUitslagen() async {
-  final snapshot = await FirebaseFirestore.instance
-      .collection('matches')
-      .where('competitie', isEqualTo: 'Derde Divisie A')
-      .where('speelronde', isEqualTo: speelronde)
-      // .orderBy('datum')  // <-- tijdelijk uitzetten
-      .get();
+    final snapshot = await FirebaseFirestore.instance
+        .collection('matches')
+        .where('competitie', isEqualTo: 'Derde Divisie B')
+        .where('speelronde', isEqualTo: speelronde)
+        .orderBy('datum')
+        .get();
 
-  return snapshot.docs.map((doc) => doc.data()).toList();
-}
-
+    return snapshot.docs.map((doc) => doc.data()).toList();
+  }
 
   Future<List<Map<String, dynamic>>> _getStand() async {
     final snapshot = await FirebaseFirestore.instance
         .collection('standen')
-        .where('divisie', isEqualTo: 'A')
+        .where('divisie', isEqualTo: 'B')
         .get();
 
     List<Map<String, dynamic>> lijst = snapshot.docs.map((doc) => doc.data()).toList();
@@ -113,6 +114,7 @@ class ModeratorScreenshotViewA extends StatelessWidget {
             _getStand(),
           ]),
           builder: (context, AsyncSnapshot<List<dynamic>> snapshot) {
+
             if (!snapshot.hasData) {
               return const Center(child: CircularProgressIndicator());
             }
@@ -125,7 +127,7 @@ class ModeratorScreenshotViewA extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Derde Divisie A – Speelronde $speelronde', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text('Derde Divisie B – Speelronde $speelronde', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   const Text('Wedstrijdprogramma:', style: TextStyle(decoration: TextDecoration.underline)),
                   const SizedBox(height: 4),

@@ -1,6 +1,6 @@
 // lib/moderator/mod_tools_panel.dart
 import 'package:flutter/material.dart';
-import 'package:derde_divisie/moderator/moderator_tools_screen.dart';
+import 'package:derde_divisie/features/moderator/moderator_tools_screen.dart';
 
 class ModToolsPanel extends StatelessWidget {
   const ModToolsPanel({super.key});
