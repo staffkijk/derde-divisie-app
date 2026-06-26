@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:derde_divisie/data/config/season_config.dart';
+import 'package:derde_divisie/data/firestore/season_paths.dart';
 import 'periode_standen_screen.dart';
 
 final Logger _log = Logger('StandDerdeDivisie');
@@ -155,6 +156,42 @@ class StandEntry {
       doelpuntenVoor: 0,
       doelpuntenTegen: 0,
       doelsaldo: 0,
+    );
+  }
+
+  factory StandEntry.fromCurrentStandingDoc(
+    QueryDocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
+    final data = doc.data();
+    final naam = (data['teamName'] ??
+            data['name'] ??
+            data['team'] ??
+            SeasonConfig.teamById((data['teamId'] ?? doc.id).toString())
+                ?.listLabel ??
+            doc.id)
+        .toString();
+    final team = SeasonConfig.teamByName(naam) ??
+        SeasonConfig.teamById((data['teamId'] ?? doc.id).toString());
+
+    return StandEntry(
+      data: data,
+      naam: team?.listLabel ?? naam,
+      code: _normName(team?.listLabel ?? naam),
+      docCode: _normName((data['teamId'] ?? data['id'] ?? doc.id).toString()),
+      logoAsset: (data['logoAsset'] ?? team?.logoPath)?.toString(),
+      positie: _toInt(data['position'] ?? data['positie'] ?? data['rank']),
+      gespeeld: _toInt(data['played'] ?? data['gespeeld']),
+      gewonnen: _toInt(data['wins'] ?? data['won'] ?? data['gewonnen']),
+      gelijk: _toInt(data['draws'] ?? data['drawn'] ?? data['gelijk']),
+      verloren: _toInt(data['losses'] ?? data['lost'] ?? data['verloren']),
+      punten: _toInt(data['points'] ?? data['punten']),
+      doelpuntenVoor: _toInt(
+        data['goalsFor'] ?? data['doelpuntenVoor'] ?? data['dv'],
+      ),
+      doelpuntenTegen: _toInt(
+        data['goalsAgainst'] ?? data['doelpuntenTegen'] ?? data['dt'],
+      ),
+      doelsaldo: _calcDoelsaldo(data),
     );
   }
 
@@ -473,6 +510,10 @@ class StandDerdeDivisie extends StatelessWidget {
 
   bool get _isActueel => seizoen == kActueelSeizoenWaarde;
 
+  Stream<QuerySnapshot<Map<String, dynamic>>> _currentStandStream() {
+    return SeasonPaths.currentSeasonStandings.snapshots();
+  }
+
   Stream<QuerySnapshot> _archiveStandStream() {
     return FirebaseFirestore.instance
         .collection('standings_archive')
@@ -502,6 +543,50 @@ class StandDerdeDivisie extends StatelessWidget {
     return SeasonConfig.teamsForProvisionalStandDivision(divisie)
         .map(StandEntry.fromSeasonTeam)
         .toList();
+  }
+
+  bool _matchesDivision(Map<String, dynamic> data) {
+    final rawDivision =
+        (data['division'] ?? data['divisie'] ?? data['competition'] ?? '')
+            .toString()
+            .trim();
+
+    if (rawDivision.isEmpty) return true;
+
+    return SeasonConfig.normalizeDivisionCode(rawDivision) ==
+        SeasonConfig.normalizeDivisionCode(divisie);
+  }
+
+  List<StandEntry> _buildCurrentSeasonEntriesFromDocs(
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+  ) {
+    final entries = docs
+        .where((doc) {
+          if (doc.id == '_meta') return false;
+          return _matchesDivision(doc.data());
+        })
+        .map(StandEntry.fromCurrentStandingDoc)
+        .where((entry) {
+          return entry.naam.trim().isNotEmpty;
+        })
+        .toList();
+
+    entries.sort((a, b) {
+      int c;
+
+      c = b.punten.compareTo(a.punten);
+      if (c != 0) return c;
+
+      c = b.doelsaldo.compareTo(a.doelsaldo);
+      if (c != 0) return c;
+
+      c = b.doelpuntenVoor.compareTo(a.doelpuntenVoor);
+      if (c != 0) return c;
+
+      return a.naam.compareTo(b.naam);
+    });
+
+    return entries;
   }
 
   List<StandEntry> _buildArchiveEntries(List<QueryDocumentSnapshot> docs) {
@@ -537,17 +622,39 @@ class StandDerdeDivisie extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (_isActueel) {
-      return FutureBuilder<Map<String, List<String>>>(
-        future: _vormMapFuture(),
-        builder: (context, vormSnap) {
-          if (!vormSnap.hasData) {
+      return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+        stream: _currentStandStream(),
+        builder: (context, standSnap) {
+          if (standSnap.hasError) {
+            _log.warning(
+              'Firestore-fout bij laden actuele stand: ${standSnap.error}',
+            );
+          }
+
+          if (!standSnap.hasData && !standSnap.hasError) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          return _buildTable(
-            context: context,
-            entries: _buildCurrentSeasonEntries(),
-            vormMap: vormSnap.data ?? {},
+          final seasonEntries = standSnap.hasData
+              ? _buildCurrentSeasonEntriesFromDocs(standSnap.data!.docs)
+              : <StandEntry>[];
+          final entries = seasonEntries.isNotEmpty
+              ? seasonEntries
+              : _buildCurrentSeasonEntries();
+
+          return FutureBuilder<Map<String, List<String>>>(
+            future: _vormMapFuture(),
+            builder: (context, vormSnap) {
+              if (!vormSnap.hasData) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              return _buildTable(
+                context: context,
+                entries: entries,
+                vormMap: vormSnap.data ?? {},
+              );
+            },
           );
         },
       );
