@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
+import 'package:derde_divisie/data/config/season_config.dart';
 
 /// ---------------------------
 /// Firestore veldmapping
@@ -159,7 +160,8 @@ class _Stats {
 }
 
 _Stats _computeStats(List<_M> ms) {
-  final played = ms.where((m) => m.played && m.sh != null && m.sa != null).toList();
+  final played =
+      ms.where((m) => m.played && m.sh != null && m.sa != null).toList();
   final total = ms.length;
 
   int totalGoals = 0, goalsA = 0, goalsB = 0, playedA = 0, playedB = 0;
@@ -216,61 +218,6 @@ _Stats _computeStats(List<_M> ms) {
 }
 
 /// ---------------------------
-/// Deelnemende teams 2026/2027
-///
-/// Zolang de indeling A/B nog niet definitief is, tonen we alle 36 teams
-/// als gezamenlijke deelnemerslijst. Ontbrekende logo's vallen terug op
-/// assets/images/default_logo.png, zodat de app niet vastloopt.
-/// ---------------------------
-class _SeasonTeam {
-  final String name;
-  final String logoAsset;
-
-  const _SeasonTeam(this.name, this.logoAsset);
-}
-
-const String _defaultTeamLogo = 'assets/images/default_logo.png';
-
-const List<_SeasonTeam> _seasonTeams20262027 = [
-  _SeasonTeam('ACV', 'assets/images/logo_ACV.png'),
-  _SeasonTeam("ADO'20", 'assets/images/logo_ADO20.png'),
-  _SeasonTeam("Blauw Geel '38", 'assets/images/logo_BlauwGeel38JUMBO.png'),
-  _SeasonTeam("DVS'33 Ermelo", 'assets/images/logo_DVS33Ermelo.png'),
-  _SeasonTeam('EVV Echt', 'assets/images/logo_EVVEcht.png'),
-  _SeasonTeam("Excelsior '31", 'assets/images/logo_Excelsior31.png'),
-  _SeasonTeam('Excelsior Maassluis', 'assets/images/logo_ExcelsiorMaassluis.png'),
-  _SeasonTeam('FC Lisse', 'assets/images/logo_FCLisse.png'),
-  _SeasonTeam('FC Rijnvogels', 'assets/images/logo_Rijnvogels.png'),
-  _SeasonTeam('Harkemase Boys', 'assets/images/logo_HarkemaseBoys.png'),
-  _SeasonTeam('HVV Hollandia', 'assets/images/logo_Hollandia.png'),
-  _SeasonTeam('VPV Purmersteijn', 'assets/images/logo_Purmersteijn.png'),
-  _SeasonTeam('RBC', 'assets/images/logo_RBC.png'),
-  _SeasonTeam('RKSV Groene Ster', 'assets/images/logo_GroeneSter.png'),
-  _SeasonTeam('SC Genemuiden', 'assets/images/logo_SCGenemuiden.png'),
-  _SeasonTeam("Sportlust '46", 'assets/images/logo_Sportlust46.png'),
-  _SeasonTeam('SV Poortugaal', 'assets/images/logo_Poortugaal.png'),
-  _SeasonTeam('SV TEC', 'assets/images/logo_TEC.png'),
-  _SeasonTeam('SVZW', 'assets/images/logo_SVZW.png'),
-  _SeasonTeam('TOGB', 'assets/images/logo_TOGB.png'),
-  _SeasonTeam("UDI'19", 'assets/images/logo_UDI19.png'),
-  _SeasonTeam('USV Hercules', 'assets/images/logo_Hercules.png'),
-  _SeasonTeam('VV Achilles Veen', 'assets/images/logo_AchillesVeen.png'),
-  _SeasonTeam('VV Dongen', 'assets/images/logo_dongen.png'),
-  _SeasonTeam('VV DOVO', 'assets/images/logo_DOVO.png'),
-  _SeasonTeam('VV Eemdijk', 'assets/images/logo_Eemdijk.png'),
-  _SeasonTeam('VV Gemert', 'assets/images/logo_Gemert.png'),
-  _SeasonTeam('GOES', 'assets/images/logo_Goes.png'),
-  _SeasonTeam('VV Hoogeveen', 'assets/images/logo_Hoogeveen.png'),
-  _SeasonTeam('VV Noordwijk', 'assets/images/logo_Noordwijk.png'),
-  _SeasonTeam('VV Scherpenzeel', 'assets/images/logo_Scherpenzeel.png'),
-  _SeasonTeam('VV Sparta Nijkerk', 'assets/images/logo_SpartaNijkerk.png'),
-  _SeasonTeam('VV Staphorst', 'assets/images/logo_Staphorst.png'),
-  _SeasonTeam('VV UNA', 'assets/images/logo_UNA.png'),
-  _SeasonTeam('VV Zwaluwen', 'assets/images/logo_Zwaluwen.png'),
-  _SeasonTeam('VVSB', 'assets/images/logo_VVSB.png'),
-];
-
-/// ---------------------------
 /// RotatingLogo
 /// ---------------------------
 class RotatingLogo extends StatefulWidget {
@@ -281,14 +228,15 @@ class RotatingLogo extends StatefulWidget {
 }
 
 class _RotatingLogoState extends State<RotatingLogo> {
-  late List<_SeasonTeam> _teams;
+  late List<SeasonTeam> _teams;
   int _index = 0;
   Timer? _timer;
 
   @override
   void initState() {
     super.initState();
-    _teams = List<_SeasonTeam>.from(_seasonTeams20262027)..shuffle(Random());
+    _teams = List<SeasonTeam>.from(SeasonConfig.teamsInListOrder)
+      ..shuffle(Random());
     _timer = Timer.periodic(const Duration(seconds: 2), (_) {
       if (!mounted) return;
       setState(() {
@@ -316,18 +264,19 @@ class _RotatingLogoState extends State<RotatingLogo> {
           width: 120,
           height: 120,
           child: Image.asset(
-            team.logoAsset,
+            team.logoPath,
             fit: BoxFit.contain,
             errorBuilder: (_, __, ___) => Image.asset(
-              _defaultTeamLogo,
+              SeasonConfig.defaultTeamLogoPath,
               fit: BoxFit.contain,
-              errorBuilder: (_, __, ___) => const Icon(Icons.shield_outlined, size: 64),
+              errorBuilder: (_, __, ___) =>
+                  const Icon(Icons.shield_outlined, size: 64),
             ),
           ),
         ),
         const SizedBox(height: 8),
         Text(
-          team.name,
+          team.listLabel,
           textAlign: TextAlign.center,
           style: const TextStyle(
             color: Color(0xFF1B5E20),
@@ -365,13 +314,15 @@ class DashboardScreen extends StatelessWidget {
     }
   }
 
-  String _fmtDate(Timestamp ts) => DateFormat('d MMM yyyy', 'nl').format(ts.toDate());
+  String _fmtDate(Timestamp ts) =>
+      DateFormat('d MMM yyyy', 'nl').format(ts.toDate());
 
   Widget _buildStatRow(String label, String value, {IconData? icon}) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 2),
         child: Row(
           children: [
-            if (icon != null) Icon(icon, size: 18, color: const Color(0xFF2E7D32)),
+            if (icon != null)
+              Icon(icon, size: 18, color: const Color(0xFF2E7D32)),
             if (icon != null) const SizedBox(width: 8),
             Expanded(child: Text(label)),
             Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
@@ -485,7 +436,7 @@ class DashboardScreen extends StatelessWidget {
                   return GridView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    itemCount: _seasonTeams20262027.length,
+                    itemCount: SeasonConfig.teamsInListOrder.length,
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: crossAxisCount,
                       mainAxisSpacing: 12,
@@ -493,7 +444,7 @@ class DashboardScreen extends StatelessWidget {
                       childAspectRatio: 0.92,
                     ),
                     itemBuilder: (context, index) {
-                      final team = _seasonTeams20262027[index];
+                      final team = SeasonConfig.teamsInListOrder[index];
                       return Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
@@ -506,10 +457,10 @@ class DashboardScreen extends StatelessWidget {
                           children: [
                             Expanded(
                               child: Image.asset(
-                                team.logoAsset,
+                                team.logoPath,
                                 fit: BoxFit.contain,
                                 errorBuilder: (_, __, ___) => Image.asset(
-                                  _defaultTeamLogo,
+                                  SeasonConfig.defaultTeamLogoPath,
                                   fit: BoxFit.contain,
                                   errorBuilder: (_, __, ___) => const Icon(
                                     Icons.shield_outlined,
@@ -521,7 +472,7 @@ class DashboardScreen extends StatelessWidget {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              team.name,
+                              team.listLabel,
                               textAlign: TextAlign.center,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
@@ -554,16 +505,20 @@ class DashboardScreen extends StatelessWidget {
 
           final biggestWinLines = s.biggestWins.isEmpty
               ? const ['n.v.t.']
-              : s.biggestWins.map((m) => '${m.home} ${m.sh}-${m.sa} ${m.away}').toList();
+              : s.biggestWins
+                  .map((m) => '${m.home} ${m.sh}-${m.sa} ${m.away}')
+                  .toList();
 
           final mostGoalsLines = s.mostGoalsMatches.isEmpty
               ? const ['n.v.t.']
               : s.mostGoalsMatches
-                  .map((m) => '${m.home} ${m.sh}-${m.sa} ${m.away} (${m.totalGoals} goals)')
+                  .map((m) =>
+                      '${m.home} ${m.sh}-${m.sa} ${m.away} (${m.totalGoals} goals)')
                   .toList();
 
           return Card(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             elevation: 2,
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -589,14 +544,19 @@ class DashboardScreen extends StatelessWidget {
                   _buildStatRow('Doelpunten Derde Divisie A', '${s.goalsA}'),
                   _buildStatRow('Doelpunten Derde Divisie B', '${s.goalsB}'),
                   const Divider(),
-                  _buildStatRow('Gemiddeld aantal doelpunten', s.avgGoalsTotal.toStringAsFixed(2)),
-                  _buildStatRow('Gem. per wedstrijd Divisie A', s.avgGoalsA.toStringAsFixed(2)),
-                  _buildStatRow('Gem. per wedstrijd Divisie B', s.avgGoalsB.toStringAsFixed(2)),
+                  _buildStatRow('Gemiddeld aantal doelpunten',
+                      s.avgGoalsTotal.toStringAsFixed(2)),
+                  _buildStatRow('Gem. per wedstrijd Divisie A',
+                      s.avgGoalsA.toStringAsFixed(2)),
+                  _buildStatRow('Gem. per wedstrijd Divisie B',
+                      s.avgGoalsB.toStringAsFixed(2)),
                   const Divider(),
-                  const Text('Grootste overwinning:', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const Text('Grootste overwinning:',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
                   ...biggestWinLines.map((t) => Text(t)),
                   const SizedBox(height: 8),
-                  const Text('Meeste goals in één wedstrijd:', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const Text('Meeste goals in één wedstrijd:',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
                   ...mostGoalsLines.map((t) => Text(t)),
                 ],
               ),
@@ -652,7 +612,9 @@ class DashboardScreen extends StatelessWidget {
                   }
 
                   final docs = snapshot.data?.docs ?? [];
-                  if (docs.isEmpty) return const Text('Nog geen berichten gevonden.');
+                  if (docs.isEmpty) {
+                    return const Text('Nog geen berichten gevonden.');
+                  }
 
                   return SizedBox(
                     height: 400,
@@ -676,12 +638,15 @@ class DashboardScreen extends StatelessWidget {
                                 if (created != null)
                                   Text(
                                     _fmtDate(created),
-                                    style: const TextStyle(color: Colors.grey, fontSize: 12),
+                                    style: const TextStyle(
+                                        color: Colors.grey, fontSize: 12),
                                   ),
                                 if (mediaUrl != null && mediaUrl.isNotEmpty)
                                   Padding(
-                                    padding: const EdgeInsets.symmetric(vertical: 8),
-                                    child: Image.network(mediaUrl, fit: BoxFit.cover),
+                                    padding:
+                                        const EdgeInsets.symmetric(vertical: 8),
+                                    child: Image.network(mediaUrl,
+                                        fit: BoxFit.cover),
                                   ),
                                 Text(text, style: const TextStyle(height: 1.3)),
                                 if (url != null && url.isNotEmpty)
@@ -735,28 +700,31 @@ class DashboardScreen extends StatelessWidget {
                       const RotatingLogo(),
                       const SizedBox(height: 16),
                       ElevatedButton.icon(
-                       onPressed: () async {
-  const message =
-      '🏆 Doe mee met de Derde Divisie Voorspelpoule!\n'
-      'Voorspel uitslagen, daag je vrienden uit en klim in de ranglijst.\n'
-      '👉 Download de app of volg @Derde_Div op X!';
+                        onPressed: () async {
+                          const message =
+                              '🏆 Doe mee met de Derde Divisie Voorspelpoule!\n'
+                              'Voorspel uitslagen, daag je vrienden uit en klim in de ranglijst.\n'
+                              '👉 Download de app of volg @Derde_Div op X!';
 
-  await Share.share(
-    message,
-    subject: 'Daag je vrienden uit!',
-  );
-},
-                        icon: const Icon(Icons.emoji_events_rounded, color: Colors.white),
+                          await Share.share(
+                            message,
+                            subject: 'Daag je vrienden uit!',
+                          );
+                        },
+                        icon: const Icon(Icons.emoji_events_rounded,
+                            color: Colors.white),
                         label: const Text(
                           'Daag je vrienden uit',
-                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                              color: Colors.white, fontWeight: FontWeight.bold),
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF2E7D32),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 10),
                         ),
                       ),
                       const SizedBox(height: 24),
@@ -830,7 +798,8 @@ class _HomeQuickAction extends StatelessWidget {
                     child: Icon(icon, color: const Color(0xFF2E7D32), size: 20),
                   ),
                   const Spacer(),
-                  const Icon(Icons.arrow_forward_rounded, color: Color(0xFF2E7D32)),
+                  const Icon(Icons.arrow_forward_rounded,
+                      color: Color(0xFF2E7D32)),
                 ],
               ),
               const SizedBox(height: 10),

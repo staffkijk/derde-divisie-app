@@ -3,7 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 // helpers
-import 'package:derde_divisie/utils/team_code_mapping.dart';
+import 'package:derde_divisie/data/config/season_config.dart';
 import 'package:derde_divisie/helpers/sync_service.dart';
 
 // schermen
@@ -174,8 +174,8 @@ class _PouleDetailScreenState extends State<PouleDetailScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-                content:
-                    Text('Synchronisatie aangezet — open rondes worden gevuld.')),
+                content: Text(
+                    'Synchronisatie aangezet — open rondes worden gevuld.')),
           );
         }
 
@@ -226,8 +226,8 @@ class _PouleDetailScreenState extends State<PouleDetailScreen> {
       stream: deelnemerRef.snapshots(),
       builder: (context, snapshot) {
         if (!snapshot.hasData) return const SizedBox.shrink();
-        final data =
-            snapshot.data!.data() as Map<String, dynamic>? ?? <String, dynamic>{};
+        final data = snapshot.data!.data() as Map<String, dynamic>? ??
+            <String, dynamic>{};
         final syncEnabled = data['syncEnabled'] ?? false;
 
         return SwitchListTile(
@@ -291,53 +291,7 @@ class _PouleDetailScreenState extends State<PouleDetailScreen> {
   }
 
   String _bepaalDivisieOpBasisVanTeam(String team) {
-    final mappedTeam = teamCodeMapping[team] ?? team;
-
-    const List<String> teamsDDA = [
-      'DOVO',
-      'Eemdijk',
-      'Scherpenzeel',
-      'Staphorst',
-      'DVS33Ermelo',
-      'SpartaNijkerk',
-      'TEC',
-      'Urk',
-      'Hoogeveen',
-      'HSC21',
-      'Sportlust46',
-      'Excelsior31',
-      'Hercules',
-      'SCGenemuiden',
-      'Huizen',
-      'HarkemaseBoys',
-      'RohdaRaalte',
-      'ADO20'
-    ];
-
-    const List<String> teamsDDB = [
-      'Noordwijk',
-      'Scheveningen',
-      'SteDoCo',
-      'Zwaluwen',
-      'Kloetinge',
-      'RBC',
-      'GroeneSter',
-      'Rijnvogels',
-      'UNA',
-      'ASWH',
-      'UDI19',
-      'TOGB',
-      'FCLisse',
-      'Gemert',
-      'svMeerssen',
-      'BlauwGeel38JUMBO',
-      'Goes',
-      'VVSB'
-    ];
-
-    if (teamsDDA.contains(mappedTeam)) return 'dda';
-    if (teamsDDB.contains(mappedTeam)) return 'ddb';
-    return 'onbekend';
+    return SeasonConfig.divisionCodeForTeam(team);
   }
 
   String _leesTeamNaam(Map<String, dynamic> data) {
@@ -379,8 +333,7 @@ class _PouleDetailScreenState extends State<PouleDetailScreen> {
                       tooltip: 'Poule bewerken',
                       icon: const Icon(Icons.edit),
                       onPressed: () async {
-                        final changed =
-                            await Navigator.of(context).push<bool>(
+                        final changed = await Navigator.of(context).push<bool>(
                           MaterialPageRoute(
                             builder: (_) =>
                                 EditPouleScreen(pouleId: widget.pouleId),
@@ -479,10 +432,8 @@ class _PouleDetailScreenState extends State<PouleDetailScreen> {
                         .orderBy('punten', descending: true)
                         .snapshots(),
                     builder: (context, snapshot) {
-                      if (snapshot.connectionState ==
-                          ConnectionState.waiting) {
-                        return const Center(
-                            child: CircularProgressIndicator());
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
                       }
 
                       final deelnemers = snapshot.data?.docs ?? [];
@@ -494,8 +445,7 @@ class _PouleDetailScreenState extends State<PouleDetailScreen> {
                         itemCount: deelnemers.length,
                         itemBuilder: (context, index) {
                           final doc = deelnemers[index];
-                          final d =
-                              doc.data() as Map<String, dynamic>;
+                          final d = doc.data() as Map<String, dynamic>;
                           final punten = d['punten'] ?? 0;
 
                           String? medaille;
@@ -563,8 +513,7 @@ class _PouleDetailScreenState extends State<PouleDetailScreen> {
                         return;
                       }
 
-                      final echteDivisie =
-                          _bepaalDivisieOpBasisVanTeam(team);
+                      final echteDivisie = _bepaalDivisieOpBasisVanTeam(team);
                       if (echteDivisie == 'onbekend') {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
@@ -645,8 +594,7 @@ class _DeelnemerTileState extends State<_DeelnemerTile> {
       final currentName = (snap.data()?['username'] ?? '') as String;
       final currentAvatar = (snap.data()?['avatarUrl'] ?? '') as String;
 
-      final mustUpdate =
-          currentName != username || currentAvatar != avatarUrl;
+      final mustUpdate = currentName != username || currentAvatar != avatarUrl;
 
       if (mustUpdate) {
         await ref.set(
@@ -683,8 +631,7 @@ class _DeelnemerTileState extends State<_DeelnemerTile> {
         return ListTile(
           leading: GestureDetector(
             onTap: () async {
-              final selected =
-                  await showModalBottomSheet<String>(
+              final selected = await showModalBottomSheet<String>(
                 context: context,
                 builder: (_) => Column(
                   mainAxisSize: MainAxisSize.min,

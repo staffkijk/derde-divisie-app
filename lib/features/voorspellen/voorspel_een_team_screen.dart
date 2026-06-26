@@ -4,9 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'dart:async';
 
+import 'package:derde_divisie/data/config/season_config.dart';
 
 class VoorspelEenTeamScreen extends StatefulWidget {
-  final String team;        // bv. "Noordwijk"
+  final String team; // bv. "Noordwijk"
   final String competition; // bv. "DDA" / "DDB" / "Derde Divisie A"
   final String pouleId;
 
@@ -29,45 +30,6 @@ class _VoorspelEenTeamScreenState extends State<VoorspelEenTeamScreen> {
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _deelnemerSub;
 
   // ---- LOGO-MAP: keys = genormaliseerde teamcode (lowercase, zonder spaties/'/ /) ----
-  static const Map<String, String> _logoByTeamCode = {
-    // 3A/3B – op basis van je assets-map (pas aan/voeg toe als nodig)
-    'ado20': 'assets/images/logo_ADO20.png',
-    'aswh': 'assets/images/logo_ASWH.png',
-    'blauwgeel38jumbo': 'assets/images/logo_BlauwGeel38JUMBO.png',
-    'dovo': 'assets/images/logo_DOVO.png',
-    'dvs33ermelo': 'assets/images/logo_DVS33Ermelo.png',
-    'eemdijk': 'assets/images/logo_Eemdijk.png',
-    'excelsior31': 'assets/images/logo_Excelsior31.png',
-    'fclisse': 'assets/images/logo_FCLisse.png',
-    'gemert': 'assets/images/logo_Gemert.png',
-    'goes': 'assets/images/logo_Goes.png',
-    'groenester': 'assets/images/logo_GroeneSter.png',
-    'harkemaseboys': 'assets/images/logo_HarkemaseBoys.png',
-    'hercules': 'assets/images/logo_Hercules.png',
-    'hoogeveen': 'assets/images/logo_Hoogeveen.png',
-    'hsc21': 'assets/images/logo_HSC21.png',
-    'huizen': 'assets/images/logo_Huizen.png',
-    'kloetinge': 'assets/images/logo_Kloetinge.png',
-    'noordwijk': 'assets/images/logo_Noordwijk.png',
-    'rbc': 'assets/images/logo_RBC.png',
-    'rijnvogels': 'assets/images/logo_Rijnvogels.png',
-    'rohdaraalte': 'assets/images/logo_RohdaRaalte.png',
-    'scgenemuiden': 'assets/images/logo_SCGenemuiden.png',
-    'scherpenzeel': 'assets/images/logo_Scherpenzeel.png',
-    'scheveningen': 'assets/images/logo_Scheveningen.png',
-    'spartanijkerk': 'assets/images/logo_SpartaNijkerk.png',
-    'sportlust46': 'assets/images/logo_Sportlust46.png',
-    'staphorst': 'assets/images/logo_Staphorst.png',
-    'stedoco': 'assets/images/logo_SteDoCo.png',
-    'svmeerssen': 'assets/images/logo_svMeerssen.png',
-    'tec': 'assets/images/logo_TEC.png',
-    'togb': 'assets/images/logo_TOGB.png',
-    'udi19': 'assets/images/logo_UDI19.png',
-    'una': 'assets/images/logo_UNA.png',
-    'urk': 'assets/images/logo_Urk.png',
-    'vvsb': 'assets/images/logo_VVSB.png',
-    'zwaluwen': 'assets/images/logo_Zwaluwen.png',
-  };
 
   // Controllers en caches per wedstrijd (key = matchId)
   final Map<String, TextEditingController> _homeCtrls = {};
@@ -146,8 +108,7 @@ class _VoorspelEenTeamScreenState extends State<VoorspelEenTeamScreen> {
   }
 
   String _logoPath(String clubNaam) {
-    final code = _normCode(clubNaam);
-    return _logoByTeamCode[code] ?? 'assets/images/default_logo.png';
+    return SeasonConfig.logoPathForTeam(clubNaam);
   }
 
   // ---------- Save ----------
@@ -231,17 +192,18 @@ class _VoorspelEenTeamScreenState extends State<VoorspelEenTeamScreen> {
                 return const Center(child: CircularProgressIndicator());
               }
 
-              final List<QueryDocumentSnapshot<Map<String, dynamic>>> combined = [];
+              final List<QueryDocumentSnapshot<Map<String, dynamic>>> combined =
+                  [];
               if (homeSnap.hasData) combined.addAll(homeSnap.data!.docs);
               if (awaySnap.hasData) combined.addAll(awaySnap.data!.docs);
 
               if (combined.isEmpty) {
-                return const Center(child: Text('Geen wedstrijden gevonden voor dit team.'));
+                return const Center(
+                    child: Text('Geen wedstrijden gevonden voor dit team.'));
               }
 
-              final Map<String, QueryDocumentSnapshot<Map<String, dynamic>>> byId = {
-                for (final d in combined) d.id: d
-              };
+              final Map<String, QueryDocumentSnapshot<Map<String, dynamic>>>
+                  byId = {for (final d in combined) d.id: d};
               final matches = byId.values.toList();
 
               matches.sort((a, b) {
@@ -255,7 +217,8 @@ class _VoorspelEenTeamScreenState extends State<VoorspelEenTeamScreen> {
               for (final d in matches) {
                 final id = d.id;
                 final data = d.data();
-                _matchDate[id] = _parseDatum(data['datum'] ?? data['timestamp']);
+                _matchDate[id] =
+                    _parseDatum(data['datum'] ?? data['timestamp']);
                 _resHome[id] = data['uitslagThuis'];
                 _resAway[id] = data['uitslagUit'];
 
@@ -269,7 +232,8 @@ class _VoorspelEenTeamScreenState extends State<VoorspelEenTeamScreen> {
                   if (predSnap.hasData) {
                     for (final doc in predSnap.data!.docs) {
                       final data = doc.data();
-                      final matchId = (data['matchId'] ?? data['wedstrijdId'])?.toString();
+                      final matchId =
+                          (data['matchId'] ?? data['wedstrijdId'])?.toString();
                       if (matchId == null) continue;
 
                       final existingHome = data['scoreThuis']?.toString() ?? '';
@@ -278,8 +242,12 @@ class _VoorspelEenTeamScreenState extends State<VoorspelEenTeamScreen> {
 
                       final hc = _homeCtrls[matchId];
                       final ac = _awayCtrls[matchId];
-                      if (hc != null && hc.text != existingHome) hc.text = existingHome;
-                      if (ac != null && ac.text != existingAway) ac.text = existingAway;
+                      if (hc != null && hc.text != existingHome) {
+                        hc.text = existingHome;
+                      }
+                      if (ac != null && ac.text != existingAway) {
+                        ac.text = existingAway;
+                      }
                     }
                   }
 
@@ -309,31 +277,41 @@ class _VoorspelEenTeamScreenState extends State<VoorspelEenTeamScreen> {
                             final id = m.id;
 
                             final date = _matchDate[id]!;
-                            final deadline = DateTime(date.year, date.month, date.day, 12);
+                            final deadline =
+                                DateTime(date.year, date.month, date.day, 12);
                             final locked = DateTime.now().isAfter(deadline);
 
-                            final speelronde = data['speelronde']?.toString() ?? '';
+                            final speelronde =
+                                data['speelronde']?.toString() ?? '';
                             final homeName = data['thuisteam'] ?? '';
                             final awayName = data['uitteam'] ?? '';
 
-                            final hasResult = _resHome[id] != null && _resAway[id] != null;
+                            final hasResult =
+                                _resHome[id] != null && _resAway[id] != null;
 
-                            final ownHome = int.tryParse(_homeCtrls[id]?.text ?? '');
-                            final ownAway = int.tryParse(_awayCtrls[id]?.text ?? '');
-                            final haveOwnPrediction = ownHome != null && ownAway != null;
+                            final ownHome =
+                                int.tryParse(_homeCtrls[id]?.text ?? '');
+                            final ownAway =
+                                int.tryParse(_awayCtrls[id]?.text ?? '');
+                            final haveOwnPrediction =
+                                ownHome != null && ownAway != null;
 
                             final inputsDisabled = _syncEnabled || locked;
 
                             return Card(
                               color: const Color(0xFFF7FAF6),
-                              margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              margin: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 8),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
                               child: Padding(
                                 padding: const EdgeInsets.all(16),
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.center,
                                   children: [
-                                    Expanded(child: _teamColumn(homeName, _logoPath(homeName))),
+                                    Expanded(
+                                        child: _teamColumn(
+                                            homeName, _logoPath(homeName))),
                                     Expanded(
                                       flex: 2,
                                       child: Column(
@@ -347,7 +325,8 @@ class _VoorspelEenTeamScreenState extends State<VoorspelEenTeamScreen> {
                                           ),
                                           const SizedBox(height: 8),
                                           Row(
-                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
                                             children: [
                                               _scoreField(
                                                 enabled: !inputsDisabled,
@@ -355,7 +334,8 @@ class _VoorspelEenTeamScreenState extends State<VoorspelEenTeamScreen> {
                                                 onChanged: (_) => _save(id),
                                               ),
                                               const Padding(
-                                                padding: EdgeInsets.symmetric(horizontal: 6),
+                                                padding: EdgeInsets.symmetric(
+                                                    horizontal: 6),
                                                 child: Text('-'),
                                               ),
                                               _scoreField(
@@ -367,31 +347,44 @@ class _VoorspelEenTeamScreenState extends State<VoorspelEenTeamScreen> {
                                           ),
                                           const SizedBox(height: 8),
                                           if (hasResult) ...[
-                                            Text('Uitslag: ${_resHome[id]} - ${_resAway[id]}'),
+                                            Text(
+                                                'Uitslag: ${_resHome[id]} - ${_resAway[id]}'),
                                             if (_points[id] != null)
-                                              Text('Behaalde punten: +${_points[id]}',
-                                                  style: const TextStyle(color: Colors.green)),
+                                              Text(
+                                                  'Behaalde punten: +${_points[id]}',
+                                                  style: const TextStyle(
+                                                      color: Colors.green)),
                                             if (haveOwnPrediction)
-                                              Text('Jouw voorspelling: $ownHome - $ownAway',
-                                                  style: const TextStyle(color: Colors.blueGrey)),
-                                          ] else if (locked && haveOwnPrediction) ...[
-                                            Text('Jouw voorspelling: $ownHome - $ownAway',
-                                                style: const TextStyle(color: Colors.blueGrey)),
+                                              Text(
+                                                  'Jouw voorspelling: $ownHome - $ownAway',
+                                                  style: const TextStyle(
+                                                      color: Colors.blueGrey)),
+                                          ] else if (locked &&
+                                              haveOwnPrediction) ...[
+                                            Text(
+                                                'Jouw voorspelling: $ownHome - $ownAway',
+                                                style: const TextStyle(
+                                                    color: Colors.blueGrey)),
                                           ] else ...[
-                                            const Text('Uitslag nog niet bekend'),
+                                            const Text(
+                                                'Uitslag nog niet bekend'),
                                           ],
                                           const SizedBox(height: 4),
                                           Text(
                                             'Deadline: ${DateFormat('EEE d MMM, HH:mm', 'nl').format(deadline)}',
                                             style: TextStyle(
                                               fontSize: 11,
-                                              color: locked ? Colors.red[700] : Colors.black54,
+                                              color: locked
+                                                  ? Colors.red[700]
+                                                  : Colors.black54,
                                             ),
                                           ),
                                         ],
                                       ),
                                     ),
-                                    Expanded(child: _teamColumn(awayName, _logoPath(awayName))),
+                                    Expanded(
+                                        child: _teamColumn(
+                                            awayName, _logoPath(awayName))),
                                   ],
                                 ),
                               ),
@@ -422,7 +415,8 @@ class _VoorspelEenTeamScreenState extends State<VoorspelEenTeamScreen> {
               const Icon(Icons.shield, size: 36),
         ),
         const SizedBox(height: 4),
-        Text(naam, textAlign: TextAlign.center, style: const TextStyle(fontSize: 12)),
+        Text(naam,
+            textAlign: TextAlign.center, style: const TextStyle(fontSize: 12)),
       ],
     );
   }

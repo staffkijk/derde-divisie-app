@@ -2,6 +2,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
+import 'package:derde_divisie/data/config/season_config.dart';
 import 'periode_standen_screen.dart';
 
 final Logger _log = Logger('StandDerdeDivisie');
@@ -27,54 +28,6 @@ const Map<String, List<String>> kPeriodeKampioenen = {
   'Derde Divisie B': [],
 };
 
-class SeasonTeam {
-  final String name;
-  final String logoAsset;
-
-  const SeasonTeam(this.name, this.logoAsset);
-}
-
-const String _defaultTeamLogo = 'assets/images/default_logo.png';
-
-const List<SeasonTeam> seasonTeams20262027 = [
-  SeasonTeam('ACV', 'assets/images/logo_ACV.png'),
-  SeasonTeam("ADO'20", 'assets/images/logo_ADO20.png'),
-  SeasonTeam("Blauw Geel '38", 'assets/images/logo_BlauwGeel38JUMBO.png'),
-  SeasonTeam("DVS'33 Ermelo", 'assets/images/logo_DVS33Ermelo.png'),
-  SeasonTeam('EVV Echt', 'assets/images/logo_EVVEcht.png'),
-  SeasonTeam("Excelsior '31", 'assets/images/logo_Excelsior31.png'),
-  SeasonTeam('Excelsior Maassluis', 'assets/images/logo_ExcelsiorMaassluis.png'),
-  SeasonTeam('FC Lisse', 'assets/images/logo_FCLisse.png'),
-  SeasonTeam('FC Rijnvogels', 'assets/images/logo_Rijnvogels.png'),
-  SeasonTeam('Harkemase Boys', 'assets/images/logo_HarkemaseBoys.png'),
-  SeasonTeam('HVV Hollandia', 'assets/images/logo_Hollandia.png'),
-  SeasonTeam('VPV Purmersteijn', 'assets/images/logo_Purmersteijn.png'),
-  SeasonTeam('RBC', 'assets/images/logo_RBC.png'),
-  SeasonTeam('RKSV Groene Ster', 'assets/images/logo_GroeneSter.png'),
-  SeasonTeam('SC Genemuiden', 'assets/images/logo_SCGenemuiden.png'),
-  SeasonTeam("Sportlust '46", 'assets/images/logo_Sportlust46.png'),
-  SeasonTeam('SV Poortugaal', 'assets/images/logo_Poortugaal.png'),
-  SeasonTeam('SV TEC', 'assets/images/logo_TEC.png'),
-  SeasonTeam('SVZW', 'assets/images/logo_SVZW.png'),
-  SeasonTeam('TOGB', 'assets/images/logo_TOGB.png'),
-  SeasonTeam("UDI'19", 'assets/images/logo_UDI19.png'),
-  SeasonTeam('USV Hercules', 'assets/images/logo_Hercules.png'),
-  SeasonTeam('VV Achilles Veen', 'assets/images/logo_AchillesVeen.png'),
-  SeasonTeam('VV Dongen', 'assets/images/logo_dongen.png'),
-  SeasonTeam('VV DOVO', 'assets/images/logo_DOVO.png'),
-  SeasonTeam('VV Eemdijk', 'assets/images/logo_Eemdijk.png'),
-  SeasonTeam('VV Gemert', 'assets/images/logo_Gemert.png'),
-  SeasonTeam('GOES', 'assets/images/logo_Goes.png'),
-  SeasonTeam('VV Hoogeveen', 'assets/images/logo_Hoogeveen.png'),
-  SeasonTeam('VV Noordwijk', 'assets/images/logo_Noordwijk.png'),
-  SeasonTeam('VV Scherpenzeel', 'assets/images/logo_Scherpenzeel.png'),
-  SeasonTeam('VV Sparta Nijkerk', 'assets/images/logo_SpartaNijkerk.png'),
-  SeasonTeam('VV Staphorst', 'assets/images/logo_Staphorst.png'),
-  SeasonTeam('VV UNA', 'assets/images/logo_UNA.png'),
-  SeasonTeam('VV Zwaluwen', 'assets/images/logo_Zwaluwen.png'),
-  SeasonTeam('VVSB', 'assets/images/logo_VVSB.png'),
-];
-
 String _normName(String s) {
   return s.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
 }
@@ -90,15 +43,11 @@ int _calcDoelsaldo(Map<String, dynamic> d) {
   if (ds != null) return _toInt(ds);
 
   final dv = _toInt(
-    d['doelpuntenVoor'] ??
-        d['goalsFor'] ??
-        d['dv'],
+    d['doelpuntenVoor'] ?? d['goalsFor'] ?? d['dv'],
   );
 
   final dt = _toInt(
-    d['doelpuntenTegen'] ??
-        d['goalsAgainst'] ??
-        d['dt'],
+    d['doelpuntenTegen'] ?? d['goalsAgainst'] ?? d['dt'],
   );
 
   return dv - dt;
@@ -107,10 +56,6 @@ int _calcDoelsaldo(Map<String, dynamic> d) {
 String _divisieCode(String divisie) {
   if (divisie.toLowerCase().contains(' b')) return 'B';
   return 'A';
-}
-
-bool _isDivisieA(String divisie) {
-  return _divisieCode(divisie) == 'A';
 }
 
 Map<String, List<String>> berekenVormPerTeam(
@@ -197,10 +142,10 @@ class StandEntry {
   factory StandEntry.fromSeasonTeam(SeasonTeam team) {
     return StandEntry(
       data: const {},
-      naam: team.name,
-      code: _normName(team.name),
-      docCode: _normName(team.name),
-      logoAsset: team.logoAsset,
+      naam: team.listLabel,
+      code: _normName(team.listLabel),
+      docCode: _normName(team.listLabel),
+      logoAsset: team.logoPath,
       positie: 0,
       gespeeld: 0,
       gewonnen: 0,
@@ -230,14 +175,10 @@ class StandEntry {
       verloren: _toInt(data['lost'] ?? data['losses'] ?? data['verloren']),
       punten: _toInt(data['points'] ?? data['punten']),
       doelpuntenVoor: _toInt(
-        data['goalsFor'] ??
-            data['doelpuntenVoor'] ??
-            data['dv'],
+        data['goalsFor'] ?? data['doelpuntenVoor'] ?? data['dv'],
       ),
       doelpuntenTegen: _toInt(
-        data['goalsAgainst'] ??
-            data['doelpuntenTegen'] ??
-            data['dt'],
+        data['goalsAgainst'] ?? data['doelpuntenTegen'] ?? data['dt'],
       ),
       doelsaldo: _calcDoelsaldo(data),
     );
@@ -551,23 +492,16 @@ class StandDerdeDivisie extends StatelessWidget {
         .where('verwerkt', isEqualTo: true)
         .get();
 
-    final matches = snap.docs
-        .map((d) => d.data())
-        .cast<Map<String, dynamic>>()
-        .toList();
+    final matches =
+        snap.docs.map((d) => d.data()).cast<Map<String, dynamic>>().toList();
 
     return berekenVormPerTeam(matches);
   }
 
   List<StandEntry> _buildCurrentSeasonEntries() {
-    final teams = List<SeasonTeam>.from(seasonTeams20262027)
-      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-
-    final selectedTeams = _isDivisieA(divisie)
-        ? teams.take(18).toList()
-        : teams.skip(18).toList();
-
-    return selectedTeams.map(StandEntry.fromSeasonTeam).toList();
+    return SeasonConfig.teamsForProvisionalStandDivision(divisie)
+        .map(StandEntry.fromSeasonTeam)
+        .toList();
   }
 
   List<StandEntry> _buildArchiveEntries(List<QueryDocumentSnapshot> docs) {
@@ -709,9 +643,8 @@ class StandDerdeDivisie extends StatelessWidget {
             itemCount: entries.length,
             itemBuilder: (context, index) {
               final club = entries[index];
-              final positie = _isActueel || club.positie == 0
-                  ? index + 1
-                  : club.positie;
+              final positie =
+                  _isActueel || club.positie == 0 ? index + 1 : club.positie;
 
               Color? bgColor;
 
@@ -749,11 +682,11 @@ class StandDerdeDivisie extends StatelessWidget {
                         width: wLogo,
                         height: wLogo,
                         child: Image.asset(
-                          club.logoAsset ?? _defaultTeamLogo,
+                          club.logoAsset ?? SeasonConfig.defaultTeamLogoPath,
                           fit: BoxFit.contain,
                           errorBuilder: (_, __, ___) {
                             return Image.asset(
-                              _defaultTeamLogo,
+                              SeasonConfig.defaultTeamLogoPath,
                               fit: BoxFit.contain,
                               errorBuilder: (_, __, ___) {
                                 return const Icon(
@@ -858,10 +791,8 @@ class StandDerdeDivisie extends StatelessWidget {
                         '${club.doelpuntenVoor}-${club.doelpuntenTegen}',
                         width: wDvDt,
                       ),
-                    if (showVorm && isDesktop)
-                      const SizedBox(width: 8),
-                    if (showVorm && isDesktop)
-                      VormVakjes(vorm: vorm),
+                    if (showVorm && isDesktop) const SizedBox(width: 8),
+                    if (showVorm && isDesktop) VormVakjes(vorm: vorm),
                   ],
                 ),
               );

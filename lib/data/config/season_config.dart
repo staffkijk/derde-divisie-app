@@ -22,12 +22,39 @@ class SeasonTeam {
 
   String get logoPath => 'assets/images/$logoFileName';
 
+  String get assetCode {
+    return logoFileName
+        .replaceFirst('logo_', '')
+        .replaceFirst(RegExp(r'\.(png|webp|jpg|jpeg)$'), '');
+  }
+
+  String get listLabel {
+    switch (id) {
+      case 'ado20':
+        return "ADO'20";
+      case 'blauw_geel_38':
+        return "Blauw Geel '38";
+      case 'dvs33_ermelo':
+        return "DVS'33 Ermelo";
+      case 'excelsior31':
+        return "Excelsior '31";
+      case 'sportlust46':
+        return "Sportlust '46";
+      case 'udi19':
+        return "UDI'19";
+      default:
+        return label;
+    }
+  }
+
   bool matches(String value) {
     final input = SeasonConfig.normalizeTeamKey(value);
 
     if (input == SeasonConfig.normalizeTeamKey(id)) return true;
     if (input == SeasonConfig.normalizeTeamKey(name)) return true;
     if (input == SeasonConfig.normalizeTeamKey(label)) return true;
+    if (input == SeasonConfig.normalizeTeamKey(listLabel)) return true;
+    if (input == SeasonConfig.normalizeTeamKey(assetCode)) return true;
 
     for (final alias in aliases) {
       if (input == SeasonConfig.normalizeTeamKey(alias)) return true;
@@ -74,7 +101,7 @@ class SeasonConfig {
       name: 'Blauw Geel 38',
       displayName: 'Blauw Geel’38',
       division: divisionA,
-      logoFileName: 'logo_BlauwGeel38.png',
+      logoFileName: 'logo_BlauwGeel38JUMBO.png',
       aliases: [
         'Blauw Geel38',
         'Blauw Geel 38 JUMBO',
@@ -130,7 +157,7 @@ class SeasonConfig {
       id: 'fc_rijnvogels',
       name: 'FC Rijnvogels',
       division: divisionA,
-      logoFileName: 'logo_FCRijnvogels.png',
+      logoFileName: 'logo_Rijnvogels.png',
       aliases: ['Rijnvogels', 'Rijnvogels Katwijk'],
     ),
     SeasonTeam(
@@ -143,14 +170,14 @@ class SeasonConfig {
       id: 'hvv_hollandia',
       name: 'HVV Hollandia',
       division: divisionA,
-      logoFileName: 'logo_HVVHollandia.png',
+      logoFileName: 'logo_Hollandia.png',
       aliases: ['Hollandia'],
     ),
     SeasonTeam(
       id: 'vpv_purmersteijn',
       name: 'VPV Purmersteijn',
       division: divisionA,
-      logoFileName: 'logo_VPVPurmersteijn.png',
+      logoFileName: 'logo_Purmersteijn.png',
       aliases: ['Purmersteijn'],
     ),
     SeasonTeam(
@@ -164,7 +191,7 @@ class SeasonConfig {
       id: 'rksv_groene_ster',
       name: 'RKSV Groene Ster',
       division: divisionA,
-      logoFileName: 'logo_RKSVGroeneSter.png',
+      logoFileName: 'logo_GroeneSter.png',
       aliases: ['Groene Ster', 'Groene Ster Heerlen'],
     ),
     SeasonTeam(
@@ -191,17 +218,16 @@ class SeasonConfig {
       id: 'sv_poortugaal',
       name: 'SV Poortugaal',
       division: divisionA,
-      logoFileName: 'logo_SVPoortugaal.png',
+      logoFileName: 'logo_Poortugaal.png',
       aliases: ['Poortugaal'],
     ),
     SeasonTeam(
       id: 'sv_tec',
       name: 'SV TEC',
       division: divisionA,
-      logoFileName: 'logo_SVTEC.png',
+      logoFileName: 'logo_TEC.png',
       aliases: ['TEC', 's.v. TEC'],
     ),
-
     SeasonTeam(
       id: 'svzw',
       name: 'SVZW',
@@ -234,42 +260,42 @@ class SeasonConfig {
       id: 'usv_hercules',
       name: 'USV Hercules',
       division: divisionB,
-      logoFileName: 'logo_USVHercules.png',
+      logoFileName: 'logo_Hercules.png',
       aliases: ['Hercules'],
     ),
     SeasonTeam(
       id: 'vv_achilles_veen',
       name: 'VV Achilles Veen',
       division: divisionB,
-      logoFileName: 'logo_VVAchillesVeen.png',
+      logoFileName: 'logo_AchillesVeen.png',
       aliases: ['Achilles Veen'],
     ),
     SeasonTeam(
       id: 'vv_dongen',
       name: 'VV Dongen',
       division: divisionB,
-      logoFileName: 'logo_VVDongen.png',
+      logoFileName: 'logo_dongen.png',
       aliases: ['Dongen'],
     ),
     SeasonTeam(
       id: 'vv_dovo',
       name: 'VV DOVO',
       division: divisionB,
-      logoFileName: 'logo_VVDOVO.png',
+      logoFileName: 'logo_DOVO.png',
       aliases: ['DOVO'],
     ),
     SeasonTeam(
       id: 'vv_eemdijk',
       name: 'VV Eemdijk',
       division: divisionB,
-      logoFileName: 'logo_VVEemdijk.png',
+      logoFileName: 'logo_Eemdijk.png',
       aliases: ['Eemdijk', 'v.v. Eemdijk'],
     ),
     SeasonTeam(
       id: 'vv_gemert',
       name: 'VV Gemert',
       division: divisionB,
-      logoFileName: 'logo_VVGemert.png',
+      logoFileName: 'logo_Gemert.png',
       aliases: ['Gemert'],
     ),
     SeasonTeam(
@@ -277,56 +303,56 @@ class SeasonConfig {
       name: 'GOES',
       displayName: 'GOES',
       division: divisionB,
-      logoFileName: 'logo_GOES.png',
+      logoFileName: 'logo_Goes.png',
       aliases: ['VV GOES', 'VV Goes', 'Goes'],
     ),
     SeasonTeam(
       id: 'vv_hoogeveen',
       name: 'VV Hoogeveen',
       division: divisionB,
-      logoFileName: 'logo_VVHoogeveen.png',
+      logoFileName: 'logo_Hoogeveen.png',
       aliases: ['Hoogeveen', 'v.v. Hoogeveen'],
     ),
     SeasonTeam(
       id: 'vv_noordwijk',
       name: 'VV Noordwijk',
       division: divisionB,
-      logoFileName: 'logo_VVNoordwijk.png',
+      logoFileName: 'logo_Noordwijk.png',
       aliases: ['Noordwijk'],
     ),
     SeasonTeam(
       id: 'vv_scherpenzeel',
       name: 'VV Scherpenzeel',
       division: divisionB,
-      logoFileName: 'logo_VVScherpenzeel.png',
+      logoFileName: 'logo_Scherpenzeel.png',
       aliases: ['Scherpenzeel', 'v.v. Scherpenzeel'],
     ),
     SeasonTeam(
       id: 'vv_sparta_nijkerk',
       name: 'VV Sparta Nijkerk',
       division: divisionB,
-      logoFileName: 'logo_VVSpartaNijkerk.png',
+      logoFileName: 'logo_SpartaNijkerk.png',
       aliases: ['Sparta Nijkerk'],
     ),
     SeasonTeam(
       id: 'vv_staphorst',
       name: 'VV Staphorst',
       division: divisionB,
-      logoFileName: 'logo_VVStaphorst.png',
+      logoFileName: 'logo_Staphorst.png',
       aliases: ['Staphorst', 'v.v. Staphorst'],
     ),
     SeasonTeam(
       id: 'vv_una',
       name: 'VV UNA',
       division: divisionB,
-      logoFileName: 'logo_VVUNA.png',
+      logoFileName: 'logo_UNA.png',
       aliases: ['UNA', 'UNA Veldhoven'],
     ),
     SeasonTeam(
       id: 'vv_zwaluwen',
       name: 'VV Zwaluwen',
       division: divisionB,
-      logoFileName: 'logo_VVZwaluwen.png',
+      logoFileName: 'logo_Zwaluwen.png',
       aliases: ['Zwaluwen', 'Zwaluwen Vlaardingen'],
     ),
     SeasonTeam(
@@ -361,6 +387,25 @@ class SeasonConfig {
     return teamsForDivision(division).map((team) => team.label).toList();
   }
 
+  static List<SeasonTeam> get teamsInListOrder {
+    return List.unmodifiable(teams);
+  }
+
+  static List<SeasonTeam> teamsForProvisionalStandDivision(String division) {
+    final sorted = List<SeasonTeam>.from(teams)
+      ..sort(
+        (a, b) =>
+            a.listLabel.toLowerCase().compareTo(b.listLabel.toLowerCase()),
+      );
+
+    final normalizedDivision = normalizeDivisionCode(division);
+    final result = normalizedDivision == divisionA
+        ? sorted.take(18).toList()
+        : sorted.skip(18).toList();
+
+    return List.unmodifiable(result);
+  }
+
   static SeasonTeam? teamById(String id) {
     final normalizedId = normalizeTeamKey(id);
 
@@ -388,11 +433,97 @@ class SeasonConfig {
   }
 
   static String logoPathForTeam(String value) {
-    return teamByName(value)?.logoPath ?? 'assets/images/default_logo.png';
+    return logoPathForTeamOrNull(value) ?? defaultTeamLogoPath;
+  }
+
+  static String? logoPathForTeamOrNull(String value) {
+    final team = teamByName(value);
+    if (team != null) return team.logoPath;
+
+    return logoMapByTeamCode[normalizeTeamKey(value)];
   }
 
   static String teamIdForName(String value) {
     return teamByName(value)?.id ?? normalizeTeamId(value);
+  }
+
+  static String teamCodeForName(String value) {
+    final team = teamByName(value);
+    if (team != null) return team.assetCode;
+
+    final normalized = normalizeTeamKey(value);
+    return _legacyTeamCodeMapping[normalized] ?? normalizeTeamId(value);
+  }
+
+  static String divisionCodeForTeam(String value) {
+    final team = teamByName(value);
+    if (team != null) return firestoreDivisionCode(team.division);
+
+    final normalized = normalizeTeamKey(teamCodeForName(value));
+    return _legacyTeamDivisionMapping[normalized] ?? 'onbekend';
+  }
+
+  static Map<String, String> get teamCodeMapping {
+    final result = <String, String>{};
+
+    for (final team in teams) {
+      result[team.name] = team.assetCode;
+      result[team.label] = team.assetCode;
+      result[team.listLabel] = team.assetCode;
+      result[team.id] = team.assetCode;
+      result[team.assetCode] = team.assetCode;
+      for (final alias in team.aliases) {
+        result[alias] = team.assetCode;
+      }
+    }
+
+    result.addAll({
+      for (final entry in _legacyTeamCodeMapping.entries)
+        entry.key: entry.value,
+    });
+    result.addAll({
+      for (final entry in _legacyCodeToTeamName.entries) entry.key: entry.key,
+      for (final entry in _legacyCodeToTeamName.entries) entry.value: entry.key,
+      'AD020': 'ADO20',
+      'Blauw Geel\'38/JUMBO': 'BlauwGeel38JUMBO',
+      'Blauw Geelâ€™38/JUMBO': 'BlauwGeel38JUMBO',
+      'Blauw Geel 38 JUMBO': 'BlauwGeel38JUMBO',
+    });
+
+    return Map.unmodifiable(result);
+  }
+
+  static Map<String, String> get codeToTeamName {
+    final result = <String, String>{};
+
+    for (final team in teams) {
+      result[team.assetCode] = team.listLabel;
+    }
+
+    result.addAll(_legacyCodeToTeamName);
+    return Map.unmodifiable(result);
+  }
+
+  static Map<String, String> get logoMapByTeamCode {
+    final result = <String, String>{};
+
+    for (final team in teams) {
+      result[normalizeTeamKey(team.assetCode)] = team.logoPath;
+      result[team.assetCode] = team.logoPath;
+      result[normalizeTeamKey(team.name)] = team.logoPath;
+      result[normalizeTeamKey(team.label)] = team.logoPath;
+      result[normalizeTeamKey(team.listLabel)] = team.logoPath;
+      for (final alias in team.aliases) {
+        result[normalizeTeamKey(alias)] = team.logoPath;
+      }
+    }
+
+    for (final entry in _legacyLogoMapByTeamCode.entries) {
+      result.putIfAbsent(normalizeTeamKey(entry.key), () => entry.value);
+      result.putIfAbsent(entry.key, () => entry.value);
+    }
+
+    return Map.unmodifiable(result);
   }
 
   static String divisionName(String division) {
@@ -475,4 +606,88 @@ class SeasonConfig {
         .replaceAll(RegExp(r'_+'), '_')
         .replaceAll(RegExp(r'^_|_$'), '');
   }
+
+  static const String defaultTeamLogoPath = 'assets/images/default_logo.png';
+
+  static const Map<String, String> _legacyCodeToTeamName = {
+    'ASWH': 'ASWH',
+    'HSC21': 'HSC\'21',
+    'Huizen': 'Huizen',
+    'Kloetinge': 'Kloetinge',
+    'RohdaRaalte': 'Rohda Raalte',
+    'Scheveningen': 'Scheveningen',
+    'SteDoCo': 'SteDoCo',
+    'Urk': 'Urk',
+    'svMeerssen': 'sv Meerssen',
+  };
+
+  static final Map<String, String> _legacyTeamCodeMapping = {
+    for (final entry in _legacyCodeToTeamName.entries)
+      normalizeTeamKey(entry.key): entry.key,
+    for (final entry in _legacyCodeToTeamName.entries)
+      normalizeTeamKey(entry.value): entry.key,
+    normalizeTeamKey('AD020'): 'ADO20',
+    normalizeTeamKey('Blauw Geel\'38/JUMBO'): 'BlauwGeel38JUMBO',
+    normalizeTeamKey('Blauw Geelâ€™38/JUMBO'): 'BlauwGeel38JUMBO',
+    normalizeTeamKey('Blauw Geel 38 JUMBO'): 'BlauwGeel38JUMBO',
+  };
+
+  static const Map<String, String> _legacyLogoMapByTeamCode = {
+    'ASWH': 'assets/images/logo_ASWH.png',
+    'HSC21': 'assets/images/logo_HSC21.png',
+    'Huizen': 'assets/images/logo_Huizen.png',
+    'Kloetinge': 'assets/images/logo_Kloetinge.png',
+    'RohdaRaalte': 'assets/images/logo_RohdaRaalte.png',
+    'Scheveningen': 'assets/images/logo_Scheveningen.png',
+    'SteDoCo': 'assets/images/logo_SteDoCo.png',
+    'Urk': 'assets/images/logo_Urk.png',
+    'svMeerssen': 'assets/images/logo_svMeerssen.png',
+  };
+
+  static final Map<String, String> _legacyTeamDivisionMapping = {
+    for (final code in _legacyDdaTeamCodes) normalizeTeamKey(code): 'dda',
+    for (final code in _legacyDdbTeamCodes) normalizeTeamKey(code): 'ddb',
+  };
+
+  static const List<String> _legacyDdaTeamCodes = [
+    'DOVO',
+    'Eemdijk',
+    'Scherpenzeel',
+    'Staphorst',
+    'DVS33Ermelo',
+    'SpartaNijkerk',
+    'TEC',
+    'Urk',
+    'Hoogeveen',
+    'HSC21',
+    'Sportlust46',
+    'Excelsior31',
+    'Hercules',
+    'SCGenemuiden',
+    'Huizen',
+    'HarkemaseBoys',
+    'RohdaRaalte',
+    'ADO20',
+  ];
+
+  static const List<String> _legacyDdbTeamCodes = [
+    'Noordwijk',
+    'Scheveningen',
+    'SteDoCo',
+    'Zwaluwen',
+    'Kloetinge',
+    'RBC',
+    'GroeneSter',
+    'Rijnvogels',
+    'UNA',
+    'ASWH',
+    'UDI19',
+    'TOGB',
+    'FCLisse',
+    'Gemert',
+    'svMeerssen',
+    'BlauwGeel38JUMBO',
+    'Goes',
+    'VVSB',
+  ];
 }
