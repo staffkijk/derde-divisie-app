@@ -23,8 +23,8 @@ const List<String> kArchiefSeizoenen = [
 ];
 
 const Map<String, List<String>> kPeriodeKampioenen = {
-  'Derde Divisie A': ['DVS33 Ermelo', 'Sparta Nijkerk', 'ADO20'],
-  'Derde Divisie B': ['VVSB', 'FC Lisse', 'Rijnvogels'],
+  'Derde Divisie A': [],
+  'Derde Divisie B': [],
 };
 
 class SeasonTeam {
@@ -48,7 +48,7 @@ const List<SeasonTeam> seasonTeams20262027 = [
   SeasonTeam('FC Rijnvogels', 'assets/images/logo_Rijnvogels.png'),
   SeasonTeam('Harkemase Boys', 'assets/images/logo_HarkemaseBoys.png'),
   SeasonTeam('HVV Hollandia', 'assets/images/logo_Hollandia.png'),
-  SeasonTeam('Purmersteijn', 'assets/images/logo_Purmersteijn.png'),
+  SeasonTeam('VPV Purmersteijn', 'assets/images/logo_Purmersteijn.png'),
   SeasonTeam('RBC', 'assets/images/logo_RBC.png'),
   SeasonTeam('RKSV Groene Ster', 'assets/images/logo_GroeneSter.png'),
   SeasonTeam('SC Genemuiden', 'assets/images/logo_SCGenemuiden.png'),
@@ -64,7 +64,7 @@ const List<SeasonTeam> seasonTeams20262027 = [
   SeasonTeam('VV DOVO', 'assets/images/logo_DOVO.png'),
   SeasonTeam('VV Eemdijk', 'assets/images/logo_Eemdijk.png'),
   SeasonTeam('VV Gemert', 'assets/images/logo_Gemert.png'),
-  SeasonTeam('VV Goes', 'assets/images/logo_Goes.png'),
+  SeasonTeam('GOES', 'assets/images/logo_Goes.png'),
   SeasonTeam('VV Hoogeveen', 'assets/images/logo_Hoogeveen.png'),
   SeasonTeam('VV Noordwijk', 'assets/images/logo_Noordwijk.png'),
   SeasonTeam('VV Scherpenzeel', 'assets/images/logo_Scherpenzeel.png'),

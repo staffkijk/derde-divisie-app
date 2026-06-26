@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 
 import 'helpers/announcement_service.dart';
 import 'features/dashboard/dashboard_screen.dart';
-import 'features/derde_divisie/stand_derde_divisie_screen.dart';
+import 'features/derde_divisie/division_overview_screen.dart';
 import 'package:derde_divisie/features/profiel/profile_screen.dart';
 import 'features/moderator/moderator_menu_screen.dart';
 import 'package:derde_divisie/features/poules/poules_overzicht_screen.dart';
@@ -40,8 +40,15 @@ class _MainScreenState extends State<MainScreen> {
       protected: false,
     ),
     _NavItem(
-      label: 'Derde Divisie',
-      shortLabel: 'Stand',
+      label: 'Derde Divisie A',
+      shortLabel: 'A',
+      icon: Icons.leaderboard_outlined,
+      selectedIcon: Icons.leaderboard,
+      protected: false,
+    ),
+    _NavItem(
+      label: 'Derde Divisie B',
+      shortLabel: 'B',
       icon: Icons.leaderboard_outlined,
       selectedIcon: Icons.leaderboard,
       protected: false,
@@ -134,11 +141,13 @@ class _MainScreenState extends State<MainScreen> {
 
   List<Widget> _screens() => [
         DashboardScreen(
-          onOpenStand: () => _selectIndex(1),
-          onOpenPredict: () => _selectIndex(2),
-          onOpenPoules: () => _selectIndex(3),
+          onOpenDivisionA: () => _selectIndex(1),
+          onOpenDivisionB: () => _selectIndex(2),
+          onOpenPredict: () => _selectIndex(3),
+          onOpenPoules: () => _selectIndex(4),
         ),
-        const StandDerdeDivisieScreen(),
+        const DivisionOverviewScreen(division: 'Derde Divisie A'),
+        const DivisionOverviewScreen(division: 'Derde Divisie B'),
         const PredictionOverviewScreen(),
         const PoulesOverzichtScreen(),
         const ProfileScreen(),
