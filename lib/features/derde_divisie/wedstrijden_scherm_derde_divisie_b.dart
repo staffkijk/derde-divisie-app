@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:derde_divisie/data/firestore/season_paths.dart';
 import 'package:derde_divisie/data/models/wedstrijd.dart';
 import 'package:derde_divisie/data/services/wedstrijden_ddb.dart';
 import 'package:derde_divisie/helpers/sync_service.dart';
@@ -30,7 +31,9 @@ class _WedstrijdenSchermDerdeDivisieBState
   final Map<String, int?> _voorspellingThuis = {};
   final Map<String, int?> _voorspellingUit = {};
 
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _seasonMatchesSub;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _matchesSub;
+  bool _usingSeasonMatches = false;
 
   @override
   void initState() {
@@ -40,6 +43,7 @@ class _WedstrijdenSchermDerdeDivisieBState
 
   @override
   void dispose() {
+    _seasonMatchesSub?.cancel();
     _matchesSub?.cancel();
     super.dispose();
   }
@@ -47,6 +51,7 @@ class _WedstrijdenSchermDerdeDivisieBState
   Future<void> _init() async {
     _bepaalHuidigeSpeelrondeOpDatum();
     _laadWedstrijdenBasisVoorSpeelronde(_huidigeSpeelronde);
+    _listenSeasonMatchesFirestore(_huidigeSpeelronde);
     _listenMatchesFirestore(_huidigeSpeelronde);
     await _laadVoorspellingen();
     setState(() {});
@@ -84,6 +89,181 @@ class _WedstrijdenSchermDerdeDivisieBState
     _deadline = null;
   }
 
+  String _readString(Map<String, dynamic> data, List<String> keys) {
+    for (final key in keys) {
+      final value = data[key];
+      if (value != null && value.toString().trim().isNotEmpty) {
+        return value.toString().trim();
+      }
+    }
+    return '';
+  }
+
+  int? _readInt(Map<String, dynamic> data, List<String> keys) {
+    for (final key in keys) {
+      final value = data[key];
+      if (value is int) return value;
+      if (value is num) return value.toInt();
+
+      final parsed = int.tryParse(value?.toString() ?? '');
+      if (parsed != null) return parsed;
+    }
+    return null;
+  }
+
+  DateTime? _readDate(Map<String, dynamic> data) {
+    final value = data['date'] ?? data['datum'];
+    DateTime? parsed;
+
+    if (value is Timestamp) {
+      parsed = value.toDate();
+    } else if (value is DateTime) {
+      parsed = value;
+    } else if (value != null) {
+      parsed = DateTime.tryParse(value.toString());
+    }
+
+    if (parsed == null) return null;
+
+    final time = _readString(data, const ['kickoffTime', 'tijd']);
+    final match = RegExp(r'^(\d{1,2}):(\d{2})').firstMatch(time);
+    if (match == null) return parsed;
+
+    final hour = int.tryParse(match.group(1)!);
+    final minute = int.tryParse(match.group(2)!);
+    if (hour == null || minute == null) return parsed;
+
+    return DateTime(parsed.year, parsed.month, parsed.day, hour, minute);
+  }
+
+  bool _matchesDivision(Map<String, dynamic> data) {
+    final raw = _readString(data, const [
+      'division',
+      'divisie',
+      'competition',
+      'competitie',
+    ]).toLowerCase();
+
+    if (raw.isEmpty) return true;
+    return raw == 'b' ||
+        raw == 'ddb' ||
+        raw.contains('divisie b') ||
+        raw.contains('derde divisie b');
+  }
+
+  List<Wedstrijd> _parseSeasonMatches(
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+    int speelronde,
+  ) {
+    final wedstrijden = <Wedstrijd>[];
+    final fsDatums = <String, DateTime>{};
+    final werkelijkeUitslagThuis = <String, int?>{};
+    final werkelijkeUitslagUit = <String, int?>{};
+
+    for (final doc in docs) {
+      if (doc.id == '_meta') continue;
+
+      final data = doc.data();
+      if (!_matchesDivision(data)) continue;
+
+      final round = _readInt(data, const ['round', 'speelronde']);
+      if (round == null) {
+  continue;
+}
+      if (round != speelronde) continue;
+
+      final homeTeam = _readString(data, const [
+        'homeTeam',
+        'thuisTeam',
+        'thuisteam',
+      ]);
+      final awayTeam = _readString(data, const [
+        'awayTeam',
+        'uitTeam',
+        'uitteam',
+      ]);
+      final date = _readDate(data);
+
+      if (homeTeam.isEmpty || awayTeam.isEmpty || date == null) continue;
+
+      final matchId =
+          _readString(data, const ['matchId', 'wedstrijdId']).isNotEmpty
+              ? _readString(data, const ['matchId', 'wedstrijdId'])
+              : doc.id;
+
+      fsDatums[matchId] = date;
+      werkelijkeUitslagThuis[matchId] = _readInt(data, const [
+        'homeScore',
+        'thuisScore',
+        'uitslagThuis',
+      ]);
+      werkelijkeUitslagUit[matchId] = _readInt(data, const [
+        'awayScore',
+        'uitScore',
+        'uitslagUit',
+      ]);
+
+      wedstrijden.add(
+        Wedstrijd(
+          id: matchId,
+          speelronde: round,
+          datum: date,
+          thuis: homeTeam,
+          uit: awayTeam,
+        ),
+      );
+    }
+
+    wedstrijden.sort((a, b) {
+      final roundCompare = a.speelronde.compareTo(b.speelronde);
+      if (roundCompare != 0) return roundCompare;
+      return a.datum.compareTo(b.datum);
+    });
+
+    if (wedstrijden.isNotEmpty) {
+      _fsDatums
+        ..clear()
+        ..addAll(fsDatums);
+      _werkelijkeUitslagThuis
+        ..clear()
+        ..addAll(werkelijkeUitslagThuis);
+      _werkelijkeUitslagUit
+        ..clear()
+        ..addAll(werkelijkeUitslagUit);
+    }
+
+    return wedstrijden;
+  }
+
+  void _listenSeasonMatchesFirestore(int speelronde) {
+    _seasonMatchesSub?.cancel();
+
+    _seasonMatchesSub = SeasonPaths.currentSeasonMatches.snapshots().listen(
+      (snapshot) {
+        final seasonMatches = _parseSeasonMatches(snapshot.docs, speelronde);
+        final hasSeasonMatches = seasonMatches.isNotEmpty;
+
+        _usingSeasonMatches = hasSeasonMatches;
+
+        if (!hasSeasonMatches) {
+          _laadWedstrijdenBasisVoorSpeelronde(speelronde);
+          if (mounted) setState(() {});
+          return;
+        }
+
+        _wedstrijden = seasonMatches;
+
+        final earliest = seasonMatches
+            .map((w) => w.datum)
+            .reduce((a, b) => a.isBefore(b) ? a : b);
+
+        _deadline = DateTime(earliest.year, earliest.month, earliest.day, 12);
+
+        if (mounted) setState(() {});
+      },
+    );
+  }
+
   void _listenMatchesFirestore(int speelronde) {
     _matchesSub?.cancel();
 
@@ -93,6 +273,8 @@ class _WedstrijdenSchermDerdeDivisieBState
         .where('speelronde', isEqualTo: speelronde)
         .snapshots()
         .listen((snapshot) {
+      if (_usingSeasonMatches) return;
+
       DateTime? earliest;
 
       for (final doc in snapshot.docs) {
@@ -186,7 +368,8 @@ class _WedstrijdenSchermDerdeDivisieBState
               const SizedBox(height: 8),
               _buildRondeSelector(),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(12),
@@ -223,8 +406,8 @@ class _WedstrijdenSchermDerdeDivisieBState
                     final voorspellingUit = _voorspellingUit[id];
 
                     return Container(
-                      margin:
-                          const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+                      margin: const EdgeInsets.symmetric(
+                          horizontal: 4, vertical: 6),
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: Colors.white,
@@ -252,8 +435,7 @@ class _WedstrijdenSchermDerdeDivisieBState
                                     _voorspellingThuis[id] = v;
                                   });
                                   if (!isLocked) {
-                                    _opslaanVoorspelling(
-                                        w, v, voorspellingUit);
+                                    _opslaanVoorspelling(w, v, voorspellingUit);
                                   }
                                 },
                               ),
@@ -348,6 +530,7 @@ class _WedstrijdenSchermDerdeDivisieBState
                 setState(() {
                   _huidigeSpeelronde = ronde;
                   _laadWedstrijdenBasisVoorSpeelronde(ronde);
+                  _listenSeasonMatchesFirestore(ronde);
                   _listenMatchesFirestore(ronde);
                 });
                 await _laadVoorspellingen();
