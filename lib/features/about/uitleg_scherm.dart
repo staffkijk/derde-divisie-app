@@ -341,9 +341,7 @@ class _InfoTile extends StatelessWidget {
 class _QuickFaqCard extends StatelessWidget {
   const _QuickFaqCard();
 
-  static const Color _green = UitlegScherm._green;
   static const Color _textDark = UitlegScherm._textDark;
-  static const Color _textMuted = UitlegScherm._textMuted;
 
   @override
   Widget build(BuildContext context) {
