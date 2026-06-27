@@ -9,6 +9,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
 import 'package:derde_divisie/data/config/season_config.dart';
+import 'package:derde_divisie/features/derde_divisie/historical_standings_screen.dart';
 
 /// ---------------------------
 /// Firestore veldmapping
@@ -296,6 +297,7 @@ class DashboardScreen extends StatelessWidget {
   final VoidCallback? onOpenDivisionB;
   final VoidCallback? onOpenPredict;
   final VoidCallback? onOpenPoules;
+  final VoidCallback? onOpenHistoricalStandings;
 
   const DashboardScreen({
     super.key,
@@ -303,6 +305,7 @@ class DashboardScreen extends StatelessWidget {
     this.onOpenDivisionB,
     this.onOpenPredict,
     this.onOpenPoules,
+    this.onOpenHistoricalStandings,
   });
 
   Future<void> _openUrl(BuildContext context, String url) async {
@@ -363,6 +366,19 @@ class DashboardScreen extends StatelessWidget {
                   icon: Icons.groups_2_rounded,
                   onTap: onOpenPoules,
                 ),
+                _HomeQuickAction(
+                  title: 'Historische eindstanden',
+                  subtitle: 'Bekijk eindstanden van eerdere seizoenen.',
+                  icon: Icons.history_rounded,
+                  onTap: onOpenHistoricalStandings ??
+                      () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const HistoricalStandingsScreen(),
+                          ),
+                        );
+                      },
+                ),
               ];
 
               if (compact) {
@@ -379,10 +395,10 @@ class DashboardScreen extends StatelessWidget {
               return GridView.count(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: 4,
+                crossAxisCount: constraints.maxWidth >= 960 ? 5 : 3,
                 crossAxisSpacing: 12,
                 mainAxisSpacing: 12,
-                childAspectRatio: 1.45,
+                childAspectRatio: 1.35,
                 children: cards,
               );
             },
@@ -670,7 +686,7 @@ class DashboardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        backgroundColor: const Color(0xFFFAF5F3),
+        backgroundColor: const Color(0xFFF3F6F1),
         body: LayoutBuilder(
           builder: (context, constraints) {
             final isWide = constraints.maxWidth > 800;

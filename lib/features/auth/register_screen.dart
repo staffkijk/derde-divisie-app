@@ -45,12 +45,42 @@ class _RegisterScreenState extends State<RegisterScreen> {
   // Clubs
   final List<String> clubs = [
     'Geen voorkeur',
-    'ADO\'20', 'ASWH', 'Blauw Geel\'38', 'DOVO', 'DVS\'33 Ermelo', 'Eemdijk',
-    'Excelsior\'31', 'FC Lisse', 'Gemert', 'Goes', 'Groene Ster', 'Harkemase Boys',
-    'Hercules', 'Hoogeveen', 'HSC\'21', 'Huizen', 'Kloetinge', 'Noordwijk', 'RBC',
-    'Rijnvogels', 'Rohda Raalte', 'SC Genemuiden', 'Scherpenzeel', 'Scheveningen',
-    'Sparta Nijkerk', 'Sportlust\'46', 'Staphorst', 'SteDoCo', 'sv Meerssen',
-    'TEC', 'TOGB', 'UDI\'19', 'UNA', 'Urk', 'VVSB', 'Zwaluwen'
+    'ADO\'20',
+    'ASWH',
+    'Blauw Geel\'38',
+    'DOVO',
+    'DVS\'33 Ermelo',
+    'Eemdijk',
+    'Excelsior\'31',
+    'FC Lisse',
+    'Gemert',
+    'Goes',
+    'Groene Ster',
+    'Harkemase Boys',
+    'Hercules',
+    'Hoogeveen',
+    'HSC\'21',
+    'Huizen',
+    'Kloetinge',
+    'Noordwijk',
+    'RBC',
+    'Rijnvogels',
+    'Rohda Raalte',
+    'SC Genemuiden',
+    'Scherpenzeel',
+    'Scheveningen',
+    'Sparta Nijkerk',
+    'Sportlust\'46',
+    'Staphorst',
+    'SteDoCo',
+    'sv Meerssen',
+    'TEC',
+    'TOGB',
+    'UDI\'19',
+    'UNA',
+    'Urk',
+    'VVSB',
+    'Zwaluwen'
   ];
 
   // Avatars (clublogo's + bal)
@@ -109,7 +139,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!akkoordMetVoorwaarden) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Je moet akkoord gaan met de voorwaarden om verder te gaan.'),
+          content: Text(
+              'Je moet akkoord gaan met de voorwaarden om verder te gaan.'),
           backgroundColor: Colors.red,
         ),
       );
@@ -122,8 +153,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     });
 
     try {
-      final userCredential = await FirebaseAuth.instance
-          .createUserWithEmailAndPassword(
+      final userCredential =
+          await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: emailController.text.trim(),
         password: passwordController.text.trim(),
       );
@@ -136,7 +167,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           .set({
         'username': usernameController.text.trim(),
         'email': emailController.text.trim(),
-        'isModerator': false,
+        'ismoderator': false,
         'heeftGebruikersnaamGewijzigd': false,
         'avatarUrl': geselecteerdeAvatar ?? 'assets/images/profiel_bal.png',
         'woonplaats': canoniekGemeente,
@@ -209,8 +240,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   prefixIcon: Icon(Icons.person),
                   border: OutlineInputBorder(),
                 ),
-                validator: (value) =>
-                    value == null || value.trim().isEmpty ? 'Verplicht veld' : null,
+                validator: (value) => value == null || value.trim().isEmpty
+                    ? 'Verplicht veld'
+                    : null,
               ),
               const SizedBox(height: 16),
 
@@ -243,8 +275,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   prefixIcon: Icon(Icons.lock),
                   border: OutlineInputBorder(),
                 ),
-                validator: (value) =>
-                    value == null || value.length < 6 ? 'Minimaal 6 tekens' : null,
+                validator: (value) => value == null || value.length < 6
+                    ? 'Minimaal 6 tekens'
+                    : null,
               ),
               const SizedBox(height: 16),
 
@@ -256,7 +289,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   return nederlandseGemeenten
                       .where((g) => g.toLowerCase().contains(input));
                 },
-                onSelected: (selection) => woonplaatsController.text = selection,
+                onSelected: (selection) =>
+                    woonplaatsController.text = selection,
                 fieldViewBuilder:
                     (context, controller, focusNode, onEditingComplete) {
                   controller.text = woonplaatsController.text;
@@ -330,8 +364,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color:
-                                isSelected ? Colors.green : Colors.grey.shade300,
+                            color: isSelected
+                                ? Colors.green
+                                : Colors.grey.shade300,
                             width: isSelected ? 3 : 1,
                           ),
                         ),
@@ -372,8 +407,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           text: 'Ik ga akkoord met de ',
                           children: [
                             TextSpan(
-                              text:
-                                  'Privacyverklaring en Gebruiksvoorwaarden',
+                              text: 'Privacyverklaring en Gebruiksvoorwaarden',
                               style: TextStyle(
                                 decoration: TextDecoration.underline,
                                 color: Colors.blue,

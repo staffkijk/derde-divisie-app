@@ -196,9 +196,7 @@ class _WedstrijdenSchermDerdeDivisieAState
       if (!_matchesDivision(data)) continue;
 
       final round = _readInt(data, const ['round', 'speelronde']);
-      if (round == null) {
-  continue;
-}
+      if (round == null) continue;
       if (round != speelronde) continue;
 
       final homeTeam = _readString(data, const [
@@ -439,117 +437,131 @@ class _WedstrijdenSchermDerdeDivisieAState
                 ),
               ),
               Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  itemCount: _wedstrijden.length,
-                  itemBuilder: (context, index) {
-                    final w = _wedstrijden[index];
-                    final id = w.id;
-                    final thuis = _werkelijkeUitslagThuis[id];
-                    final uit = _werkelijkeUitslagUit[id];
-                    final uitslagBekend = thuis != null && uit != null;
-                    final punten = _behaaldePunten[id] ?? 0;
-
-                    final isLocked = (_deadline != null)
-                        ? DateTime.now().isAfter(_deadline!)
-                        : false;
-
-                    final voorspellingThuis = _voorspellingThuis[id];
-                    final voorspellingUit = _voorspellingUit[id];
-
-                    return Container(
-                      margin: const EdgeInsets.symmetric(
-                          horizontal: 4, vertical: 6),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(14),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.06),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
+                child: _wedstrijden.isEmpty
+                    ? const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(24),
+                          child: Text(
+                            'Het programma voor deze divisie is nog niet bekend.',
+                            textAlign: TextAlign.center,
                           ),
-                        ],
-                      ),
-                      child: Column(
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              _buildTeamWithLogo(w.thuis, alignRight: false),
-                              _buildVerticalPickerBox(
-                                huidigeWaarde: voorspellingThuis,
-                                disabled: isLocked,
-                                onSelected: (v) {
-                                  setState(() {
-                                    _voorspellingThuis[id] = v;
-                                  });
-                                  if (!isLocked) {
-                                    _opslaanVoorspelling(w, v, voorspellingUit);
-                                  }
-                                },
-                              ),
-                              const SizedBox(width: 6),
-                              const Text('-'),
-                              const SizedBox(width: 6),
-                              _buildVerticalPickerBox(
-                                huidigeWaarde: voorspellingUit,
-                                disabled: isLocked,
-                                onSelected: (v) {
-                                  setState(() {
-                                    _voorspellingUit[id] = v;
-                                  });
-                                  if (!isLocked) {
-                                    _opslaanVoorspelling(
-                                        w, voorspellingThuis, v);
-                                  }
-                                },
-                              ),
-                              _buildTeamWithLogo(w.uit, alignRight: true),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          if (uitslagBekend)
-                            Column(
-                              children: [
-                                Text(
-                                  'Eindstand: $thuis - $uit',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: Colors.grey.shade700,
-                                    fontStyle: FontStyle.italic,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: punten > 0
-                                        ? Colors.green.shade50
-                                        : Colors.grey.shade100,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    'Behaalde punten: $punten pt',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: punten > 0
-                                          ? Colors.green.shade800
-                                          : Colors.grey.shade600,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        itemCount: _wedstrijden.length,
+                        itemBuilder: (context, index) {
+                          final w = _wedstrijden[index];
+                          final id = w.id;
+                          final thuis = _werkelijkeUitslagThuis[id];
+                          final uit = _werkelijkeUitslagUit[id];
+                          final uitslagBekend = thuis != null && uit != null;
+                          final punten = _behaaldePunten[id] ?? 0;
+
+                          final isLocked = (_deadline != null)
+                              ? DateTime.now().isAfter(_deadline!)
+                              : false;
+
+                          final voorspellingThuis = _voorspellingThuis[id];
+                          final voorspellingUit = _voorspellingUit[id];
+
+                          return Container(
+                            margin: const EdgeInsets.symmetric(
+                                horizontal: 4, vertical: 6),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(14),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.06),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
                                 ),
                               ],
                             ),
-                        ],
+                            child: Column(
+                              children: [
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    _buildTeamWithLogo(w.thuis,
+                                        alignRight: false),
+                                    _buildVerticalPickerBox(
+                                      huidigeWaarde: voorspellingThuis,
+                                      disabled: isLocked,
+                                      onSelected: (v) {
+                                        setState(() {
+                                          _voorspellingThuis[id] = v;
+                                        });
+                                        if (!isLocked) {
+                                          _opslaanVoorspelling(
+                                              w, v, voorspellingUit);
+                                        }
+                                      },
+                                    ),
+                                    const SizedBox(width: 6),
+                                    const Text('-'),
+                                    const SizedBox(width: 6),
+                                    _buildVerticalPickerBox(
+                                      huidigeWaarde: voorspellingUit,
+                                      disabled: isLocked,
+                                      onSelected: (v) {
+                                        setState(() {
+                                          _voorspellingUit[id] = v;
+                                        });
+                                        if (!isLocked) {
+                                          _opslaanVoorspelling(
+                                              w, voorspellingThuis, v);
+                                        }
+                                      },
+                                    ),
+                                    _buildTeamWithLogo(w.uit, alignRight: true),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                if (uitslagBekend)
+                                  Column(
+                                    children: [
+                                      Text(
+                                        'Eindstand: $thuis - $uit',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: Colors.grey.shade700,
+                                          fontStyle: FontStyle.italic,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: punten > 0
+                                              ? Colors.green.shade50
+                                              : Colors.grey.shade100,
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                        ),
+                                        child: Text(
+                                          'Behaalde punten: $punten pt',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            color: punten > 0
+                                                ? Colors.green.shade800
+                                                : Colors.grey.shade600,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                              ],
+                            ),
+                          );
+                        },
                       ),
-                    );
-                  },
-                ),
               ),
             ],
           ),

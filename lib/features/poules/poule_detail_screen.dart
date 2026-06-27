@@ -2,377 +2,135 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-// helpers
 import 'package:derde_divisie/data/config/season_config.dart';
-import 'package:derde_divisie/helpers/sync_service.dart';
-
-// schermen
+import 'package:derde_divisie/data/firestore/season_paths.dart';
+import 'package:derde_divisie/features/voorspellen/prediction_overview_screen.dart';
 import 'package:derde_divisie/features/voorspellen/voorspel_een_team_screen.dart';
-import 'wedstrijden_poule_dda_screen.dart';
-import 'wedstrijden_poule_ddb_screen.dart';
-import 'package:derde_divisie/features/profiel/bekijk_profiel_screen.dart';
-import 'poule_voorspellingen_screen.dart';
 import 'edit_poule_screen.dart';
 
 class PouleDetailScreen extends StatefulWidget {
-  final String pouleId;
-
   const PouleDetailScreen({super.key, required this.pouleId});
+
+  final String pouleId;
 
   @override
   State<PouleDetailScreen> createState() => _PouleDetailScreenState();
 }
 
 class _PouleDetailScreenState extends State<PouleDetailScreen> {
-  late String userId;
-  bool voorspellingenZichtbaar = false;
-
-  // force refresh na edit
+  final _db = FirebaseFirestore.instance;
+  final _userId = FirebaseAuth.instance.currentUser?.uid;
   Object _reloadKey = Object();
 
-  // toggle-guard
-  bool _syncBusy = false;
+  String _type(Map<String, dynamic> data) {
+    final type = (data['type'] ?? '').toString().toLowerCase();
+    if (type == 'team' || type == 'one_team') return 'team';
+    if (type == 'competition') return 'competition';
 
-  @override
-  void initState() {
-    super.initState();
-    userId = FirebaseAuth.instance.currentUser!.uid;
-    _loadZichtbaarheid();
+    final legacy = (data['competition'] ?? '').toString().toLowerCase();
+    if (legacy == 'team') return 'team';
+    return 'competition';
   }
 
-  Future<void> _loadZichtbaarheid() async {
-    final doc = await FirebaseFirestore.instance
-        .collection('poules')
-        .doc(widget.pouleId)
-        .collection('deelnemers')
-        .doc(userId)
-        .get();
+  String _teamName(Map<String, dynamic> data) {
+    final value = data['teamName'] ??
+        data['selectedTeam'] ??
+        data['team'] ??
+        data['oneTeam'] ??
+        data['teamCode'];
+    return value?.toString().trim() ?? '';
+  }
 
-    if (doc.exists && mounted) {
-      setState(() {
-        voorspellingenZichtbaar =
-            doc.data()?['voorspellingenZichtbaar'] ?? false;
-      });
+  String _division(Map<String, dynamic> data, String teamName) {
+    final configured = (data['division'] ?? data['divisie'] ?? '').toString();
+    if (configured.isNotEmpty) {
+      return SeasonConfig.normalizeDivisionCode(configured);
     }
+    return SeasonConfig.normalizeDivisionCode(
+      SeasonConfig.divisionCodeForTeam(teamName),
+    );
   }
 
-  Future<void> _toggleZichtbaarheid(bool value) async {
-    setState(() => voorspellingenZichtbaar = value);
-    await FirebaseFirestore.instance
-        .collection('poules')
-        .doc(widget.pouleId)
-        .collection('deelnemers')
-        .doc(userId)
-        .set({'voorspellingenZichtbaar': value}, SetOptions(merge: true));
+  Future<void> _leave() async {
+    if (_userId == null) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Poule verlaten?'),
+        content: const Text(
+          'Je centrale voorspellingen blijven gewoon bewaard.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Annuleren'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Verlaten'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    final batch = _db.batch();
+    batch.delete(
+      _db
+          .collection('poules')
+          .doc(widget.pouleId)
+          .collection('deelnemers')
+          .doc(_userId),
+    );
+    batch.delete(_db.doc('users/$_userId/poules/${widget.pouleId}'));
+    batch.set(
+      _db.collection('users').doc(_userId),
+      {'gejoinedePoules': FieldValue.increment(-1)},
+      SetOptions(merge: true),
+    );
+    await batch.commit();
+
+    if (mounted) Navigator.of(context).pop();
   }
 
-  Future<bool> _isOwner() async {
-    final snap = await FirebaseFirestore.instance
-        .collection('poules')
-        .doc(widget.pouleId)
-        .get();
-    return snap.exists && (snap.data()?['ownerId'] == userId);
-  }
-
-  Future<void> _leavePoule() async {
-    final isOwner = await _isOwner();
-    if (isOwner && mounted) {
-      await showDialog(
-        context: context,
-        builder: (_) => AlertDialog(
-          title: const Text('Kan poule niet verlaten'),
-          content: const Text(
-              'Je bent de eigenaar van deze poule. Verwijder de poule of draag het eigenaarschap over in “Poule bewerken”.'),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('OK')),
-          ],
+  void _openPredictions(Map<String, dynamic> data) {
+    final type = _type(data);
+    final team = _teamName(data);
+    if (type == 'team' && team.isNotEmpty) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => VoorspelEenTeamScreen(
+            team: SeasonConfig.displayNameForTeam(team),
+            competition: _division(data, team),
+            pouleId: widget.pouleId,
+          ),
         ),
       );
       return;
     }
 
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Poule verlaten'),
-        content: const Text(
-          'Weet je zeker dat je deze poule wilt verlaten? Je verdwijnt uit de ranglijst. '
-          'Je poule-voorspellingen voor deze poule worden verwijderd.',
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Annuleren')),
-          FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Verlaten')),
-        ],
-      ),
-    );
-
-    if (confirmed != true) return;
-
-    try {
-      // 1) Verwijder deelnemer-doc
-      await FirebaseFirestore.instance
-          .collection('poules')
-          .doc(widget.pouleId)
-          .collection('deelnemers')
-          .doc(userId)
-          .delete();
-
-      // 2) Opruimen voorspellingen die aan deze poule hangen
-      Future<void> deleteAll(String coll, List<String> userFields) async {
-        for (final userField in userFields) {
-          final q = await FirebaseFirestore.instance
-              .collection(coll)
-              .where('pouleId', isEqualTo: widget.pouleId)
-              .where(userField, isEqualTo: userId)
-              .get();
-          for (final doc in q.docs) {
-            await doc.reference.delete();
-          }
-        }
-      }
-
-      await deleteAll('poule_predictions', ['userId', 'gebruikerId']);
-      await deleteAll('poule_voorspellingen', ['userId', 'gebruikerId']);
-      await deleteAll('predictions', ['userId', 'gebruikerId']); // 1-team
-
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Je hebt de poule verlaten.')),
-      );
-      Navigator.of(context).pop();
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Kon poule niet verlaten: $e')),
-      );
-    }
-  }
-
-  // ----------------- SYNC -----------------
-
-  Future<void> _handleSyncToggle({
-    required bool enable,
-    required DocumentReference<Map<String, dynamic>> deelnemerRef,
-  }) async {
-    if (_syncBusy) return;
-
-    try {
-      setState(() => _syncBusy = true);
-
-      if (enable) {
-        await deelnemerRef.set({
-          'syncEnabled': true,
-          'syncStartAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text(
-                    'Synchronisatie aangezet — open rondes worden gevuld.')),
-          );
-        }
-
-        await SyncService.instance.enableSyncForUserInPool(
-          poolId: widget.pouleId,
-          userId: userId,
-        );
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                  'Synchronisatie gereed voor open rondes. Afgesloten rondes bleven ongewijzigd.'),
-            ),
-          );
-        }
-      } else {
-        await deelnemerRef.set({
-          'syncEnabled': false,
-          'syncStartAt': null,
-        }, SetOptions(merge: true));
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Synchronisatie uitgeschakeld.')),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Synchronisatie mislukt: $e')),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _syncBusy = false);
-    }
-  }
-
-  Widget _buildSyncToggle() {
-    final deelnemerRef = FirebaseFirestore.instance
-        .collection('poules')
-        .doc(widget.pouleId)
-        .collection('deelnemers')
-        .doc(userId);
-
-    return StreamBuilder<DocumentSnapshot>(
-      stream: deelnemerRef.snapshots(),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) return const SizedBox.shrink();
-        final data = snapshot.data!.data() as Map<String, dynamic>? ??
-            <String, dynamic>{};
-        final syncEnabled = data['syncEnabled'] ?? false;
-
-        return SwitchListTile(
-          title: const Text('Synchroniseer voorspellingen'),
-          subtitle: Text(
-            syncEnabled
-                ? 'Jouw voorspellingen worden gelijkgezet met je globale voorspellingen'
-                : 'Je voorspelt los in deze poule',
-          ),
-          value: syncEnabled,
-          onChanged: _syncBusy
-              ? null
-              : (val) =>
-                  _handleSyncToggle(enable: val, deelnemerRef: deelnemerRef),
-          secondary: _syncBusy
-              ? const SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : null,
-        );
-      },
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const PredictionOverviewScreen()),
     );
   }
-
-  // ----------------- HELPERS -----------------
-
-  String _normalizeCompetition(Map<String, dynamic> data) {
-    // 1) direct veld 'competition'
-    final c = (data['competition'] ?? '').toString().toLowerCase();
-    if (c == 'dda' || c == 'ddb' || c == 'team') return c;
-
-    // 2) 'type' zoals "ONE_TEAM", "DDA", "DDB"
-    final t = (data['type'] ?? '').toString().toUpperCase();
-    if (t == 'DDA') return 'dda';
-    if (t == 'DDB') return 'ddb';
-    if (t == 'ONE_TEAM' || t == 'TEAM') return 'team';
-
-    // 3) eventuele codes "3A" / "3B"
-    final code = (data['competitionCode'] ?? data['divisie'] ?? '')
-        .toString()
-        .toUpperCase();
-    if (code == '3A' || code == 'DDA') return 'dda';
-    if (code == '3B' || code == 'DDB') return 'ddb';
-
-    return 'onbekend';
-  }
-
-  String _beschrijfCompetitie(String norm, String team) {
-    switch (norm) {
-      case 'dda':
-        return 'Derde Divisie A';
-      case 'ddb':
-        return 'Derde Divisie B';
-      case 'team':
-        return team.isNotEmpty ? 'Eén team: $team' : 'Eén team';
-      default:
-        return 'Onbekend';
-    }
-  }
-
-  String _bepaalDivisieOpBasisVanTeam(String team) {
-    return SeasonConfig.divisionCodeForTeam(team);
-  }
-
-  String _leesTeamNaam(Map<String, dynamic> data) {
-    // Ondersteun meerdere veldnamen; 'teamCode' is nu toegevoegd.
-    final raw = (data['selectedTeam'] ??
-            data['team'] ??
-            data['oneTeam'] ??
-            data['teamName'] ??
-            data['team_code'] ??
-            data['teamCode'])
-        ?.toString()
-        .trim();
-
-    return raw ?? '';
-  }
-
-  // ----------------- UI -----------------
 
   @override
   Widget build(BuildContext context) {
+    final pouleRef = _db.collection('poules').doc(widget.pouleId);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Poule details'),
+        title: const Text('Poule'),
         actions: [
-          FutureBuilder<DocumentSnapshot>(
-            future: FirebaseFirestore.instance
-                .collection('poules')
-                .doc(widget.pouleId)
-                .get(),
-            builder: (context, snapshot) {
-              final isOwner = snapshot.hasData &&
-                  snapshot.data!.exists &&
-                  (snapshot.data!.get('ownerId') == userId);
-
-              return Row(
-                children: [
-                  if (isOwner)
-                    IconButton(
-                      tooltip: 'Poule bewerken',
-                      icon: const Icon(Icons.edit),
-                      onPressed: () async {
-                        final changed = await Navigator.of(context).push<bool>(
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                EditPouleScreen(pouleId: widget.pouleId),
-                          ),
-                        );
-                        if (changed == true && mounted) {
-                          setState(() => _reloadKey = Object());
-                        }
-                      },
-                    ),
-                  PopupMenuButton<String>(
-                    onSelected: (v) {
-                      if (v == 'leave') _leavePoule();
-                    },
-                    itemBuilder: (_) => const [
-                      PopupMenuItem(
-                        value: 'leave',
-                        child: Row(
-                          children: [
-                            Icon(Icons.exit_to_app, size: 20),
-                            SizedBox(width: 8),
-                            Text('Poule verlaten'),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              );
-            },
+          IconButton(
+            tooltip: 'Poule verlaten',
+            onPressed: _leave,
+            icon: const Icon(Icons.exit_to_app_rounded),
           ),
         ],
       ),
-      body: FutureBuilder<DocumentSnapshot>(
+      body: FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
         key: ValueKey(_reloadKey),
-        future: FirebaseFirestore.instance
-            .collection('poules')
-            .doc(widget.pouleId)
-            .get(),
+        future: pouleRef.get(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -381,170 +139,142 @@ class _PouleDetailScreenState extends State<PouleDetailScreen> {
             return const Center(child: Text('Poule niet gevonden.'));
           }
 
-          final data = snapshot.data!.data() as Map<String, dynamic>;
-          final competition = _normalizeCompetition(data);
-          final String team = _leesTeamNaam(data);
+          final data = snapshot.data!.data() ?? {};
+          final type = _type(data);
+          final teamName = _teamName(data);
+          final isOwner = data['ownerId'] == _userId;
+          final explanation = type == 'team'
+              ? 'Deze poule telt alleen wedstrijden mee van het gekozen team. Voorspellen doe je via Team voorspellen.'
+              : 'Deze poule gebruikt je algemene voorspellingen.';
 
-          return Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  data['name'] ?? 'Naam onbekend',
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  data['description'] ?? '',
-                  style: const TextStyle(color: Colors.black54),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Competitie: ${_beschrijfCompetitie(competition, team)}',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-
-                // zichtbaarheid
-                SwitchListTile(
-                  title: const Text('Voorspellingen delen'),
-                  subtitle: const Text(
-                      'Sta toe dat anderen jouw voorspellingen in deze poule zien.'),
-                  value: voorspellingenZichtbaar,
-                  onChanged: _toggleZichtbaarheid,
-                ),
-                const SizedBox(height: 8),
-
-                // sync
-                _buildSyncToggle(),
-
-                const SizedBox(height: 16),
-                const Text('Ranglijst deelnemers:',
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-
-                Expanded(
-                  child: StreamBuilder<QuerySnapshot>(
-                    stream: FirebaseFirestore.instance
-                        .collection('poules')
-                        .doc(widget.pouleId)
-                        .collection('deelnemers')
-                        .orderBy('punten', descending: true)
-                        .snapshots(),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-
-                      final deelnemers = snapshot.data?.docs ?? [];
-                      if (deelnemers.isEmpty) {
-                        return const Text('Nog geen deelnemers.');
-                      }
-
-                      return ListView.builder(
-                        itemCount: deelnemers.length,
-                        itemBuilder: (context, index) {
-                          final doc = deelnemers[index];
-                          final d = doc.data() as Map<String, dynamic>;
-                          final punten = d['punten'] ?? 0;
-
-                          String? medaille;
-                          if (index == 0) {
-                            medaille = '🥇';
-                          } else if (index == 1) {
-                            medaille = '🥈';
-                          } else if (index == 2) {
-                            medaille = '🥉';
-                          }
-
-                          final isCurrentUser = doc.id == userId;
-
-                          return _DeelnemerTile(
-                            pouleId: widget.pouleId,
-                            deelnemerUserId: doc.id,
-                            punten: punten,
-                            isCurrentUser: isCurrentUser,
-                            medaille: medaille,
-                          );
-                        },
-                      );
-                    },
+          return LayoutBuilder(
+            builder: (context, constraints) {
+              return Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 960),
+                  child: ListView(
+                    padding:
+                        EdgeInsets.all(constraints.maxWidth < 600 ? 14 : 24),
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFFE3EADF)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    (data['name'] ?? 'Naam onbekend')
+                                        .toString(),
+                                    style: const TextStyle(
+                                      color: Color(0xFF153B2A),
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+                                if (isOwner)
+                                  IconButton(
+                                    tooltip: 'Poule bewerken',
+                                    onPressed: () async {
+                                      final changed =
+                                          await Navigator.of(context)
+                                              .push<bool>(
+                                        MaterialPageRoute(
+                                          builder: (_) => EditPouleScreen(
+                                            pouleId: widget.pouleId,
+                                          ),
+                                        ),
+                                      );
+                                      if (changed == true && mounted) {
+                                        setState(() => _reloadKey = Object());
+                                      }
+                                    },
+                                    icon: const Icon(Icons.edit_outlined),
+                                  ),
+                              ],
+                            ),
+                            if ((data['description'] ?? '')
+                                .toString()
+                                .isNotEmpty) ...[
+                              const SizedBox(height: 6),
+                              Text(data['description'].toString()),
+                            ],
+                            const SizedBox(height: 14),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                Chip(
+                                  avatar: Icon(
+                                    type == 'team'
+                                        ? Icons.shield_outlined
+                                        : Icons.public_rounded,
+                                    size: 18,
+                                  ),
+                                  label: Text(
+                                    type == 'team'
+                                        ? 'Teampoule'
+                                        : 'Hele competitie',
+                                  ),
+                                ),
+                                if (type == 'team' && teamName.isNotEmpty)
+                                  Chip(
+                                    label: Text(
+                                      SeasonConfig.displayNameForTeam(teamName),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              explanation,
+                              style: TextStyle(
+                                color: Colors.grey.shade700,
+                                height: 1.4,
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            ElevatedButton.icon(
+                              onPressed: () => _openPredictions(data),
+                              icon: const Icon(Icons.edit_calendar_outlined),
+                              label: Text(
+                                type == 'team'
+                                    ? 'Naar Team voorspellen'
+                                    : 'Naar voorspellen',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      const Text(
+                        'Ranglijst',
+                        style: TextStyle(
+                          color: Color(0xFF153B2A),
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      _ParticipantsRanking(
+                        pouleRef: pouleRef,
+                        type: type,
+                        teamName: teamName,
+                        usesCentralPredictions: data['type'] == 'competition' ||
+                            data['type'] == 'team',
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 12),
-
-                // VOORSPELLEN-knop
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.sports_soccer),
-                  label: const Text('Voorspellen'),
-                  onPressed: () {
-                    if (competition == 'dda') {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => WedstrijdenPouleDdaScreen(
-                            divisie: 'A',
-                            pouleId: widget.pouleId,
-                          ),
-                        ),
-                      );
-                      return;
-                    }
-                    if (competition == 'ddb') {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => WedstrijdenPouleDdbScreen(
-                            divisie: 'B',
-                            pouleId: widget.pouleId,
-                          ),
-                        ),
-                      );
-                      return;
-                    }
-
-                    if (competition == 'team') {
-                      if (team.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Geen team ingesteld voor deze poule. Ga naar “Poule bewerken” om een team te kiezen.',
-                            ),
-                          ),
-                        );
-                        return;
-                      }
-
-                      final echteDivisie = _bepaalDivisieOpBasisVanTeam(team);
-                      if (echteDivisie == 'onbekend') {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                                'Kan divisie niet bepalen voor $team. Controleer de teamnaam in “Poule bewerken”.'),
-                          ),
-                        );
-                        return;
-                      }
-
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => VoorspelEenTeamScreen(
-                            team: team,
-                            competition: echteDivisie,
-                            pouleId: widget.pouleId,
-                          ),
-                        ),
-                      );
-                      return;
-                    }
-
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                          content: Text(
-                              'Onbekende competitie-configuratie: $competition')),
-                    );
-                  },
-                ),
-              ],
-            ),
+              );
+            },
           );
         },
       ),
@@ -552,138 +282,167 @@ class _PouleDetailScreenState extends State<PouleDetailScreen> {
   }
 }
 
-// ----------------- Lijsttegel deelnemer -----------------
-
-class _DeelnemerTile extends StatefulWidget {
-  final String pouleId;
-  final String deelnemerUserId;
-  final int punten;
-  final bool isCurrentUser;
-  final String? medaille;
-
-  const _DeelnemerTile({
-    required this.pouleId,
-    required this.deelnemerUserId,
-    required this.punten,
-    required this.isCurrentUser,
-    required this.medaille,
+class _ParticipantsRanking extends StatelessWidget {
+  const _ParticipantsRanking({
+    required this.pouleRef,
+    required this.type,
+    required this.teamName,
+    required this.usesCentralPredictions,
   });
 
-  @override
-  State<_DeelnemerTile> createState() => _DeelnemerTileState();
-}
+  final DocumentReference<Map<String, dynamic>> pouleRef;
+  final String type;
+  final String teamName;
+  final bool usesCentralPredictions;
 
-class _DeelnemerTileState extends State<_DeelnemerTile> {
-  String? _lastSetName;
-  String? _lastSetAvatar;
-  bool _syncInProgress = false;
+  Future<List<_ParticipantScore>> _loadScores() async {
+    final participantsSnapshot = await pouleRef.collection('deelnemers').get();
+    final scores = <_ParticipantScore>[];
+    final teamMatchIds =
+        type == 'team' ? await _teamMatchIds(teamName) : const <String>{};
 
-  Future<void> _syncIfNeeded(String username, String avatarUrl) async {
-    if (_syncInProgress) return;
-    if (_lastSetName == username && _lastSetAvatar == avatarUrl) return;
+    for (final participant in participantsSnapshot.docs) {
+      final userSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(participant.id)
+          .get();
+      final username =
+          (userSnapshot.data()?['username'] ?? 'Deelnemer').toString();
+      int points;
 
-    _syncInProgress = true;
-    try {
-      final ref = FirebaseFirestore.instance
-          .collection('poules')
-          .doc(widget.pouleId)
-          .collection('deelnemers')
-          .doc(widget.deelnemerUserId);
-
-      final snap = await ref.get();
-      final currentName = (snap.data()?['username'] ?? '') as String;
-      final currentAvatar = (snap.data()?['avatarUrl'] ?? '') as String;
-
-      final mustUpdate = currentName != username || currentAvatar != avatarUrl;
-
-      if (mustUpdate) {
-        await ref.set(
-          {'username': username, 'avatarUrl': avatarUrl},
-          SetOptions(merge: true),
+      if (!usesCentralPredictions) {
+        points = (participant.data()['punten'] as num?)?.toInt() ?? 0;
+      } else if (type == 'competition') {
+        points = (userSnapshot.data()?['totalen'] as num?)?.toInt() ?? 0;
+      } else {
+        final predictions = await FirebaseFirestore.instance
+            .collection('voorspellingen')
+            .where('gebruikerId', isEqualTo: participant.id)
+            .get();
+        points = predictions.docs.where((doc) {
+          final data = doc.data();
+          final matchId =
+              (data['wedstrijdId'] ?? data['matchId'] ?? '').toString();
+          return teamMatchIds.contains(matchId);
+        }).fold<int>(
+          0,
+          (total, doc) =>
+              total + ((doc.data()['punten'] as num?)?.toInt() ?? 0),
         );
       }
 
-      _lastSetName = username;
-      _lastSetAvatar = avatarUrl;
-    } catch (_) {
-      // fail silent
-    } finally {
-      _syncInProgress = false;
+      scores.add(
+        _ParticipantScore(
+          username: username,
+          points: points,
+        ),
+      );
     }
+
+    scores.sort((a, b) {
+      final points = b.points.compareTo(a.points);
+      return points != 0 ? points : a.username.compareTo(b.username);
+    });
+    return scores;
+  }
+
+  Future<Set<String>> _teamMatchIds(String team) async {
+    QuerySnapshot<Map<String, dynamic>> snapshot;
+    try {
+      snapshot = await SeasonPaths.currentSeasonMatches.get();
+      if (snapshot.docs.isEmpty) {
+        snapshot = await FirebaseFirestore.instance.collection('matches').get();
+      }
+    } on FirebaseException {
+      snapshot = await FirebaseFirestore.instance.collection('matches').get();
+    }
+
+    final selectedTeam = SeasonConfig.normalizeTeamKey(team);
+    return snapshot.docs.where((doc) {
+      final data = doc.data();
+      final home =
+          (data['homeTeam'] ?? data['thuisTeam'] ?? data['thuisteam'] ?? '')
+              .toString();
+      final away =
+          (data['awayTeam'] ?? data['uitTeam'] ?? data['uitteam'] ?? '')
+              .toString();
+      return SeasonConfig.normalizeTeamKey(home) == selectedTeam ||
+          SeasonConfig.normalizeTeamKey(away) == selectedTeam ||
+          SeasonConfig.teamByName(home)?.id ==
+              SeasonConfig.teamByName(team)?.id ||
+          SeasonConfig.teamByName(away)?.id ==
+              SeasonConfig.teamByName(team)?.id;
+    }).map((doc) {
+      final data = doc.data();
+      return (data['matchId'] ?? data['wedstrijdId'] ?? doc.id).toString();
+    }).toSet();
   }
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance
-          .collection('users')
-          .doc(widget.deelnemerUserId)
-          .snapshots(),
-      builder: (context, snap) {
-        final userData = snap.data?.data();
-        final avatarUrl = (userData?['avatarUrl'] ?? '').toString();
-        final username = (userData?['username'] ?? 'Gebruiker').toString();
-
-        if (userData != null) {
-          Future.microtask(() => _syncIfNeeded(username, avatarUrl));
+    return FutureBuilder<List<_ParticipantScore>>(
+      future: _loadScores(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final participants = snapshot.data!;
+        if (participants.isEmpty) {
+          return const Text('Nog geen deelnemers.');
         }
 
-        return ListTile(
-          leading: GestureDetector(
-            onTap: () async {
-              final selected = await showModalBottomSheet<String>(
-                context: context,
-                builder: (_) => Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    ListTile(
-                      leading: const Icon(Icons.person),
-                      title: const Text('Bekijk profiel'),
-                      onTap: () => Navigator.pop(context, 'profiel'),
-                    ),
-                    ListTile(
-                      leading: const Icon(Icons.visibility),
-                      title: const Text('Bekijk voorspellingen'),
-                      onTap: () => Navigator.pop(context, 'voorspellingen'),
-                    ),
-                  ],
-                ),
-              );
-
-              if (!context.mounted) return;
-
-              if (selected == 'profiel') {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        BekijkProfielScreen(userId: widget.deelnemerUserId),
-                  ),
-                );
-              } else if (selected == 'voorspellingen') {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => PouleVoorspellingenScreen(
-                      pouleId: widget.pouleId,
-                      userId: widget.deelnemerUserId,
-                    ),
-                  ),
-                );
-              }
-            },
-            child: CircleAvatar(
-              radius: 20,
-              backgroundImage:
-                  (avatarUrl.isNotEmpty) ? NetworkImage(avatarUrl) : null,
-              child: avatarUrl.isEmpty ? const Icon(Icons.person) : null,
-            ),
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: const Color(0xFFE3EADF)),
           ),
-          title: Text('$username${widget.isCurrentUser ? " (jij)" : ""}'),
-          subtitle: Text('Punten: ${widget.punten}'),
-          trailing: widget.medaille != null
-              ? Text(widget.medaille!, style: const TextStyle(fontSize: 20))
-              : null,
+          child: Column(
+            children: [
+              for (var index = 0; index < participants.length; index++)
+                _ParticipantRow(
+                  rank: index + 1,
+                  username: participants[index].username,
+                  points: participants[index].points,
+                ),
+            ],
+          ),
         );
       },
     );
   }
+}
+
+class _ParticipantRow extends StatelessWidget {
+  const _ParticipantRow({
+    required this.rank,
+    required this.username,
+    required this.points,
+  });
+
+  final int rank;
+  final String username;
+  final int points;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: CircleAvatar(child: Text('$rank')),
+      title: Text(username),
+      trailing: Text(
+        '$points pt',
+        style: const TextStyle(fontWeight: FontWeight.w700),
+      ),
+    );
+  }
+}
+
+class _ParticipantScore {
+  const _ParticipantScore({
+    required this.username,
+    required this.points,
+  });
+
+  final String username;
+  final int points;
 }

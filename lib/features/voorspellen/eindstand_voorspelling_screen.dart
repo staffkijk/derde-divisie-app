@@ -2,333 +2,289 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import 'package:derde_divisie/data/config/season_config.dart';
+import 'package:derde_divisie/data/firestore/season_paths.dart';
+
 class EindstandVoorspellingScreen extends StatefulWidget {
-  final String divisie; // 'A' of 'B'
-  const EindstandVoorspellingScreen({super.key, required this.divisie});
+  const EindstandVoorspellingScreen({
+    super.key,
+    required this.divisie,
+  });
+
+  final String divisie;
 
   @override
   State<EindstandVoorspellingScreen> createState() =>
       _EindstandVoorspellingScreenState();
 }
 
-class _EindstandVoorspellingScreenState extends State<EindstandVoorspellingScreen> {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+class _EindstandVoorspellingScreenState
+    extends State<EindstandVoorspellingScreen> {
+  final _db = FirebaseFirestore.instance;
+  final _auth = FirebaseAuth.instance;
 
-  // UI-lijst (namen) + parallelle keys (voor matching)
-  List<String> clubs = [];
-  List<String> clubKeys = [];
+  List<String> _clubs = [];
+  bool _loading = true;
+  int _points = 0;
+  late DateTime _deadline;
 
-  bool isLoading = true;
-  bool isBuitenDeadline = false;
-
-  // na deadline tonen we: werkelijke plek + punten per regel
-  Map<String, int> _echtePosities = {}; // key -> 0-based positie
-  List<int> _puntenPerRegel = [];
-  int _totaalPunten = 0;
-
-  // Deadline voor voorspellingen
-  final DateTime deadline = DateTime(2025, 8, 31, 23, 59);
+  bool get _locked => DateTime.now().isAfter(_deadline);
 
   @override
   void initState() {
     super.initState();
-    _laadClubsEnVoorspelling();
+    _deadline = DateTime(2026, 8, 31, 23, 59);
+    _load();
   }
 
-  String _competitieNaam() => 'Derde Divisie ${widget.divisie}';
-
-  // ---------- helpers ----------
-  // Normaliseer naar een robuuste key (valt terug op naam als codes ontbreken)
-  String _key(String? s) {
-    if (s == null) return '';
-    var t = s
-        .replaceAll('’', '')
-        .replaceAll("'", '')
-        .replaceAll('\u00A0', '')
-        .replaceAll(' ', '')
-        .replaceAll('/', '')
-        .replaceAll('.', '')
-        .replaceAll('-', '')
-        .toUpperCase()
-        .trim();
-
-    // Speciale fixes voor bekende varianten
-    if (t.contains('ADO20')) t = 'ADO20'; // ADO ’20 varianten
-    if (t == 'SCGENEMUIDEN') t = 'GENEMUIDEN'; // vaak zonder SC
-    return t;
-  }
-
-  String _logoPath(String club) => 'assets/images/logo_${club
-      .replaceAll("’", "")
-      .replaceAll("'", "")
-      .replaceAll(" ", "")
-      .replaceAll("/", "")}.png';
-
-  // ---------- data laden ----------
-  Future<void> _laadClubsEnVoorspelling() async {
-    final gebruiker = _auth.currentUser;
-    if (gebruiker == null) return;
-
-    final standaardClubs = widget.divisie == 'A'
-        ? [
-            'DOVO', 'Eemdijk', 'Scherpenzeel', 'Staphorst', "DVS'33 Ermelo",
-            'Sparta Nijkerk', 'TEC', 'Urk', 'Hoogeveen', "HSC'21",
-            "Sportlust'46", "Excelsior'31", 'Hercules', 'SC Genemuiden',
-            'Huizen', 'Harkemase Boys', 'Rohda Raalte', "ADO '20"
-          ]
-        : [
-            'Noordwijk', 'Scheveningen', 'SteDoCo', 'Zwaluwen', 'Kloetinge',
-            'RBC', 'Groene Ster', 'Rijnvogels', 'UNA', 'ASWH',
-            "UDI'19", 'TOGB', 'FC Lisse', 'Gemert', 'sv Meerssen',
-            "Blauw Geel'38/JUMBO", 'Goes', 'VVSB'
-          ];
-
-    final docId = '${gebruiker.uid}_${widget.divisie}';
-    final doc = await _firestore.collection('eindstand_voorspellingen').doc(docId).get();
-
-    isBuitenDeadline = DateTime.now().isAfter(deadline);
-
-    final lijst = doc.exists
-        ? List<String>.from(doc.data()?['voorspelling'] ?? standaardClubs)
-        : standaardClubs;
-
-    setState(() {
-      clubs = lijst;
-      clubKeys = lijst.map(_key).toList();
-      _puntenPerRegel = List.filled(lijst.length, 0);
-      isLoading = false;
-    });
-
-    if (isBuitenDeadline) {
-      await _berekenEchteEindstandEnPunten();
+  Future<void> _load() async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      if (mounted) setState(() => _loading = false);
+      return;
     }
-  }
 
-  // ---------- tussenstand + punten berekenen ----------
-  Future<void> _berekenEchteEindstandEnPunten() async {
-    final competitie = _competitieNaam();
+    try {
+      final teamSnapshot = await SeasonPaths.currentSeasonTeams.get();
+      final configuredTeams = teamSnapshot.docs
+          .where((doc) {
+            if (doc.id == '_meta') return false;
+            final data = doc.data();
+            final division =
+                (data['division'] ?? data['divisie'] ?? '').toString();
+            return SeasonConfig.normalizeDivisionCode(division) ==
+                widget.divisie;
+          })
+          .map((doc) {
+            final data = doc.data();
+            final name =
+                (data['teamName'] ?? data['name'] ?? data['team'] ?? doc.id)
+                    .toString();
+            return SeasonConfig.displayNameForTeam(name);
+          })
+          .where((name) => name.trim().isNotEmpty)
+          .toSet()
+          .toList()
+        ..sort();
 
-    final snap = await _firestore
-        .collection('matches')
-        .where('competitie', isEqualTo: competitie)
-        .get();
+      final prediction = await _db
+          .collection('eindstand_voorspellingen')
+          .doc('${user.uid}_${widget.divisie}')
+          .get();
+      final data = prediction.data();
+      final belongsToCurrentSeason =
+          data?['seasonId']?.toString() == SeasonConfig.activeSeasonId;
+      final saved = belongsToCurrentSeason && data?['voorspelling'] is List
+          ? List<String>.from(data!['voorspelling'])
+          : <String>[];
+      final validSaved = saved.length == configuredTeams.length &&
+          saved.toSet().containsAll(configuredTeams);
 
-    // Alleen wedstrijden met score
-    final docs = snap.docs.where((d) {
-      final m = d.data();
-      return m['uitslagThuis'] is int && m['uitslagUit'] is int;
-    }).toList();
-
-    // key -> stats
-    final clubPunten = <String, Map<String, int>>{};
-    void initClub(String key) {
-      clubPunten.putIfAbsent(key, () => {
-        'punten': 0,
-        'doelsaldo': 0,
-        'gespeeld': 0,
-        'doelpuntenVoor': 0,
+      if (!mounted) return;
+      setState(() {
+        _clubs = validSaved ? saved : configuredTeams;
+        _points = belongsToCurrentSeason
+            ? ((data?['punten'] as num?)?.toInt() ?? 0)
+            : 0;
+        _loading = false;
+      });
+    } on FirebaseException {
+      if (!mounted) return;
+      setState(() {
+        _clubs = [];
+        _loading = false;
       });
     }
-
-    for (final doc in docs) {
-      final m = doc.data();
-
-      // ✅ Primair op teamcode matchen, anders op genormaliseerde naam
-      final homeKey = _key((m['homeTeamCode'] ?? m['thuisteam'])?.toString());
-      final awayKey = _key((m['awayTeamCode'] ?? m['uitteam'])?.toString());
-      if (homeKey.isEmpty || awayKey.isEmpty) continue;
-
-      final h = m['uitslagThuis'] as int;
-      final a = m['uitslagUit'] as int;
-
-      initClub(homeKey);
-      initClub(awayKey);
-
-      clubPunten[homeKey]!['gespeeld'] = clubPunten[homeKey]!['gespeeld']! + 1;
-      clubPunten[awayKey]!['gespeeld'] = clubPunten[awayKey]!['gespeeld']! + 1;
-
-      clubPunten[homeKey]!['doelpuntenVoor'] =
-          clubPunten[homeKey]!['doelpuntenVoor']! + h;
-      clubPunten[awayKey]!['doelpuntenVoor'] =
-          clubPunten[awayKey]!['doelpuntenVoor']! + a;
-
-      clubPunten[homeKey]!['doelsaldo'] =
-          clubPunten[homeKey]!['doelsaldo']! + (h - a);
-      clubPunten[awayKey]!['doelsaldo'] =
-          clubPunten[awayKey]!['doelsaldo']! + (a - h);
-
-      if (h > a) {
-        clubPunten[homeKey]!['punten'] = clubPunten[homeKey]!['punten']! + 3;
-      } else if (h < a) {
-        clubPunten[awayKey]!['punten'] = clubPunten[awayKey]!['punten']! + 3;
-      } else {
-        clubPunten[homeKey]!['punten'] = clubPunten[homeKey]!['punten']! + 1;
-        clubPunten[awayKey]!['punten'] = clubPunten[awayKey]!['punten']! + 1;
-      }
-    }
-
-    // sorteren met jouw tie-breakers
-    final ranking = clubPunten.entries.toList()
-      ..sort((a, b) {
-        final A = a.value, B = b.value;
-        final av = (A['punten']! * 1000000) +
-            ((1000 - A['gespeeld']!) * 10000) +
-            (A['doelsaldo']! * 100) +
-            A['doelpuntenVoor']!;
-        final bv = (B['punten']! * 1000000) +
-            ((1000 - B['gespeeld']!) * 10000) +
-            (B['doelsaldo']! * 100) +
-            B['doelpuntenVoor']!;
-        return bv.compareTo(av);
-      });
-
-    // key -> 0-based rank
-    _echtePosities = {
-      for (int i = 0; i < ranking.length; i++) ranking[i].key: i,
-    };
-
-    // punten per regel (vergelijken op key)
-    final punten = List<int>.filled(clubs.length, 0);
-    var totaal = 0;
-    for (int i = 0; i < clubKeys.length; i++) {
-      final key = clubKeys[i];
-      final echteIndex = _echtePosities[key];
-      if (echteIndex == null) continue;
-
-      int p = 0;
-      if (echteIndex == 0 && i == 0) {
-        p = 30;
-      } else if (echteIndex == i) {
-        p = 10;
-      } else if ((echteIndex - i).abs() == 1) {
-        p = 6;
-      } else if ((echteIndex - i).abs() == 2) {
-        p = 2;
-      }
-      punten[i] = p;
-      totaal += p;
-    }
-
-    setState(() {
-      _puntenPerRegel = punten;
-      _totaalPunten = totaal;
-    });
   }
 
-  // ---------- opslaan ----------
-  Future<void> _slaVoorspellingOp() async {
-    final gebruiker = _auth.currentUser;
-    if (gebruiker == null || isBuitenDeadline) return;
-    final docId = '${gebruiker.uid}_${widget.divisie}';
-    await _firestore.collection('eindstand_voorspellingen').doc(docId).set({
-      'gebruikerId': gebruiker.uid,
+  Future<void> _save() async {
+    final user = _auth.currentUser;
+    if (user == null || _locked) return;
+
+    await _db
+        .collection('eindstand_voorspellingen')
+        .doc('${user.uid}_${widget.divisie}')
+        .set({
+      'gebruikerId': user.uid,
       'divisie': widget.divisie,
-      'voorspelling': clubs,
+      'seasonId': SeasonConfig.activeSeasonId,
+      'voorspelling': _clubs,
       'timestamp': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }
 
-  // ---------- UI ----------
-  Widget _buildClubTile(int index, String club) {
-    final key = clubKeys[index];
-    final echteIndex = _echtePosities[key]; // 0-based
-    final punten = (index < _puntenPerRegel.length) ? _puntenPerRegel[index] : 0;
-
-    final onderregel = (isBuitenDeadline && echteIndex != null)
-        ? 'Werkelijke plek: ${echteIndex + 1}   ·   +$punten'
-        : null;
-
-    final correctKleur = (isBuitenDeadline && echteIndex == index)
-        ? Colors.green[700]
-        : null;
-
-    return Card(
-      key: ValueKey('$key-$index'),
-      elevation: 0,
-      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      color: Colors.white,
-      child: ListTile(
-        tileColor: Colors.white,
-        leading: CircleAvatar(
-          backgroundColor: Colors.green[100],
-          child: Text('${index + 1}'),
-        ),
-        title: Row(
-          children: [
-            Image.asset(
-              _logoPath(club),
-              width: 28,
-              height: 28,
-              errorBuilder: (_, __, ___) => const Icon(Icons.image_not_supported, size: 28),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                club,
-                style: TextStyle(
-                  color: correctKleur,
-                  fontWeight: isBuitenDeadline && (echteIndex == index)
-                      ? FontWeight.w700
-                      : FontWeight.w400,
-                ),
-              ),
-            ),
-          ],
-        ),
-        subtitle: onderregel == null ? null : Text(onderregel, style: const TextStyle(fontSize: 12)),
-        trailing: isBuitenDeadline ? const SizedBox(width: 20) : const Icon(Icons.drag_handle),
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Eindstand voorspellen - Divisie ${widget.divisie}'),
       ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : _clubs.isEmpty
+              ? const _MissingDivisionState()
+              : LayoutBuilder(
+                  builder: (context, constraints) {
+                    return Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 820),
+                        child: Column(
+                          children: [
+                            _StatusBar(
+                              locked: _locked,
+                              points: _points,
+                            ),
+                            Expanded(
+                              child: ReorderableListView.builder(
+                                padding: EdgeInsets.all(
+                                  constraints.maxWidth < 600 ? 10 : 18,
+                                ),
+                                buildDefaultDragHandles: false,
+                                itemCount: _clubs.length,
+                                onReorder: (oldIndex, newIndex) async {
+                                  if (_locked) return;
+                                  setState(() {
+                                    if (newIndex > oldIndex) newIndex--;
+                                    final club = _clubs.removeAt(oldIndex);
+                                    _clubs.insert(newIndex, club);
+                                  });
+                                  await _save();
+                                },
+                                itemBuilder: (context, index) {
+                                  final club = _clubs[index];
+                                  return _ClubRow(
+                                    key: ValueKey(club),
+                                    index: index,
+                                    club: club,
+                                    locked: _locked,
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
     );
   }
+}
+
+class _StatusBar extends StatelessWidget {
+  const _StatusBar({required this.locked, required this.points});
+
+  final bool locked;
+  final int points;
 
   @override
   Widget build(BuildContext context) {
-    final bovenregel = isBuitenDeadline
-        ? 'Eindstand vergrendeld – totaal: $_totaalPunten punten'
-        : 'Je kunt je voorspelling aanpassen tot 31 augustus 2025';
-
-    return Scaffold(
-      appBar: AppBar(title: Text('Eindstand voorspellen – Divisie ${widget.divisie}')),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                Container(
-                  width: double.infinity,
-                  color: const Color(0xFFF9F2EE),
-                  padding: const EdgeInsets.all(12),
-                  child: Text(
-                    bovenregel,
-                    style: TextStyle(
-                      color: isBuitenDeadline ? Colors.red : Colors.black87,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Expanded(
-                  child: ReorderableListView.builder(
-                    buildDefaultDragHandles: true,
-                    itemCount: clubs.length,
-                    onReorder: (oldIndex, newIndex) async {
-                      if (isBuitenDeadline) return;
-                      setState(() {
-                        if (newIndex > oldIndex) newIndex -= 1;
-                        final club = clubs.removeAt(oldIndex);
-                        final key  = clubKeys.removeAt(oldIndex);
-                        clubs.insert(newIndex, club);
-                        clubKeys.insert(newIndex, key);
-                      });
-                      await _slaVoorspellingOp();
-                    },
-                    itemBuilder: (context, index) => _buildClubTile(index, clubs[index]),
-                  ),
-                ),
-              ],
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(12, 14, 12, 0),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: locked ? const Color(0xFFFFF3E0) : const Color(0xFFE8F5E9),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: locked ? const Color(0xFFFFCC80) : const Color(0xFFC8E6C9),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(locked ? Icons.lock_outline : Icons.lock_open_rounded),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              locked ? 'Vergrendeld' : 'Open tot en met 31 augustus 2026',
+              style: const TextStyle(fontWeight: FontWeight.w700),
             ),
+          ),
+          if (points > 0) Text('$points punten'),
+        ],
+      ),
+    );
+  }
+}
+
+class _ClubRow extends StatelessWidget {
+  const _ClubRow({
+    super.key,
+    required this.index,
+    required this.club,
+    required this.locked,
+  });
+
+  final int index;
+  final String club;
+  final bool locked;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFE3EADF)),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 34,
+            child: Text(
+              '${index + 1}.',
+              style: const TextStyle(fontWeight: FontWeight.w800),
+            ),
+          ),
+          Image.asset(
+            SeasonConfig.logoPathForTeam(club),
+            width: 34,
+            height: 34,
+            errorBuilder: (_, __, ___) =>
+                const Icon(Icons.shield_outlined, size: 34),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              club,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+          if (!locked)
+            ReorderableDragStartListener(
+              index: index,
+              child: const Padding(
+                padding: EdgeInsets.all(8),
+                child: Icon(Icons.drag_handle_rounded),
+              ),
+            )
+          else
+            const Icon(Icons.lock_outline, size: 20),
+        ],
+      ),
+    );
+  }
+}
+
+class _MissingDivisionState extends StatelessWidget {
+  const _MissingDivisionState();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 560),
+        child: const Padding(
+          padding: EdgeInsets.all(24),
+          child: Text(
+            'De definitieve indeling is nog niet bekend. Je kunt deze voorspelling later invullen zodra de indeling beschikbaar is.',
+            textAlign: TextAlign.center,
+            style: TextStyle(height: 1.5),
+          ),
+        ),
+      ),
     );
   }
 }

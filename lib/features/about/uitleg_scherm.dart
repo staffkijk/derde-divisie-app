@@ -1,106 +1,106 @@
 import 'package:flutter/material.dart';
 
-class UitlegScherm extends StatelessWidget {
-  const UitlegScherm({super.key});
+class PuntentellingScreen extends StatelessWidget {
+  const PuntentellingScreen({super.key});
 
-  static const Color _darkGreen = Color(0xFF0F3D2E);
-  static const Color _green = Color(0xFF2FA85A);
-  static const Color _lightGreen = Color(0xFFEAF5EE);
-  static const Color _pageBackground = Color(0xFFF6FAF7);
-  static const Color _textDark = Color(0xFF13251B);
-  static const Color _textMuted = Color(0xFF647067);
+  static const Color _primary = Color(0xFF0F3F2A);
+  static const Color _primarySoft = Color(0xFFE8F5EE);
+  static const Color _accent = Color(0xFF2E7D32);
+  static const Color _surface = Color(0xFFF4F7F5);
+  static const Color _cardBorder = Color(0xFFE0E7E2);
+  static const Color _text = Color(0xFF1F2933);
+  static const Color _muted = Color(0xFF6B7280);
 
   @override
   Widget build(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width;
+    final horizontalPadding = width >= 900 ? 32.0 : 16.0;
+
     return Scaffold(
-      backgroundColor: _pageBackground,
+      backgroundColor: _surface,
       appBar: AppBar(
-        title: const Text('Help & Info'),
-        backgroundColor: _darkGreen,
+        title: const Text('Puntentelling'),
+        backgroundColor: _primary,
         foregroundColor: Colors.white,
         elevation: 0,
       ),
       body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final bool isWide = constraints.maxWidth >= 850;
+        child: SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(horizontalPadding, 24, horizontalPadding, 32),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1180),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const _HeroCard(),
+                  const SizedBox(height: 24),
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isWide = constraints.maxWidth >= 850;
 
-            return SingleChildScrollView(
-              padding: EdgeInsets.symmetric(
-                horizontal: isWide ? 32 : 16,
-                vertical: 24,
-              ),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 1100),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const _HeroCard(),
-                      const SizedBox(height: 22),
-                      Wrap(
-                        spacing: 18,
-                        runSpacing: 18,
+                      final cards = [
+                        const _RuleCard(
+                          icon: Icons.sports_soccer_rounded,
+                          title: 'Wedstrijdvoorspellingen',
+                          subtitle: 'Punten per gespeelde wedstrijd',
+                          rules: [
+                            _ScoreRule('Exacte uitslag goed', '10 punten', 'Bijvoorbeeld 2-1 voorspeld en 2-1 gespeeld.'),
+                            _ScoreRule('Gelijkspel goed voorspeld', '7 punten', 'Je voorspelt een gelijkspel en de wedstrijd eindigt gelijk.'),
+                            _ScoreRule('Winnaar goed voorspeld', '5 punten', 'Je voorspelt de juiste winnaar, maar niet de exacte uitslag.'),
+                            _ScoreRule('Doelpunten thuis of uit goed', '2 punten', 'Per juist voorspeld aantal doelpunten.'),
+                          ],
+                        ),
+                        const _RuleCard(
+                          icon: Icons.emoji_events_rounded,
+                          title: 'Eindstandvoorspellingen',
+                          subtitle: 'Extra punten aan het einde van het seizoen',
+                          rules: [
+                            _ScoreRule('Kampioen correct voorspeld', '30 punten', 'De kampioen van de divisie staat op plek 1 in jouw voorspelling.'),
+                            _ScoreRule('Exacte eindpositie correct', '10 punten', 'Geldt voor clubs die niet als kampioen eindigen.'),
+                            _ScoreRule('Één plek verschil', '6 punten', 'Bijvoorbeeld 4e voorspeld en 5e geworden.'),
+                            _ScoreRule('Twee plekken verschil', '2 punten', 'Bijvoorbeeld 7e voorspeld en 9e geworden.'),
+                          ],
+                        ),
+                      ];
+
+                      if (!isWide) {
+                        return Column(
+                          children: [
+                            cards[0],
+                            const SizedBox(height: 16),
+                            cards[1],
+                          ],
+                        );
+                      }
+
+                      return Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _InfoTile(
-                            width: isWide ? 541 : double.infinity,
-                            icon: Icons.emoji_events_outlined,
-                            title: 'Puntentelling',
-                            subtitle:
-                                'Bekijk hoe punten worden berekend bij exacte uitslagen, juiste winnaars, gelijke spelen en doelpunten.',
-                            buttonText: 'Bekijk puntentelling',
-                            onTap: () {
-                              Navigator.pushNamed(context, '/puntentelling');
-                            },
-                          ),
-                          _InfoTile(
-                            width: isWide ? 541 : double.infinity,
-                            icon: Icons.question_answer_outlined,
-                            title: 'Veelgestelde vragen',
-                            subtitle:
-                                'Antwoorden op vragen over inloggen, voorspellen, deadlines, poules en je account.',
-                            buttonText: 'Open FAQ',
-                            onTap: () {
-                              Navigator.pushNamed(context, '/faq');
-                            },
-                          ),
-                          _InfoTile(
-                            width: isWide ? 541 : double.infinity,
-                            icon: Icons.info_outline,
-                            title: 'Over Derde Divisie',
-                            subtitle:
-                                'Lees waarvoor deze website is gemaakt en wat je hier tijdens het seizoen kunt volgen.',
-                            buttonText: 'Lees meer',
-                            onTap: () {
-                              Navigator.pushNamed(context, '/over');
-                            },
-                          ),
-                          _InfoTile(
-                            width: isWide ? 541 : double.infinity,
-                            icon: Icons.privacy_tip_outlined,
-                            title: 'Privacy en voorwaarden',
-                            subtitle:
-                                'Informatie over gegevensgebruik, voorwaarden, disclaimer en verantwoordelijkheid van gebruikers.',
-                            buttonText: 'Bekijk voorwaarden',
-                            onTap: () {
-                              Navigator.pushNamed(
-                                context,
-                                '/privacy',
-                              );
-                            },
-                          ),
+                          Expanded(child: cards[0]),
+                          const SizedBox(width: 18),
+                          Expanded(child: cards[1]),
                         ],
-                      ),
-                      const SizedBox(height: 22),
-                      const _QuickFaqCard(),
-                      const SizedBox(height: 22),
-                      const _ContactCard(),
-                    ],
+                      );
+                    },
                   ),
-                ),
+                  const SizedBox(height: 18),
+                  const _ExampleCard(),
+                  const SizedBox(height: 24),
+                  const Center(
+                    child: Text(
+                      'Laatste update: juni 2026',
+                      style: TextStyle(
+                        color: _muted,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            );
-          },
+            ),
+          ),
         ),
       ),
     );
@@ -110,389 +110,221 @@ class UitlegScherm extends StatelessWidget {
 class _HeroCard extends StatelessWidget {
   const _HeroCard();
 
-  static const Color _darkGreen = UitlegScherm._darkGreen;
-  static const Color _green = UitlegScherm._green;
+  static const Color _primary = PuntentellingScreen._primary;
+  static const Color _primarySoft = PuntentellingScreen._primarySoft;
+  static const Color _accent = PuntentellingScreen._accent;
+  static const Color _text = PuntentellingScreen._text;
+  static const Color _muted = PuntentellingScreen._muted;
+  static const Color _cardBorder = PuntentellingScreen._cardBorder;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(28),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [
-            _darkGreen,
-            Color(0xFF15593F),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.12),
-            blurRadius: 22,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final bool compact = constraints.maxWidth < 650;
-
-          return Flex(
-            direction: compact ? Axis.vertical : Axis.horizontal,
-            crossAxisAlignment: compact
-                ? CrossAxisAlignment.start
-                : CrossAxisAlignment.center,
-            children: [
-              Expanded(
-                flex: compact ? 0 : 1,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 7,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.14),
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.20),
-                        ),
-                      ),
-                      child: const Text(
-                        'Supportcentrum',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Alles over voorspellen, poules en de werking van de website.',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 30,
-                        fontWeight: FontWeight.w800,
-                        height: 1.15,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Vind snel uitleg over de puntentelling, veelgestelde vragen, privacy en algemene informatie over Derde Divisie.',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.82),
-                        fontSize: 16,
-                        height: 1.45,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(width: compact ? 0 : 28, height: compact ? 22 : 0),
-              Container(
-                width: compact ? 92 : 130,
-                height: compact ? 92 : 130,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(32),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.20),
-                  ),
-                ),
-                child: const Icon(
-                  Icons.help_outline,
-                  color: _green,
-                  size: 62,
-                ),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _InfoTile extends StatelessWidget {
-  const _InfoTile({
-    required this.width,
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.buttonText,
-    required this.onTap,
-  });
-
-  final double width;
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final String buttonText;
-  final VoidCallback onTap;
-
-  static const Color _green = UitlegScherm._green;
-  static const Color _lightGreen = UitlegScherm._lightGreen;
-  static const Color _textDark = UitlegScherm._textDark;
-  static const Color _textMuted = UitlegScherm._textMuted;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: width,
-      child: Material(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        elevation: 0,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(22),
-          onTap: onTap,
-          child: Container(
-  constraints: const BoxConstraints(
-    minHeight: 190,
-  ),
-  padding: const EdgeInsets.all(22),
-  decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(
-                color: const Color(0xFFE2EAE4),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.045),
-                  blurRadius: 18,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 46,
-                      height: 46,
-                      decoration: BoxDecoration(
-                        color: _lightGreen,
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                      child: Icon(
-                        icon,
-                        color: _green,
-                        size: 25,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Text(
-                        title,
-                        style: const TextStyle(
-                          color: _textDark,
-                          fontSize: 19,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    color: _textMuted,
-                    fontSize: 14.5,
-                    height: 1.45,
-                  ),
-                ),
-                const Spacer(),
-                const SizedBox(height: 18),
-                Row(
-                  children: [
-                    Text(
-                      buttonText,
-                      style: const TextStyle(
-                        color: _green,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    const Icon(
-                      Icons.arrow_forward,
-                      color: _green,
-                      size: 18,
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _QuickFaqCard extends StatelessWidget {
-  const _QuickFaqCard();
-
-  static const Color _textDark = UitlegScherm._textDark;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(
-          color: const Color(0xFFE2EAE4),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
-          Text(
-            'Snel uitgelegd',
-            style: TextStyle(
-              color: _textDark,
-              fontSize: 21,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          SizedBox(height: 14),
-          _FaqLine(
-            question: 'Wanneer moet ik mijn voorspelling invullen?',
-            answer:
-                'Voor de ingestelde deadline. Daarna wordt voorspellen voor die wedstrijd geblokkeerd.',
-          ),
-          _FaqLine(
-            question: 'Kan ik meerdere poules hebben?',
-            answer:
-                'Ja, afhankelijk van de ingestelde mogelijkheden kun je deelnemen aan meerdere poules.',
-          ),
-          _FaqLine(
-            question: 'Waar zie ik mijn punten?',
-            answer:
-                'Je punten staan in de algemene ranking en binnen de poules waaraan je deelneemt.',
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _FaqLine extends StatelessWidget {
-  const _FaqLine({
-    required this.question,
-    required this.answer,
-  });
-
-  final String question;
-  final String answer;
-
-  static const Color _green = UitlegScherm._green;
-  static const Color _textDark = UitlegScherm._textDark;
-  static const Color _textMuted = UitlegScherm._textMuted;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 13),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(
-            Icons.check_circle_outline,
-            color: _green,
-            size: 21,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: RichText(
-              text: TextSpan(
-                style: const TextStyle(
-                  color: _textMuted,
-                  fontSize: 14.5,
-                  height: 1.45,
-                ),
-                children: [
-                  TextSpan(
-                    text: '$question\n',
-                    style: const TextStyle(
-                      color: _textDark,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  TextSpan(text: answer),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ContactCard extends StatelessWidget {
-  const _ContactCard();
-
-  static const Color _darkGreen = UitlegScherm._darkGreen;
-  static const Color _green = UitlegScherm._green;
-  static const Color _textMuted = UitlegScherm._textMuted;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        color: const Color(0xFFEFF7F2),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(
-          color: const Color(0xFFD4E7DA),
-        ),
+        border: Border.all(color: _cardBorder),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x14000000),
+            blurRadius: 18,
+            offset: Offset(0, 8),
+          ),
+        ],
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 44,
-            height: 44,
+            width: 52,
+            height: 52,
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
+              color: _primarySoft,
+              borderRadius: BorderRadius.circular(16),
             ),
             child: const Icon(
-              Icons.campaign_outlined,
-              color: _green,
+              Icons.rule_rounded,
+              color: _primary,
+              size: 30,
             ),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 16),
           const Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Vraag, foutje of idee?',
+                  'Zo werkt de puntentelling',
                   style: TextStyle(
-                    color: _darkGreen,
-                    fontSize: 18,
+                    color: _text,
+                    fontSize: 24,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                SizedBox(height: 6),
+                SizedBox(height: 8),
                 Text(
-                  'Mist er iets of klopt er iets niet? Geef het door via X: @Derde_Div.',
+                  'Je scoort punten met wedstrijdvoorspellingen en met je voorspelde eindstand. De exacte uitslag levert het meeste op, maar ook een juiste winnaar of een goed aantal doelpunten telt mee.',
                   style: TextStyle(
-                    color: _textMuted,
-                    fontSize: 14.5,
-                    height: 1.45,
+                    color: _muted,
+                    fontSize: 16,
+                    height: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: _accent,
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: const Text(
+              'Seizoen 2026/2027',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RuleCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final List<_ScoreRule> rules;
+
+  const _RuleCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.rules,
+  });
+
+  static const Color _primary = PuntentellingScreen._primary;
+  static const Color _primarySoft = PuntentellingScreen._primarySoft;
+  static const Color _cardBorder = PuntentellingScreen._cardBorder;
+  static const Color _text = PuntentellingScreen._text;
+  static const Color _muted = PuntentellingScreen._muted;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: _cardBorder),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0F000000),
+            blurRadius: 16,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: _primarySoft,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(icon, color: _primary, size: 26),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: _text,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        color: _muted,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          ...rules.map((rule) => _RuleRow(rule: rule)),
+        ],
+      ),
+    );
+  }
+}
+
+class _RuleRow extends StatelessWidget {
+  final _ScoreRule rule;
+
+  const _RuleRow({required this.rule});
+
+ 
+  static const Color _cardBorder = PuntentellingScreen._cardBorder;
+  static const Color _text = PuntentellingScreen._text;
+  static const Color _muted = PuntentellingScreen._muted;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFAFCFB),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _cardBorder),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _ScorePill(label: rule.points),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  rule.title,
+                  style: const TextStyle(
+                    color: _text,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  rule.description,
+                  style: const TextStyle(
+                    color: _muted,
+                    fontSize: 14,
+                    height: 1.4,
                   ),
                 ),
               ],
@@ -502,4 +334,89 @@ class _ContactCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _ScorePill extends StatelessWidget {
+  final String label;
+
+  const _ScorePill({required this.label});
+
+  static const Color _primary = PuntentellingScreen._primary;
+  static const Color _primarySoft = PuntentellingScreen._primarySoft;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(minWidth: 82),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: _primarySoft,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          color: _primary,
+          fontWeight: FontWeight.w800,
+          fontSize: 13,
+        ),
+      ),
+    );
+  }
+}
+
+class _ExampleCard extends StatelessWidget {
+  const _ExampleCard();
+
+  static const Color _primary = PuntentellingScreen._primary;
+  static const Color _primarySoft = PuntentellingScreen._primarySoft;
+  static const Color _cardBorder = PuntentellingScreen._cardBorder;
+  static const Color _text = PuntentellingScreen._text;
+  static const Color _muted = PuntentellingScreen._muted;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: _primarySoft,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _cardBorder),
+      ),
+      child: const Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.lightbulb_outline_rounded, color: _primary, size: 26),
+          SizedBox(width: 12),
+          Expanded(
+            child: Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(
+                    text: 'Voorbeeld: ',
+                    style: TextStyle(fontWeight: FontWeight.w800, color: _text),
+                  ),
+                  TextSpan(
+                    text: 'voorspel je 2-1 en wordt het 2-1, dan ontvang je 10 punten. Voorspel je 2-1 en wordt het 3-1, dan heb je de winnaar goed en krijg je punten voor het juiste uitdoelpunt.',
+                    style: TextStyle(color: _muted),
+                  ),
+                ],
+              ),
+              style: TextStyle(fontSize: 15, height: 1.45),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ScoreRule {
+  final String title;
+  final String points;
+  final String description;
+
+  const _ScoreRule(this.title, this.points, this.description);
 }

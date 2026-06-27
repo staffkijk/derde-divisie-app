@@ -4,7 +4,7 @@ const { initializeApp, applicationDefault, getApps } = require("firebase-admin/a
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 
 const SEASON_ID = "2026-2027";
-const DRY_RUN = false;
+const DRY_RUN = true;
 
 if (!getApps().length) {
   initializeApp({

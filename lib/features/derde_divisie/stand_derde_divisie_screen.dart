@@ -197,14 +197,19 @@ class StandEntry {
 
   factory StandEntry.fromArchiveDoc(QueryDocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
-    final naam = (data['teamName'] ?? data['club'] ?? '').toString();
+    final naam =
+        (data['teamName'] ?? data['name'] ?? data['team'] ?? data['club'] ?? '')
+            .toString();
+    final team = SeasonConfig.teamByName(naam) ??
+        SeasonConfig.teamById(
+            (data['teamId'] ?? data['id'] ?? doc.id).toString());
 
     return StandEntry(
       data: data,
-      naam: naam,
-      code: _normName(naam),
+      naam: team?.listLabel ?? naam,
+      code: _normName(team?.listLabel ?? naam),
       docCode: _normName(doc.id),
-      logoAsset: null,
+      logoAsset: (data['logoAsset'] ?? team?.logoPath)?.toString(),
       positie: _toInt(data['position'] ?? data['positie']),
       gespeeld: _toInt(data['played'] ?? data['gespeeld']),
       gewonnen: _toInt(data['won'] ?? data['wins'] ?? data['gewonnen']),
@@ -677,12 +682,12 @@ class StandDerdeDivisie extends StatelessWidget {
         final entries = _buildArchiveEntries(snapshot.data!.docs);
 
         if (entries.isEmpty) {
-          return Padding(
-            padding: const EdgeInsets.all(16),
+          return const Padding(
+            padding: EdgeInsets.all(16),
             child: Text(
-              'Geen archiefstand gevonden voor $seizoen.',
+              'Voor dit seizoen is nog geen eindstand beschikbaar.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey.shade700),
+              style: TextStyle(color: Color(0xFF5F6F66)),
             ),
           );
         }
@@ -705,7 +710,7 @@ class StandDerdeDivisie extends StatelessWidget {
     final isDesktop = screenWidth > 800;
     final isNarrow = screenWidth < 360;
 
-    final bool showLogos = _isActueel;
+    final bool showLogos = entries.isNotEmpty;
     final double wPos = isDesktop ? 26 : 24;
     final double wLogo = showLogos ? (isDesktop ? 28 : 24) : 0;
     final double wGap = showLogos ? (isDesktop ? 8 : 4) : 0;
@@ -959,7 +964,7 @@ class StandDerdeDivisie extends StatelessWidget {
             SizedBox(
               width: wStat,
               child: const Text(
-                'G',
+                'GS',
                 textAlign: TextAlign.right,
                 style: TextStyle(fontFamily: 'monospace'),
               ),

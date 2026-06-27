@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import 'periode_standen_screen.dart';
+import 'historical_standings_screen.dart';
 import 'stand_derde_divisie_screen.dart';
 
 class DivisionOverviewScreen extends StatelessWidget {
@@ -10,7 +11,8 @@ class DivisionOverviewScreen extends StatelessWidget {
 
   const DivisionOverviewScreen({super.key, required this.division});
 
-  String get _shortDivision => division.toLowerCase().contains(' b') ? 'B' : 'A';
+  String get _shortDivision =>
+      division.toLowerCase().contains(' b') ? 'B' : 'A';
   String get _title => 'Derde Divisie $_shortDivision';
 
   @override
@@ -56,14 +58,16 @@ class DivisionOverviewScreen extends StatelessWidget {
                                 children: [
                                   _MatchesCard(
                                     title: 'Komende speelronde',
-                                    subtitle: 'Alle 9 wedstrijden zodra het programma bekend is.',
+                                    subtitle:
+                                        'Alle 9 wedstrijden zodra het programma bekend is.',
                                     division: division,
                                     mode: _MatchCardMode.upcoming,
                                   ),
                                   const SizedBox(height: 18),
                                   _MatchesCard(
                                     title: 'Laatste uitslagen',
-                                    subtitle: 'De 9 meest recente uitslagen van deze divisie.',
+                                    subtitle:
+                                        'De 9 meest recente uitslagen van deze divisie.',
                                     division: division,
                                     mode: _MatchCardMode.results,
                                   ),
@@ -73,18 +77,21 @@ class DivisionOverviewScreen extends StatelessWidget {
                           ],
                         )
                       else ...[
-                        _StandCard(title: 'Stand $_shortDivision', division: division),
+                        _StandCard(
+                            title: 'Stand $_shortDivision', division: division),
                         const SizedBox(height: 14),
                         _MatchesCard(
                           title: 'Komende speelronde',
-                          subtitle: 'Alle 9 wedstrijden zodra het programma bekend is.',
+                          subtitle:
+                              'Alle 9 wedstrijden zodra het programma bekend is.',
                           division: division,
                           mode: _MatchCardMode.upcoming,
                         ),
                         const SizedBox(height: 14),
                         _MatchesCard(
                           title: 'Laatste uitslagen',
-                          subtitle: 'De 9 meest recente uitslagen van deze divisie.',
+                          subtitle:
+                              'De 9 meest recente uitslagen van deze divisie.',
                           division: division,
                           mode: _MatchCardMode.results,
                         ),
@@ -148,7 +155,7 @@ class _DivisionHeader extends StatelessWidget {
             ],
           );
 
-          final button = ElevatedButton.icon(
+          final periodButton = ElevatedButton.icon(
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const PeriodeStandenScreen()),
@@ -166,13 +173,30 @@ class _DivisionHeader extends StatelessWidget {
             ),
           );
 
+          final archiveButton = OutlinedButton.icon(
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => HistoricalStandingsScreen(
+                    initialDivision:
+                        division.toLowerCase().contains(' b') ? 'B' : 'A',
+                  ),
+                ),
+              );
+            },
+            icon: const Icon(Icons.history_rounded, size: 18),
+            label: const Text('Historische eindstanden'),
+          );
+
           if (compact) {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 textBlock,
                 const SizedBox(height: 14),
-                button,
+                periodButton,
+                const SizedBox(height: 8),
+                archiveButton,
               ],
             );
           }
@@ -181,7 +205,11 @@ class _DivisionHeader extends StatelessWidget {
             children: [
               Expanded(child: textBlock),
               const SizedBox(width: 14),
-              button,
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [archiveButton, periodButton],
+              ),
             ],
           );
         },
@@ -259,23 +287,30 @@ class _MatchesCard extends StatelessWidget {
         .snapshots();
   }
 
-  List<_MatchInfo> _selectMatches(List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) {
-    final matches = docs.map((doc) {
-      final data = doc.data();
-      final homeScore = _asInt(data['uitslagThuis'] ?? data['scoreThuis']);
-      final awayScore = _asInt(data['uitslagUit'] ?? data['scoreUit']);
-      final playedFlag = _asBool(data['verwerkt'] ?? data['gespeeld'] ?? data['isProcessed']);
-      final played = playedFlag ?? (homeScore != null && awayScore != null);
+  List<_MatchInfo> _selectMatches(
+      List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) {
+    final matches = docs
+        .map((doc) {
+          final data = doc.data();
+          final homeScore = _asInt(data['uitslagThuis'] ?? data['scoreThuis']);
+          final awayScore = _asInt(data['uitslagUit'] ?? data['scoreUit']);
+          final playedFlag = _asBool(
+              data['verwerkt'] ?? data['gespeeld'] ?? data['isProcessed']);
+          final played = playedFlag ?? (homeScore != null && awayScore != null);
 
-      return _MatchInfo(
-        homeTeam: _asTeamName(data['thuisteam'] ?? data['homeTeam'] ?? data['thuisTeam']),
-        awayTeam: _asTeamName(data['uitteam'] ?? data['awayTeam'] ?? data['uitTeam']),
-        homeScore: homeScore,
-        awayScore: awayScore,
-        date: _asDate(data['datum'] ?? data['date'] ?? data['startTime']),
-        played: played,
-      );
-    }).where((m) => m.homeTeam.isNotEmpty || m.awayTeam.isNotEmpty).toList();
+          return _MatchInfo(
+            homeTeam: _asTeamName(
+                data['thuisteam'] ?? data['homeTeam'] ?? data['thuisTeam']),
+            awayTeam: _asTeamName(
+                data['uitteam'] ?? data['awayTeam'] ?? data['uitTeam']),
+            homeScore: homeScore,
+            awayScore: awayScore,
+            date: _asDate(data['datum'] ?? data['date'] ?? data['startTime']),
+            played: played,
+          );
+        })
+        .where((m) => m.homeTeam.isNotEmpty || m.awayTeam.isNotEmpty)
+        .toList();
 
     if (mode == _MatchCardMode.upcoming) {
       final upcoming = matches.where((m) => !m.played).toList()
@@ -400,7 +435,8 @@ class _MatchTile extends StatelessWidget {
                     padding: const EdgeInsets.only(top: 2),
                     child: Text(
                       dateLabel,
-                      style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                      style:
+                          TextStyle(color: Colors.grey.shade600, fontSize: 12),
                     ),
                   ),
               ],
@@ -532,8 +568,12 @@ bool? _asBool(dynamic value) {
   if (value is bool) return value;
   if (value is num) return value != 0;
   final text = value.toString().toLowerCase().trim();
-  if (text == 'true' || text == 'ja' || text == 'yes' || text == '1') return true;
-  if (text == 'false' || text == 'nee' || text == 'no' || text == '0') return false;
+  if (text == 'true' || text == 'ja' || text == 'yes' || text == '1') {
+    return true;
+  }
+  if (text == 'false' || text == 'nee' || text == 'no' || text == '0') {
+    return false;
+  }
   return null;
 }
 

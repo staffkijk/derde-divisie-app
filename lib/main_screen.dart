@@ -8,8 +8,9 @@ import 'package:flutter/material.dart';
 import 'helpers/announcement_service.dart';
 import 'features/dashboard/dashboard_screen.dart';
 import 'features/derde_divisie/division_overview_screen.dart';
+import 'features/derde_divisie/historical_standings_screen.dart';
 import 'package:derde_divisie/features/profiel/profile_screen.dart';
-import 'features/moderator/moderator_menu_screen.dart';
+import 'features/moderator/moderator_dashboard_screen.dart';
 import 'package:derde_divisie/features/poules/poules_overzicht_screen.dart';
 import 'package:derde_divisie/features/voorspellen/prediction_overview_screen.dart';
 import 'package:derde_divisie/features/auth/login_screen.dart';
@@ -121,7 +122,7 @@ class _MainScreenState extends State<MainScreen> {
     try {
       final userDoc =
           await FirebaseFirestore.instance.collection('users').doc(uid).get();
-      final mod = userDoc.data()?['isModerator'] == true;
+      final mod = userDoc.data()?['ismoderator'] == true;
       if (mounted) setState(() => isModerator = mod);
     } catch (e) {
       debugPrint('Fout bij laden moderatorstatus: $e');
@@ -145,6 +146,13 @@ class _MainScreenState extends State<MainScreen> {
           onOpenDivisionB: () => _selectIndex(2),
           onOpenPredict: () => _selectIndex(3),
           onOpenPoules: () => _selectIndex(4),
+          onOpenHistoricalStandings: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const HistoricalStandingsScreen(),
+              ),
+            );
+          },
         ),
         const DivisionOverviewScreen(division: 'Derde Divisie A'),
         const DivisionOverviewScreen(division: 'Derde Divisie B'),
@@ -181,7 +189,7 @@ class _MainScreenState extends State<MainScreen> {
   void _openModerator() {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const ModeratorMenuScreen()),
+      MaterialPageRoute(builder: (_) => const ModeratorDashboardScreen()),
     );
   }
 
@@ -228,7 +236,8 @@ class _MainScreenState extends State<MainScreen> {
                             isModerator: isModerator,
                             onLogin: _ensureLoggedIn,
                             onLogout: _signOut,
-                            onShowAnnouncement: () => _showAnnouncement(loggedIn),
+                            onShowAnnouncement: () =>
+                                _showAnnouncement(loggedIn),
                             onModerator: _openModerator,
                           ),
                           Expanded(
@@ -258,14 +267,13 @@ class _MainScreenState extends State<MainScreen> {
                       height: 30,
                     ),
                     const SizedBox(width: 10),
-                    Text(isTablet ? _navItems[_selectedIndex].label : 'Derde Divisie'),
+                    Text(isTablet
+                        ? _navItems[_selectedIndex].label
+                        : 'Derde Divisie'),
                   ],
                 ),
                 actions: [
-                  UpdateLogButton(
-            isAdmin: isModerator,
-            iconColor: const Color(0xFF153B2A),
-          ),
+                  UpdateLogButton(isAdmin: isModerator),
                   if (_hasMelding)
                     IconButton(
                       icon: const Icon(Icons.notifications_active_outlined),
@@ -403,7 +411,7 @@ class _DesktopNavigation extends StatelessWidget {
                         ),
                         SizedBox(height: 2),
                         Text(
-                          'Derde Divisie centraal',
+                          'Derde Divisie',
                           style: TextStyle(color: Colors.white70, fontSize: 12),
                         ),
                       ],
@@ -417,7 +425,8 @@ class _DesktopNavigation extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: .08),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.white.withValues(alpha: .10)),
+                  border:
+                      Border.all(color: Colors.white.withValues(alpha: .10)),
                 ),
                 child: const Text(
                   'Volg standen, programma en cijfers zonder account. Log in wanneer je wilt voorspellen of een poule wilt beheren.',
@@ -447,7 +456,8 @@ class _DesktopNavigation extends StatelessWidget {
                     label: const Text('Moderator'),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Colors.white,
-                      side: BorderSide(color: Colors.white.withValues(alpha: .26)),
+                      side: BorderSide(
+                          color: Colors.white.withValues(alpha: .26)),
                     ),
                   ),
                 ),
@@ -458,7 +468,8 @@ class _DesktopNavigation extends StatelessWidget {
                   label: const Text('Uitloggen'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.white,
-                    side: BorderSide(color: Colors.white.withValues(alpha: .26)),
+                    side:
+                        BorderSide(color: Colors.white.withValues(alpha: .26)),
                   ),
                 )
               else
@@ -572,7 +583,10 @@ class _DesktopHeader extends StatelessWidget {
               ),
             ),
           ),
-          UpdateLogButton(isAdmin: isModerator),
+          UpdateLogButton(
+            isAdmin: isModerator,
+            iconColor: const Color(0xFF153B2A),
+          ),
           if (hasMelding)
             IconButton(
               icon: const Icon(Icons.notifications_active_outlined),
