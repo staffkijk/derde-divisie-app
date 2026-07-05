@@ -1,10 +1,11 @@
 // lib/features/moderator/moderator_menu_screen.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:derde_divisie/data/config/team_logo_assets.dart';
+import 'package:derde_divisie/data/firestore/season_paths.dart';
+import 'package:derde_divisie/features/moderator/result_processing_service.dart';
 
 class ModeratorMenuScreen extends StatefulWidget {
   const ModeratorMenuScreen({super.key});
@@ -14,22 +15,19 @@ class ModeratorMenuScreen extends StatefulWidget {
 }
 
 class _ModeratorMenuScreenState extends State<ModeratorMenuScreen> {
-  static const _season = '2026-2027';
   static const _darkGreen = Color(0xFF153B2A);
   static const _cream = Color(0xFFF3F6F1);
 
   String _division = 'A';
   int _round = 1;
   bool _savingAll = false;
+  final _processor = const ResultProcessingService();
 
   final Map<String, TextEditingController> _homeControllers = {};
   final Map<String, TextEditingController> _awayControllers = {};
 
   Query<Map<String, dynamic>> _matchesQuery() {
-    return FirebaseFirestore.instance
-        .collection('seasons')
-        .doc(_season)
-        .collection('matches')
+    return SeasonPaths.currentSeasonMatches
         .where('division', isEqualTo: _division)
         .where('round', isEqualTo: _round)
         .orderBy('roundMatchIndex');
@@ -153,21 +151,13 @@ class _ModeratorMenuScreenState extends State<ModeratorMenuScreen> {
     setState(() => _savingAll = true);
 
     try {
-      final batch = FirebaseFirestore.instance.batch();
-
       for (final update in updates) {
-        batch.set(
-          update.match.ref,
-          _resultPayload(
-            match: update.match,
-            homeScore: update.homeScore,
-            awayScore: update.awayScore,
-          ),
-          SetOptions(merge: true),
+        await _writeResult(
+          match: update.match,
+          homeScore: update.homeScore,
+          awayScore: update.awayScore,
         );
       }
-
-      await batch.commit();
 
       if (!mounted) return;
 
@@ -187,45 +177,39 @@ class _ModeratorMenuScreenState extends State<ModeratorMenuScreen> {
     required int homeScore,
     required int awayScore,
   }) async {
-    await match.ref.set(
-      _resultPayload(
-        match: match,
-        homeScore: homeScore,
-        awayScore: awayScore,
-      ),
-      SetOptions(merge: true),
+    await _processor.saveFinishedResult(
+      matchRef: match.ref,
+      homeScore: homeScore,
+      awayScore: awayScore,
+      division: match.division,
+      round: match.round,
+      homeTeam: match.homeTeam,
+      awayTeam: match.awayTeam,
+      homeTeamSlug: match.homeTeamSlug,
+      awayTeamSlug: match.awayTeamSlug,
     );
   }
 
-  Map<String, dynamic> _resultPayload({
-    required _MatchDoc match,
-    required int homeScore,
-    required int awayScore,
-  }) {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
+  Future<void> _setStatus(_MatchDoc match, String status) async {
+    try {
+      await _processor.saveWithoutScore(matchRef: match.ref, status: status);
+      _homeControllerFor(match).clear();
+      _awayControllerFor(match).clear();
+      if (mounted) {
+        _showSnack(
+          status == 'postponed'
+              ? 'Wedstrijd gemarkeerd als In te halen.'
+              : 'Wedstrijd afgelast.',
+        );
+      }
+    } catch (e) {
+      if (mounted) _showSnack('Status opslaan mislukt: $e');
+    }
+  }
 
-    return {
-      'homeScore': homeScore,
-      'awayScore': awayScore,
-      'status': 'finished',
-      'resultConfirmed': true,
-      'isFinal': false,
-      'processed': false,
-      'verwerkt': false,
-      'updatedAt': FieldValue.serverTimestamp(),
-      if (uid != null) 'updatedBy': uid,
-
-      // Compatibiliteitsvelden voor bestaande oude berekenlogica.
-      // Deze mogen later weg zodra alle services volledig op seasons/2026-2027/matches draaien.
-      'uitslagThuis': homeScore,
-      'uitslagUit': awayScore,
-      'speelronde': match.round,
-      'competitie': 'Derde Divisie ${match.division}',
-      'thuisteam': match.homeTeam,
-      'uitteam': match.awayTeam,
-      'homeTeamCode': match.homeTeamSlug,
-      'awayTeamCode': match.awayTeamSlug,
-    };
+  void _setQuickScore(_MatchDoc match, int home, int away) {
+    _homeControllerFor(match).text = '$home';
+    _awayControllerFor(match).text = '$away';
   }
 
   Future<void> _clearResult(_MatchDoc match) async {
@@ -385,6 +369,10 @@ class _ModeratorMenuScreenState extends State<ModeratorMenuScreen> {
                                             _awayControllerFor(match),
                                         onSave: () => _saveMatch(match),
                                         onClear: () => _clearResult(match),
+                                        onQuickScore: (home, away) =>
+                                            _setQuickScore(match, home, away),
+                                        onStatus: (status) =>
+                                            _setStatus(match, status),
                                       );
                                     },
                                   ),
@@ -600,6 +588,8 @@ class _ResultRow extends StatelessWidget {
     required this.awayController,
     required this.onSave,
     required this.onClear,
+    required this.onQuickScore,
+    required this.onStatus,
   });
 
   final _MatchDoc match;
@@ -608,6 +598,8 @@ class _ResultRow extends StatelessWidget {
   final TextEditingController awayController;
   final VoidCallback onSave;
   final VoidCallback onClear;
+  final void Function(int home, int away) onQuickScore;
+  final ValueChanged<String> onStatus;
 
   @override
   Widget build(BuildContext context) {
@@ -657,7 +649,29 @@ class _ResultRow extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 12),
+        PopupMenuButton<String>(
+          tooltip: 'Snelle uitslag',
+          icon: const Icon(Icons.bolt_rounded, color: Color(0xFF2F8F3B)),
+          onSelected: (value) {
+            final scores = value.split('-').map(int.parse).toList();
+            onQuickScore(scores[0], scores[1]);
+          },
+          itemBuilder: (_) =>
+              const ['1-0', '2-0', '2-1', '1-1', '0-1', '0-2', '1-2']
+                  .map(
+                    (score) => PopupMenuItem(value: score, child: Text(score)),
+                  )
+                  .toList(),
+        ),
         _StatusPill(status: match.status),
+        PopupMenuButton<String>(
+          tooltip: 'Status zonder uitslag',
+          onSelected: onStatus,
+          itemBuilder: (_) => const [
+            PopupMenuItem(value: 'postponed', child: Text('In te halen')),
+            PopupMenuItem(value: 'cancelled', child: Text('Afgelast')),
+          ],
+        ),
         const SizedBox(width: 10),
         IconButton(
           tooltip: 'Opslaan',
@@ -713,6 +727,14 @@ class _ResultRow extends StatelessWidget {
         Row(
           children: [
             _StatusPill(status: match.status),
+            PopupMenuButton<String>(
+              tooltip: 'Status',
+              onSelected: onStatus,
+              itemBuilder: (_) => const [
+                PopupMenuItem(value: 'postponed', child: Text('In te halen')),
+                PopupMenuItem(value: 'cancelled', child: Text('Afgelast')),
+              ],
+            ),
             const Spacer(),
             TextButton.icon(
               onPressed: hasScore ? onClear : null,
@@ -853,10 +875,8 @@ class _StatusPill extends StatelessWidget {
     switch (value) {
       case 'finished':
         return 'Afgelopen';
-      case 'live':
-        return 'Live';
       case 'postponed':
-        return 'Uitgesteld';
+        return 'In te halen';
       case 'cancelled':
         return 'Afgelast';
       case 'scheduled':
@@ -869,8 +889,6 @@ class _StatusPill extends StatelessWidget {
     switch (value) {
       case 'finished':
         return const Color(0xFF2F8F3B);
-      case 'live':
-        return Colors.orange.shade800;
       case 'postponed':
         return Colors.blueGrey.shade700;
       case 'cancelled':

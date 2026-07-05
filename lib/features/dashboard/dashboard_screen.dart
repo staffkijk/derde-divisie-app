@@ -9,19 +9,20 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
 import 'package:derde_divisie/data/config/season_config.dart';
+import 'package:derde_divisie/data/firestore/season_paths.dart';
 import 'package:derde_divisie/features/derde_divisie/historical_standings_screen.dart';
 
 /// ---------------------------
 /// Firestore veldmapping
 /// ---------------------------
 class MatchFieldMap {
-  static const homeTeamKeys = ['thuisteam', 'homeTeam'];
-  static const awayTeamKeys = ['uitteam', 'awayTeam'];
-  static const homeScoreKeys = ['uitslagThuis', 'scoreThuis'];
-  static const awayScoreKeys = ['uitslagUit', 'scoreUit'];
-  static const divisionKeys = ['competitie'];
-  static const dateKeys = ['datum'];
-  static const playedFlagKeys = ['verwerkt', 'gespeeld', 'isProcessed'];
+  static const homeTeamKeys = ['homeTeamName', 'homeTeam', 'thuisteam'];
+  static const awayTeamKeys = ['awayTeamName', 'awayTeam', 'uitteam'];
+  static const homeScoreKeys = ['homeScore', 'uitslagThuis', 'scoreThuis'];
+  static const awayScoreKeys = ['awayScore', 'uitslagUit', 'scoreUit'];
+  static const divisionKeys = ['division', 'competitie'];
+  static const dateKeys = ['scheduledAt', 'date', 'datum'];
+  static const playedFlagKeys = ['processed', 'verwerkt', 'gespeeld'];
 }
 
 /// ---------------------------
@@ -100,8 +101,7 @@ class _M {
 /// Firestore: lees `matches`
 /// ---------------------------
 Future<List<_M>> _loadMatchesFromFirestore() async {
-  final fs = FirebaseFirestore.instance;
-  final snapshot = await fs.collection('matches').get();
+  final snapshot = await SeasonPaths.currentSeasonMatches.get();
   if (snapshot.docs.isEmpty) return <_M>[];
 
   return snapshot.docs.map((doc) {
@@ -697,20 +697,34 @@ class DashboardScreen extends StatelessWidget {
                   constraints: const BoxConstraints(maxWidth: 1180),
                   child: Column(
                     children: [
-                      const Text(
-                        'DerdeDiv.nl',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Color(0xFF2E7D32),
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF153B2A), Color(0xFF2F8F3B)],
+                          ),
+                          borderRadius: BorderRadius.circular(24),
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'De publieke centrale plek voor standen, programma, uitslagen, cijfers en voorspellingen van de Derde Divisie.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.black54),
+                        child: const Column(
+                          children: [
+                            Text(
+                              'Derde Divisie 2026/2027',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 28,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              'Volg standen, programma, uitslagen en voorspellingen',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: Colors.white70),
+                            ),
+                          ],
+                        ),
                       ),
                       const SizedBox(height: 22),
                       const RotatingLogo(),
@@ -746,8 +760,6 @@ class DashboardScreen extends StatelessWidget {
                       const SizedBox(height: 24),
                       _quickLinksCard(context),
                       const SizedBox(height: 24),
-                      _seasonTeamsCard(),
-                      const SizedBox(height: 24),
                       if (isWide)
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -762,6 +774,8 @@ class DashboardScreen extends StatelessWidget {
                         const SizedBox(height: 24),
                         _xPostsCard(context),
                       ],
+                      const SizedBox(height: 24),
+                      _seasonTeamsCard(),
                     ],
                   ),
                 ),

@@ -205,10 +205,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
+      backgroundColor: const Color(0xFFF3F6F1),
       appBar: AppBar(
         title: const Text('Account aanmaken'),
-        backgroundColor: Colors.green.shade700,
+        backgroundColor: const Color(0xFF153B2A),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
@@ -349,35 +349,37 @@ class _RegisterScreenState extends State<RegisterScreen> {
               const SizedBox(height: 8),
 
               // ✅ Horizontale avatarselectie
-              SizedBox(
-                height: 95,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: avatars.length,
-                  itemBuilder: (context, index) {
-                    final path = avatars[index];
-                    final isSelected = path == geselecteerdeAvatar;
-                    return GestureDetector(
-                      onTap: () => setState(() => geselecteerdeAvatar = path),
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 8),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: isSelected
-                                ? Colors.green
-                                : Colors.grey.shade300,
-                            width: isSelected ? 3 : 1,
-                          ),
-                        ),
-                        child: CircleAvatar(
-                          radius: 40,
-                          backgroundImage: AssetImage(path),
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: avatars.length,
+                gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                  maxCrossAxisExtent: 92,
+                  mainAxisSpacing: 10,
+                  crossAxisSpacing: 10,
+                ),
+                itemBuilder: (context, index) {
+                  final path = avatars[index];
+                  final isSelected = path == geselecteerdeAvatar;
+                  return GestureDetector(
+                    onTap: () => setState(() => geselecteerdeAvatar = path),
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color:
+                              isSelected ? Colors.green : Colors.grey.shade300,
+                          width: isSelected ? 3 : 1,
                         ),
                       ),
-                    );
-                  },
-                ),
+                      child: CircleAvatar(
+                        radius: 32,
+                        backgroundImage: AssetImage(path),
+                      ),
+                    ),
+                  );
+                },
               ),
               const SizedBox(height: 24),
 

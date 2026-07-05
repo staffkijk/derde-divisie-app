@@ -66,6 +66,10 @@ class UpdateLogButton extends StatelessWidget {
                   IconButton(
                     tooltip: 'Updates',
                     onPressed: () async {
+                      if (latestTs != null) {
+                        await _service.markUpdatesSeen(upTo: latestTs);
+                      }
+                      if (!context.mounted) return;
                       await Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => UpdateLogScreen(
@@ -74,9 +78,6 @@ class UpdateLogButton extends StatelessWidget {
                           ),
                         ),
                       );
-                      if (latestTs != null) {
-                        await _service.markUpdatesSeen(upTo: latestTs);
-                      }
                     },
                     // 🔔 Bel-icoon met expliciete kleur (werkt betrouwbaar op mobiel/PWA)
                     icon: Icon(

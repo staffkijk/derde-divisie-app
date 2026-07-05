@@ -521,6 +521,10 @@ class _WedstrijdenSchermDerdeDivisieAState
                                     _buildTeamWithLogo(w.uit, alignRight: true),
                                   ],
                                 ),
+                                if (!isLocked) ...[
+                                  const SizedBox(height: 10),
+                                  _buildQuickScores(w),
+                                ],
                                 const SizedBox(height: 8),
                                 if (uitslagBekend)
                                   Column(
@@ -571,39 +575,82 @@ class _WedstrijdenSchermDerdeDivisieAState
   }
 
   Widget _buildRondeSelector() {
-    return SizedBox(
-      height: 46,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: 34,
-        controller: ScrollController(
-            initialScrollOffset: (_huidigeSpeelronde * 70).toDouble()),
-        itemBuilder: (context, index) {
-          final ronde = index + 1;
-          final isSelected = _huidigeSpeelronde == ronde;
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: ChoiceChip(
-              label: Text('R$ronde'),
-              selected: isSelected,
-              labelStyle: TextStyle(
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-              ),
-              selectedColor: Colors.orange.shade200,
-              onSelected: (_) async {
-                setState(() {
-                  _huidigeSpeelronde = ronde;
-                  _laadWedstrijdenBasisVoorSpeelronde(ronde);
-                  _listenSeasonMatchesFirestore(ronde);
-                  _listenMatchesFirestore(ronde);
-                });
-                await _laadVoorspellingen();
-                setState(() {});
-              },
+    Future<void> selectRound(int round) async {
+      setState(() {
+        _huidigeSpeelronde = round;
+        _laadWedstrijdenBasisVoorSpeelronde(round);
+        _listenSeasonMatchesFirestore(round);
+        _listenMatchesFirestore(round);
+      });
+      await _laadVoorspellingen();
+      if (mounted) setState(() {});
+    }
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        IconButton(
+          tooltip: 'Vorige speelronde',
+          onPressed: _huidigeSpeelronde > 1
+              ? () => selectRound(_huidigeSpeelronde - 1)
+              : null,
+          icon: const Icon(Icons.chevron_left),
+        ),
+        DropdownButton<int>(
+          value: _huidigeSpeelronde,
+          items: List.generate(
+            34,
+            (index) => DropdownMenuItem(
+              value: index + 1,
+              child: Text('Speelronde ${index + 1}'),
             ),
-          );
-        },
-      ),
+          ),
+          onChanged: (round) {
+            if (round != null) selectRound(round);
+          },
+        ),
+        IconButton(
+          tooltip: 'Volgende speelronde',
+          onPressed: _huidigeSpeelronde < 34
+              ? () => selectRound(_huidigeSpeelronde + 1)
+              : null,
+          icon: const Icon(Icons.chevron_right),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildQuickScores(Wedstrijd wedstrijd) {
+    const scores = [
+      [1, 0],
+      [2, 0],
+      [2, 1],
+      [1, 1],
+      [0, 0],
+      [0, 1],
+      [0, 2],
+      [1, 2],
+      [1, 3],
+    ];
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      alignment: WrapAlignment.center,
+      children: scores.map((score) {
+        final selected = _voorspellingThuis[wedstrijd.id] == score[0] &&
+            _voorspellingUit[wedstrijd.id] == score[1];
+        return ChoiceChip(
+          label: Text('${score[0]}-${score[1]}'),
+          selected: selected,
+          onSelected: (_) {
+            setState(() {
+              _voorspellingThuis[wedstrijd.id] = score[0];
+              _voorspellingUit[wedstrijd.id] = score[1];
+            });
+            _opslaanVoorspelling(wedstrijd, score[0], score[1]);
+          },
+        );
+      }).toList(),
     );
   }
 

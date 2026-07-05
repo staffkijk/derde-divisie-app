@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../data/config/team_logo_assets.dart';
+import '../../data/firestore/season_paths.dart';
 import 'periode_standen_screen.dart';
 import 'historical_standings_screen.dart';
 import 'stand_derde_divisie_screen.dart';
@@ -286,6 +288,9 @@ class _MatchInfo {
   final DateTime? date;
   final bool played;
   final int round;
+  final String status;
+  final String homeTeamSlug;
+  final String awayTeamSlug;
 
   const _MatchInfo({
     required this.homeTeam,
@@ -295,6 +300,9 @@ class _MatchInfo {
     required this.date,
     required this.played,
     required this.round,
+    required this.status,
+    required this.homeTeamSlug,
+    required this.awayTeamSlug,
   });
 }
 
@@ -312,11 +320,7 @@ class _MatchesCard extends StatelessWidget {
   });
 
   Stream<QuerySnapshot<Map<String, dynamic>>> _stream() {
-    return FirebaseFirestore.instance
-        .collection('seasons')
-        .doc(kProgramSeason)
-        .collection('matches')
-        .snapshots();
+    return SeasonPaths.matches(kProgramSeason).snapshots();
   }
 
   String get _divisionCode => division.toLowerCase().contains(' b') ? 'B' : 'A';
@@ -416,13 +420,13 @@ class _MatchesCard extends StatelessWidget {
             homeScore: homeScore,
             awayScore: awayScore,
             date: _asDate(
-  data['scheduledAt'] ??
-      data['date'] ??
-      data['datum'] ??
-      data['startTime'] ??
-      data['kickoff'] ??
-      data['matchDate'],
-),
+              data['scheduledAt'] ??
+                  data['date'] ??
+                  data['datum'] ??
+                  data['startTime'] ??
+                  data['kickoff'] ??
+                  data['matchDate'],
+            ),
             played: played,
             round: _asInt(
                   data['round'] ??
@@ -431,13 +435,24 @@ class _MatchesCard extends StatelessWidget {
                       data['ronde'],
                 ) ??
                 999,
+            status: status,
+            homeTeamSlug:
+                (data['homeTeamSlug'] ?? data['homeTeamCode'] ?? '').toString(),
+            awayTeamSlug:
+                (data['awayTeamSlug'] ?? data['awayTeamCode'] ?? '').toString(),
           );
         })
         .where((m) => m.homeTeam.isNotEmpty && m.awayTeam.isNotEmpty)
         .toList();
 
     if (mode == _MatchCardMode.upcoming) {
-      final upcoming = matches.where((m) => !m.played).toList()
+      final upcoming = matches
+          .where(
+            (m) =>
+                !m.played &&
+                (m.status == 'scheduled' || m.status == 'postponed'),
+          )
+          .toList()
         ..sort((a, b) {
           final roundCompare = a.round.compareTo(b.round);
           if (roundCompare != 0) return roundCompare;
@@ -509,6 +524,9 @@ class _MatchesCard extends StatelessWidget {
               return Column(
                 children: [
                   for (var i = 0; i < matches.length; i++) ...[
+                    if (i == 0 ||
+                        !_sameDay(matches[i - 1].date, matches[i].date))
+                      _MatchDayHeader(date: matches[i].date),
                     _MatchTile(
                       match: matches[i],
                       index: i + 1,
@@ -566,15 +584,25 @@ class _MatchTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  '${match.homeTeam} - ${match.awayTeam}',
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Color(0xFF1D1D1D),
-                    fontWeight: FontWeight.w700,
-                    height: 1.25,
-                  ),
+                Row(
+                  children: [
+                    _MiniLogo(team: match.homeTeam, slug: match.homeTeamSlug),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        '${match.homeTeam} - ${match.awayTeam}',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Color(0xFF1D1D1D),
+                          fontWeight: FontWeight.w700,
+                          height: 1.25,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    _MiniLogo(team: match.awayTeam, slug: match.awayTeamSlug),
+                  ],
                 ),
                 if (dateLabel.isNotEmpty)
                   Padding(
@@ -606,7 +634,13 @@ class _MatchTile extends StatelessWidget {
             ),
             alignment: Alignment.center,
             child: Text(
-              scoreKnown ? '${match.homeScore}-${match.awayScore}' : 'vs',
+              match.status == 'postponed'
+                  ? 'In te halen'
+                  : match.status == 'cancelled'
+                      ? 'Afgelast'
+                      : scoreKnown
+                          ? '${match.homeScore}-${match.awayScore}'
+                          : 'vs',
               style: const TextStyle(
                 color: Color(0xFF153B2A),
                 fontWeight: FontWeight.w900,
@@ -614,6 +648,54 @@ class _MatchTile extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _MiniLogo extends StatelessWidget {
+  const _MiniLogo({required this.team, required this.slug});
+
+  final String team;
+  final String slug;
+
+  @override
+  Widget build(BuildContext context) {
+    final asset =
+        teamLogoAssetFromValues([slug, team]) ?? kDefaultTeamLogoAsset;
+    return Image.asset(
+      asset,
+      width: 22,
+      height: 22,
+      errorBuilder: (_, __, ___) => const Icon(
+        Icons.shield_outlined,
+        size: 20,
+        color: Color(0xFF2F8F3B),
+      ),
+    );
+  }
+}
+
+class _MatchDayHeader extends StatelessWidget {
+  const _MatchDayHeader({required this.date});
+
+  final DateTime? date;
+
+  @override
+  Widget build(BuildContext context) {
+    if (date == null) return const SizedBox.shrink();
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      color: const Color(0xFFF3F6F1),
+      child: Text(
+        DateFormat('EEEE d MMMM y', 'nl_NL').format(date!),
+        style: const TextStyle(
+          color: Color(0xFF153B2A),
+          fontSize: 12,
+          fontWeight: FontWeight.w900,
+        ),
       ),
     );
   }
@@ -847,6 +929,11 @@ int _compareNullableDates(DateTime? a, DateTime? b) {
   if (b == null) return -1;
 
   return a.compareTo(b);
+}
+
+bool _sameDay(DateTime? a, DateTime? b) {
+  if (a == null || b == null) return a == b;
+  return a.year == b.year && a.month == b.month && a.day == b.day;
 }
 
 String _formatMatchDate(DateTime? date) {

@@ -4,7 +4,6 @@ import 'register_screen.dart';
 import 'package:derde_divisie/features/about/juridisch_scherm.dart';
 import 'package:derde_divisie/main_screen.dart';
 
-
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -147,176 +146,194 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 520),
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-              // Logo / Header
-              Column(
-                children: [
-                  Image.asset(
-                    'assets/derde_divisie_logo_icon.png',
-                    height: 100,
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Derde Divisie App',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.green.shade800,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  const Text(
-                    'Voorspel, scoor en stijg in de ranglijst!',
-                    style: TextStyle(fontSize: 14, color: Colors.black54),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 40),
-
-              // E-mailadres veld
-              TextField(
-                controller: emailController,
-                keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(
-                  labelText: 'E-mailadres',
-                  prefixIcon: Icon(Icons.email_outlined),
-                  border: OutlineInputBorder(),
+      backgroundColor: const Color(0xFF153B2A),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF153B2A), Color(0xFF2F8F3B)],
+          ),
+        ),
+        child: SafeArea(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 520),
+              child: Card(
+                margin: const EdgeInsets.all(20),
+                elevation: 12,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(24),
                 ),
-              ),
-              const SizedBox(height: 16),
-
-              // Wachtwoord veld
-              TextField(
-                controller: passwordController,
-                obscureText: !wachtwoordZichtbaar,
-                decoration: InputDecoration(
-                  labelText: 'Wachtwoord',
-                  prefixIcon: const Icon(Icons.lock_outline),
-                  border: const OutlineInputBorder(),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      wachtwoordZichtbaar
-                          ? Icons.visibility_off
-                          : Icons.visibility,
-                    ),
-                    onPressed: () =>
-                        setState(() => wachtwoordZichtbaar = !wachtwoordZichtbaar),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 10),
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: _wachtwoordVergeten,
-                  child: const Text(
-                    'Wachtwoord vergeten?',
-                    style: TextStyle(fontSize: 14),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 10),
-
-              // Foutmelding
-              if (errorMessage.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8.0),
-                  child: Text(
-                    errorMessage,
-                    style: const TextStyle(color: Colors.red),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-
-              // Inloggen knop
-              ElevatedButton.icon(
-                onPressed: isLoading ? null : login,
-                icon: isLoading
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Icon(Icons.login),
-                label: Text(
-                  isLoading ? 'Bezig met inloggen...' : 'Inloggen',
-                  style: const TextStyle(fontSize: 16),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green.shade700,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 30),
-
-              // Registreren
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text('Nog geen account?'),
-                  TextButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const RegisterScreen(),
-                        ),
-                      );
-                    },
-                    child: const Text(
-                      'Registreer hier',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.green,
+                child: SingleChildScrollView(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Logo / Header
+                      Column(
+                        children: [
+                          Image.asset(
+                            'assets/derde_divisie_logo_icon.png',
+                            height: 100,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'Derde Divisie App',
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.green.shade800,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          const Text(
+                            'Voorspel, scoor en stijg in de ranglijst!',
+                            style:
+                                TextStyle(fontSize: 14, color: Colors.black54),
+                          ),
+                        ],
                       ),
-                    ),
-                  ),
-                ],
-              ),
 
-              const SizedBox(height: 20),
+                      const SizedBox(height: 40),
 
-              // ✅ Toegevoegd: juridische info zichtbaar vóór inloggen
-              Center(
-                child: TextButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) =>
-                            const JuridischScherm(scrollTo: 'privacy'),
+                      // E-mailadres veld
+                      TextField(
+                        controller: emailController,
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: const InputDecoration(
+                          labelText: 'E-mailadres',
+                          prefixIcon: Icon(Icons.email_outlined),
+                          border: OutlineInputBorder(),
+                        ),
                       ),
-                    );
-                  },
-                  child: const Text(
-                    'Privacyverklaring en gebruiksvoorwaarden',
-                    style: TextStyle(
-                      decoration: TextDecoration.underline,
-                      color: Colors.black54,
-                    ),
+                      const SizedBox(height: 16),
+
+                      // Wachtwoord veld
+                      TextField(
+                        controller: passwordController,
+                        obscureText: !wachtwoordZichtbaar,
+                        decoration: InputDecoration(
+                          labelText: 'Wachtwoord',
+                          prefixIcon: const Icon(Icons.lock_outline),
+                          border: const OutlineInputBorder(),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              wachtwoordZichtbaar
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
+                            ),
+                            onPressed: () => setState(() =>
+                                wachtwoordZichtbaar = !wachtwoordZichtbaar),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 10),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: _wachtwoordVergeten,
+                          child: const Text(
+                            'Wachtwoord vergeten?',
+                            style: TextStyle(fontSize: 14),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 10),
+
+                      // Foutmelding
+                      if (errorMessage.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8.0),
+                          child: Text(
+                            errorMessage,
+                            style: const TextStyle(color: Colors.red),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+
+                      // Inloggen knop
+                      ElevatedButton.icon(
+                        onPressed: isLoading ? null : login,
+                        icon: isLoading
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(Icons.login),
+                        label: Text(
+                          isLoading ? 'Bezig met inloggen...' : 'Inloggen',
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green.shade700,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 30),
+
+                      // Registreren
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text('Nog geen account?'),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const RegisterScreen(),
+                                ),
+                              );
+                            },
+                            child: const Text(
+                              'Registreer hier',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // ✅ Toegevoegd: juridische info zichtbaar vóór inloggen
+                      Center(
+                        child: TextButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    const JuridischScherm(scrollTo: 'privacy'),
+                              ),
+                            );
+                          },
+                          child: const Text(
+                            'Privacyverklaring en gebruiksvoorwaarden',
+                            style: TextStyle(
+                              decoration: TextDecoration.underline,
+                              color: Colors.black54,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-                ],
               ),
             ),
           ),

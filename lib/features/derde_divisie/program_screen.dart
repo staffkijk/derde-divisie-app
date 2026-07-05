@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../data/config/team_logo_assets.dart';
+import '../../data/firestore/season_paths.dart';
+import '../moderator/result_processing_service.dart';
 
 class ProgramScreen extends StatefulWidget {
   const ProgramScreen({
@@ -58,10 +60,7 @@ class _ProgramScreenState extends State<ProgramScreen> {
   }
 
   Query<Map<String, dynamic>> _matchesQuery() {
-    return FirebaseFirestore.instance
-        .collection('seasons')
-        .doc(widget.season)
-        .collection('matches')
+    return SeasonPaths.matches(widget.season)
         .where('division', isEqualTo: widget.division)
         .where('round', isEqualTo: _selectedRound)
         .orderBy('roundMatchIndex');
@@ -391,7 +390,7 @@ class _DateGroupCard extends StatelessWidget {
       child: Column(
         children: [
           Container(
-            padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 9),
             decoration: const BoxDecoration(
               border: Border(bottom: BorderSide(color: _border)),
             ),
@@ -496,7 +495,7 @@ class _MatchRow extends StatelessWidget {
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: compact ? 12 : 18,
-        vertical: compact ? 12 : 14,
+        vertical: compact ? 12 : 7,
       ),
       decoration: const BoxDecoration(
         border: Border(bottom: BorderSide(color: _border)),
@@ -718,10 +717,7 @@ class _CenterBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasScore = match.homeScore != null && match.awayScore != null;
-    final showScore = hasScore &&
-    (match.status == 'live' ||
-        match.status == 'finished' ||
-        match.status == 'final');
+    final showScore = hasScore && match.status == 'finished';
 
     final centerText = showScore
         ? '${match.homeScore} - ${match.awayScore}'
@@ -785,12 +781,10 @@ class _StatusBadge extends StatelessWidget {
 
   static _StatusConfig _statusConfig(String status) {
     switch (status) {
-      case 'live':
-        return _StatusConfig('Live', Colors.orange.shade800);
       case 'finished':
         return _StatusConfig('Afgelopen', const Color(0xFF2F8F3B));
       case 'postponed':
-        return _StatusConfig('Uitgesteld', Colors.blueGrey.shade700);
+        return _StatusConfig('In te halen', Colors.blueGrey.shade700);
       case 'cancelled':
         return _StatusConfig('Afgelast', Colors.red.shade700);
       case 'scheduled':
@@ -873,7 +867,6 @@ class _EditMatchDialog extends StatefulWidget {
 class _EditMatchDialogState extends State<_EditMatchDialog> {
   static const _statuses = [
     'scheduled',
-    'live',
     'finished',
     'postponed',
     'cancelled',
@@ -1071,16 +1064,42 @@ class _EditMatchDialogState extends State<_EditMatchDialog> {
     setState(() => _saving = true);
 
     try {
-      await widget.match.ref.update({
+      await widget.match.ref.set({
         'date': date,
         'kickoffTime': time,
         'scheduledAt': Timestamp.fromDate(scheduledAt),
-        'status': _status,
-        'homeScore': homeScore,
-        'awayScore': awayScore,
         'kickoffTimeConfirmed': true,
         'updatedAt': FieldValue.serverTimestamp(),
-      });
+      }, SetOptions(merge: true));
+
+      final processor = const ResultProcessingService();
+      if (_status == 'finished') {
+        await processor.saveFinishedResult(
+          matchRef: widget.match.ref,
+          homeScore: homeScore!,
+          awayScore: awayScore!,
+          division: widget.match.division,
+          round: widget.match.round,
+          homeTeam: widget.match.homeTeam,
+          awayTeam: widget.match.awayTeam,
+          homeTeamSlug: widget.match.homeTeamSlug,
+          awayTeamSlug: widget.match.awayTeamSlug,
+        );
+      } else if (_status == 'postponed' || _status == 'cancelled') {
+        await processor.saveWithoutScore(
+          matchRef: widget.match.ref,
+          status: _status,
+        );
+      } else {
+        await widget.match.ref.set({
+          'status': 'scheduled',
+          'homeScore': FieldValue.delete(),
+          'awayScore': FieldValue.delete(),
+          'resultConfirmed': false,
+          'processed': false,
+          'verwerkt': false,
+        }, SetOptions(merge: true));
+      }
 
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
@@ -1144,12 +1163,10 @@ class _EditMatchDialogState extends State<_EditMatchDialog> {
 
   static String _statusLabel(String status) {
     switch (status) {
-      case 'live':
-        return 'Live';
       case 'finished':
         return 'Afgelopen';
       case 'postponed':
-        return 'Uitgesteld';
+        return 'In te halen';
       case 'cancelled':
         return 'Afgelast';
       case 'scheduled':

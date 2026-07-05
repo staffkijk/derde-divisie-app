@@ -1,149 +1,156 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'package:derde_divisie/data/config/season_config.dart';
+import 'package:derde_divisie/data/firestore/season_paths.dart';
+
 class StandenService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-
-  // Correcte teams Derde Divisie A
-  static const List<String> teamsDivisieA = [
-    'DOVO', 'Eemdijk', 'Scherpenzeel', 'Staphorst', 'DVS33 Ermelo',
-    'Sparta Nijkerk', 'TEC', 'Urk', 'Hoogeveen', 'HSC21',
-    'Sportlust46', 'Excelsior31', 'Hercules', 'SC Genemuiden',
-    'Huizen', 'Harkemase Boys', 'Rohda Raalte', 'ADO20',
-  ];
-
-  // Correcte teams Derde Divisie B
-  static const List<String> teamsDivisieB = [
-    'Noordwijk', 'Scheveningen', 'SteDoCo', 'Zwaluwen', 'Kloetinge',
-    'RBC', 'Groene Ster', 'Rijnvogels', 'UNA', 'ASWH',
-    'UDI19', 'TOGB', 'FC Lisse', 'Gemert', 'sv Meerssen',
-    'Blauw Geel38 JUMBO', 'Goes', 'VVSB',
-  ];
-
-  /// Converteert een teamnaam naar een gestandaardiseerde code (zonder spaties/tekens, lowercase)
-  String _teamCode(String naam) {
-    return naam.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
-  }
-
-  Map<String, dynamic> _initStats() => {
-        'gespeeld': 0,
-        'gewonnen': 0,
-        'gelijk': 0,
-        'verloren': 0,
-        'doelpuntenVoor': 0,
-        'doelpuntenTegen': 0,
-        'punten': 0,
-        'doelsaldo': 0,
+  Map<String, dynamic> _emptyStats(SeasonTeam team, String division) => {
+        'teamId': team.id,
+        'slug': team.id,
+        'teamName': team.name,
+        'division': division,
+        'played': 0,
+        'wins': 0,
+        'draws': 0,
+        'losses': 0,
+        'goalsFor': 0,
+        'goalsAgainst': 0,
+        'goalDifference': 0,
+        'points': 0,
       };
 
   Future<void> herberekenStandVoorDivisie(String divisieCode) async {
-    final competitieNaam =
-        divisieCode == 'A' ? 'Derde Divisie A' : 'Derde Divisie B';
-
-    final matches = await _firestore
-        .collection('matches')
-        .where('competitie', isEqualTo: competitieNaam)
+    final division = SeasonConfig.normalizeDivisionCode(divisieCode);
+    final matches = await SeasonPaths.currentSeasonMatches
+        .where('division', isEqualTo: division)
         .get();
+    final standings = <String, Map<String, dynamic>>{};
 
-    final Map<String, Map<String, dynamic>> stand = {};
-
-    // Initieer alle teams met code
-    final List<String> alleTeams =
-        divisieCode == 'A' ? teamsDivisieA : teamsDivisieB;
-    for (final team in alleTeams) {
-      stand[_teamCode(team)] = _initStats()..['club'] = team;
+    for (final team in SeasonConfig.teamsForDivision(division)) {
+      standings[team.id] = _emptyStats(team, division);
     }
 
-    // Verwerk gespeelde wedstrijden
     for (final doc in matches.docs) {
       final data = doc.data();
+      if ((data['status'] ?? '').toString() != 'finished') continue;
 
-      String? homeName = data['thuisteam'];
-      String? awayName = data['uitteam'];
+      final homeScore = _int(data['homeScore'] ?? data['uitslagThuis']);
+      final awayScore = _int(data['awayScore'] ?? data['uitslagUit']);
+      if (homeScore == null || awayScore == null) continue;
 
-      // fallback: gebruik eventueel homeTeamCode/awayTeamCode
-      String? homeCode =
-          data['homeTeamCode'] ?? (homeName != null ? _teamCode(homeName) : null);
-      String? awayCode =
-          data['awayTeamCode'] ?? (awayName != null ? _teamCode(awayName) : null);
+      final homeName = _text(
+        data['homeTeamName'] ?? data['homeTeam'] ?? data['thuisteam'],
+      );
+      final awayName = _text(
+        data['awayTeamName'] ?? data['awayTeam'] ?? data['uitteam'],
+      );
+      final homeId = _teamId(
+        data['homeTeamSlug'] ?? data['homeTeamCode'],
+        homeName,
+      );
+      final awayId = _teamId(
+        data['awayTeamSlug'] ?? data['awayTeamCode'],
+        awayName,
+      );
+      if (homeId.isEmpty || awayId.isEmpty) continue;
 
-      final scoreThuis = data['uitslagThuis'];
-      final scoreUit = data['uitslagUit'];
+      standings.putIfAbsent(
+        homeId,
+        () => _fallbackStats(homeId, homeName, division),
+      );
+      standings.putIfAbsent(
+        awayId,
+        () => _fallbackStats(awayId, awayName, division),
+      );
 
-      if (homeName == null || awayName == null) continue;
-      if (homeCode == null || awayCode == null) continue;
-      if (scoreThuis == null || scoreUit == null) continue;
-
-      // Sla ontbrekende codes meteen terug in Firestore
-      if (data['homeTeamCode'] == null || data['awayTeamCode'] == null) {
-        await doc.reference.update({
-          'homeTeamCode': homeCode,
-          'awayTeamCode': awayCode,
-        });
-      }
-
-      // Zorg dat teams bestaan in de stand
-      stand.putIfAbsent(homeCode, () => _initStats()..['club'] = homeName);
-      stand.putIfAbsent(awayCode, () => _initStats()..['club'] = awayName);
-
-      // Update statistieken
-      stand[homeCode]!['gespeeld'] += 1;
-      stand[awayCode]!['gespeeld'] += 1;
-
-      stand[homeCode]!['doelpuntenVoor'] += scoreThuis;
-      stand[homeCode]!['doelpuntenTegen'] += scoreUit;
-      stand[awayCode]!['doelpuntenVoor'] += scoreUit;
-      stand[awayCode]!['doelpuntenTegen'] += scoreThuis;
-
-      if (scoreThuis > scoreUit) {
-        stand[homeCode]!['gewonnen'] += 1;
-        stand[homeCode]!['punten'] += 3;
-        stand[awayCode]!['verloren'] += 1;
-      } else if (scoreUit > scoreThuis) {
-        stand[awayCode]!['gewonnen'] += 1;
-        stand[awayCode]!['punten'] += 3;
-        stand[homeCode]!['verloren'] += 1;
-      } else {
-        stand[homeCode]!['gelijk'] += 1;
-        stand[awayCode]!['gelijk'] += 1;
-        stand[homeCode]!['punten'] += 1;
-        stand[awayCode]!['punten'] += 1;
-      }
+      _applyMatch(standings[homeId]!, homeScore, awayScore);
+      _applyMatch(standings[awayId]!, awayScore, homeScore);
     }
 
-    // Voeg doelsaldo toe
-    for (final stats in stand.values) {
-      stats['doelsaldo'] =
-          stats['doelpuntenVoor'] - stats['doelpuntenTegen'];
-    }
-
-    // Oude standen verwijderen
-    final oude = await _firestore
-        .collection('standen')
-        .where('competitie', isEqualTo: competitieNaam)
+    final existing = await SeasonPaths.currentSeasonStandings
+        .where('division', isEqualTo: division)
         .get();
-    for (final doc in oude.docs) {
-      await doc.reference.delete();
+    final batch = FirebaseFirestore.instance.batch();
+    for (final doc in existing.docs) {
+      batch.delete(doc.reference);
     }
+    for (final entry in standings.entries) {
+      batch.set(
+        SeasonPaths.currentSeasonStandings.doc('${division}_${entry.key}'),
+        {
+          ...entry.value,
+          'updatedAt': FieldValue.serverTimestamp(),
+          // Tijdelijke leescompatibiliteit met bestaande stand-widgets.
+          'club': entry.value['teamName'],
+          'competitie': 'Derde Divisie $division',
+          'gespeeld': entry.value['played'],
+          'gewonnen': entry.value['wins'],
+          'gelijk': entry.value['draws'],
+          'verloren': entry.value['losses'],
+          'doelpuntenVoor': entry.value['goalsFor'],
+          'doelpuntenTegen': entry.value['goalsAgainst'],
+          'doelsaldo': entry.value['goalDifference'],
+          'punten': entry.value['points'],
+        },
+      );
+    }
+    await batch.commit();
+  }
 
-    // Nieuwe standen opslaan
-    for (final entry in stand.entries) {
-      await _firestore.collection('standen').doc(entry.key).set({
-        'competitie': competitieNaam,
-        'club': entry.value['club'], // nette naam voor weergave
-        'gespeeld': entry.value['gespeeld'],
-        'gewonnen': entry.value['gewonnen'],
-        'gelijk': entry.value['gelijk'],
-        'verloren': entry.value['verloren'],
-        'doelpuntenVoor': entry.value['doelpuntenVoor'],
-        'doelpuntenTegen': entry.value['doelpuntenTegen'],
-        'punten': entry.value['punten'],
-        'doelsaldo': entry.value['doelsaldo'],
-      });
+  Future<void> herberekenStandenVoorCompetitie(String competitieNaam) {
+    return herberekenStandVoorDivisie(
+      SeasonConfig.normalizeDivisionCode(competitieNaam),
+    );
+  }
+
+  Map<String, dynamic> _fallbackStats(
+    String id,
+    String name,
+    String division,
+  ) =>
+      {
+        'teamId': id,
+        'slug': id,
+        'teamName': name.isEmpty ? id : name,
+        'division': division,
+        'played': 0,
+        'wins': 0,
+        'draws': 0,
+        'losses': 0,
+        'goalsFor': 0,
+        'goalsAgainst': 0,
+        'goalDifference': 0,
+        'points': 0,
+      };
+
+  void _applyMatch(Map<String, dynamic> stats, int goalsFor, int goalsAgainst) {
+    stats['played'] = (stats['played'] as int) + 1;
+    stats['goalsFor'] = (stats['goalsFor'] as int) + goalsFor;
+    stats['goalsAgainst'] = (stats['goalsAgainst'] as int) + goalsAgainst;
+    stats['goalDifference'] =
+        (stats['goalsFor'] as int) - (stats['goalsAgainst'] as int);
+    if (goalsFor > goalsAgainst) {
+      stats['wins'] = (stats['wins'] as int) + 1;
+      stats['points'] = (stats['points'] as int) + 3;
+    } else if (goalsFor == goalsAgainst) {
+      stats['draws'] = (stats['draws'] as int) + 1;
+      stats['points'] = (stats['points'] as int) + 1;
+    } else {
+      stats['losses'] = (stats['losses'] as int) + 1;
     }
   }
 
-  Future<void> herberekenStandenVoorCompetitie(String competitieNaam) async {
-    final code = competitieNaam.contains('A') ? 'A' : 'B';
-    await herberekenStandVoorDivisie(code);
+  String _teamId(dynamic rawId, String name) {
+    final configured =
+        SeasonConfig.teamById(_text(rawId)) ?? SeasonConfig.teamByName(name);
+    if (configured != null) return configured.id;
+    return SeasonConfig.normalizeTeamKey(_text(rawId).isEmpty ? name : rawId);
+  }
+
+  String _text(dynamic value) => value?.toString().trim() ?? '';
+
+  int? _int(dynamic value) {
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '');
   }
 }
