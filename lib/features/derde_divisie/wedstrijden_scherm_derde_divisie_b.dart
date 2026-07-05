@@ -7,6 +7,7 @@ import 'package:derde_divisie/data/firestore/season_paths.dart';
 import 'package:derde_divisie/data/models/wedstrijd.dart';
 import 'package:derde_divisie/data/services/wedstrijden_ddb.dart';
 import 'package:derde_divisie/helpers/sync_service.dart';
+import 'package:derde_divisie/data/services/activity_log_service.dart';
 
 class WedstrijdenSchermDerdeDivisieB extends StatefulWidget {
   final String divisie;
@@ -345,6 +346,15 @@ class _WedstrijdenSchermDerdeDivisieBState
       userId: user.uid,
       matchId: wedstrijd.id,
       generalPrediction: {'scoreThuis': thuis, 'scoreUit': uit},
+    );
+    await ActivityLogService().log(
+      eventType: ActivityEventType.predictionSaved,
+      entityType: 'match',
+      entityId: wedstrijd.id,
+      metadata: {
+        'division': widget.divisie,
+        'round': wedstrijd.speelronde,
+      },
     );
 
     setState(() {});

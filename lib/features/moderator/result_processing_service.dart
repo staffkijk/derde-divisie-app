@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:derde_divisie/Puntensysteem/puntenverwerker.dart';
 import 'package:derde_divisie/features/moderator/periodestand_service.dart';
 import 'package:derde_divisie/features/moderator/standen_service.dart';
+import 'package:derde_divisie/data/services/activity_log_service.dart';
 
 class ResultProcessingService {
   const ResultProcessingService();
@@ -20,6 +21,8 @@ class ResultProcessingService {
     required String awayTeamSlug,
   }) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
+    final runId =
+        '${matchRef.id}_${DateTime.now().microsecondsSinceEpoch.toString()}';
     await matchRef.set(
       {
         'homeScore': homeScore,
@@ -29,6 +32,8 @@ class ResultProcessingService {
         'processed': false,
         'verwerkt': false,
         'processingError': FieldValue.delete(),
+        'processingAttempts': FieldValue.increment(1),
+        'lastProcessingRunId': runId,
         'updatedAt': FieldValue.serverTimestamp(),
         if (uid != null) 'updatedBy': uid,
         'uitslagThuis': homeScore,
@@ -41,6 +46,16 @@ class ResultProcessingService {
         'awayTeamCode': awayTeamSlug,
       },
       SetOptions(merge: true),
+    );
+    await ActivityLogService().log(
+      eventType: ActivityEventType.resultSavedByModerator,
+      entityType: 'match',
+      entityId: matchRef.id,
+      metadata: {
+        'division': division,
+        'round': round,
+        'runId': runId,
+      },
     );
 
     try {
@@ -57,9 +72,20 @@ class ResultProcessingService {
           'processed': true,
           'verwerkt': true,
           'processedAt': FieldValue.serverTimestamp(),
+          if (uid != null) 'processedBy': uid,
           'processingError': FieldValue.delete(),
         },
         SetOptions(merge: true),
+      );
+      await ActivityLogService().log(
+        eventType: ActivityEventType.resultProcessed,
+        entityType: 'match',
+        entityId: matchRef.id,
+        metadata: {
+          'division': division,
+          'round': round,
+          'runId': runId,
+        },
       );
     } catch (error) {
       await matchRef.set(
@@ -78,7 +104,9 @@ class ResultProcessingService {
     required DocumentReference<Map<String, dynamic>> matchRef,
     required String status,
   }) {
-    if (status != 'postponed' && status != 'cancelled') {
+    if (status != 'postponed' &&
+        status != 'cancelled' &&
+        status != 'abandoned') {
       throw ArgumentError.value(status, 'status');
     }
     return matchRef.set(

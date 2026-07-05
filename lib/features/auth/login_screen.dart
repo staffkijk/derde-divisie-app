@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'register_screen.dart';
 import 'package:derde_divisie/features/about/juridisch_scherm.dart';
 import 'package:derde_divisie/main_screen.dart';
+import 'package:derde_divisie/data/services/activity_log_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -37,6 +38,7 @@ class _LoginScreenState extends State<LoginScreen> {
         email: emailController.text.trim(),
         password: passwordController.text.trim(),
       );
+      await ActivityLogService().log(eventType: ActivityEventType.login);
 
       if (!mounted) return;
 
@@ -58,9 +60,11 @@ class _LoginScreenState extends State<LoginScreen> {
         errorMessage = _vertaalFoutmelding(e.code);
       });
     } finally {
-      setState(() {
-        isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
     }
   }
 
@@ -180,7 +184,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            'Derde Divisie App',
+                            'DerdeDiv.nl',
                             style: TextStyle(
                               fontSize: 22,
                               fontWeight: FontWeight.bold,
@@ -189,7 +193,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           const SizedBox(height: 6),
                           const Text(
-                            'Voorspel, scoor en stijg in de ranglijst!',
+                            'Log in om wedstrijden te voorspellen en poules te beheren.',
                             style:
                                 TextStyle(fontSize: 14, color: Colors.black54),
                           ),
@@ -202,6 +206,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       TextField(
                         controller: emailController,
                         keyboardType: TextInputType.emailAddress,
+                        textInputAction: TextInputAction.next,
+                        onSubmitted: (_) => FocusScope.of(context).nextFocus(),
                         decoration: const InputDecoration(
                           labelText: 'E-mailadres',
                           prefixIcon: Icon(Icons.email_outlined),
@@ -214,6 +220,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       TextField(
                         controller: passwordController,
                         obscureText: !wachtwoordZichtbaar,
+                        textInputAction: TextInputAction.done,
+                        onSubmitted: (_) {
+                          if (!isLoading) login();
+                        },
                         decoration: InputDecoration(
                           labelText: 'Wachtwoord',
                           prefixIcon: const Icon(Icons.lock_outline),

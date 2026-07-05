@@ -3,6 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:derde_divisie/core/utils/gemeenten.dart';
 import 'package:derde_divisie/features/about/juridisch_scherm.dart';
+import 'package:derde_divisie/data/config/season_config.dart';
+import 'package:derde_divisie/data/services/activity_log_service.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -43,44 +45,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   ];
 
   // Clubs
-  final List<String> clubs = [
+  late final List<String> clubs = [
     'Geen voorkeur',
-    'ADO\'20',
-    'ASWH',
-    'Blauw Geel\'38',
-    'DOVO',
-    'DVS\'33 Ermelo',
-    'Eemdijk',
-    'Excelsior\'31',
-    'FC Lisse',
-    'Gemert',
-    'Goes',
-    'Groene Ster',
-    'Harkemase Boys',
-    'Hercules',
-    'Hoogeveen',
-    'HSC\'21',
-    'Huizen',
-    'Kloetinge',
-    'Noordwijk',
-    'RBC',
-    'Rijnvogels',
-    'Rohda Raalte',
-    'SC Genemuiden',
-    'Scherpenzeel',
-    'Scheveningen',
-    'Sparta Nijkerk',
-    'Sportlust\'46',
-    'Staphorst',
-    'SteDoCo',
-    'sv Meerssen',
-    'TEC',
-    'TOGB',
-    'UDI\'19',
-    'UNA',
-    'Urk',
-    'VVSB',
-    'Zwaluwen'
+    ...SeasonConfig.teamsInListOrder.map((team) => team.label),
   ];
 
   // Avatars (clublogo's + bal)
@@ -173,6 +140,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
         'woonplaats': canoniekGemeente,
         'favorieteCompetitie': geselecteerdeCompetitie,
         'favorieteClub': geselecteerdeClub,
+        if (geselecteerdeClub != null &&
+            geselecteerdeClub != 'Geen voorkeur') ...{
+          'favoriteTeamSlug': SeasonConfig.teamByName(geselecteerdeClub!)?.id,
+          'favoriteTeamName': geselecteerdeClub,
+          'favoriteDivision':
+              SeasonConfig.teamByName(geselecteerdeClub!)?.division,
+        },
+        'allowEmailSharingWithPouleOwner': false,
         'punten_A': 0,
         'punten_B': 0,
         'totalen': 0,
@@ -181,6 +156,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         'voorspellingenZichtbaar': true,
         'aangemaaktOp': FieldValue.serverTimestamp(),
       });
+      await ActivityLogService().log(eventType: ActivityEventType.register);
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -190,7 +166,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
     } on FirebaseAuthException catch (e) {
       setState(() => errorMessage = e.message ?? 'Onbekende fout');
     } finally {
-      setState(() => isLoading = false);
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
     }
   }
 

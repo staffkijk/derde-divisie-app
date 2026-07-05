@@ -1,10 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:derde_divisie/data/services/activity_log_service.dart';
 
 import 'package:derde_divisie/data/config/season_config.dart';
 import 'package:derde_divisie/data/firestore/season_paths.dart';
+import 'package:derde_divisie/core/utils/match_formatters.dart';
 
 class VoorspelEenTeamScreen extends StatefulWidget {
   const VoorspelEenTeamScreen({
@@ -169,6 +170,12 @@ class _VoorspelEenTeamScreenState extends State<VoorspelEenTeamScreen> {
       'scoreUit': away,
       'timestamp': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
+    await ActivityLogService().log(
+      eventType: ActivityEventType.predictionSaved,
+      entityType: 'match',
+      entityId: match.id,
+      metadata: {'scope': 'team'},
+    );
   }
 
   bool _isLocked(_TeamMatch match) {
@@ -264,9 +271,11 @@ class _MatchPredictionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dateText = match.date == null
+    final date = match.date;
+    final dateText = date == null
         ? 'Datum volgt'
-        : DateFormat('EEE d MMM, HH:mm', 'nl').format(match.date!);
+        : '${MatchDateTimeFormatter.shortDate(date)}'
+            '${date.hour == 0 && date.minute == 0 ? '' : ', ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}'}';
 
     return Container(
       padding: const EdgeInsets.all(16),

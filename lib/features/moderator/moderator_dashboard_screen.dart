@@ -5,6 +5,7 @@ import 'package:derde_divisie/features/moderator/moderator_tools_screen.dart';
 import 'package:derde_divisie/helpers/herbereken_standen_tool.dart';
 import 'package:derde_divisie/loggboek/update_log_screen.dart';
 import 'package:derde_divisie/loggboek/update_service.dart';
+import 'package:derde_divisie/features/moderator/activity_log_screen.dart';
 
 class ModeratorDashboardScreen extends StatelessWidget {
   const ModeratorDashboardScreen({super.key});
@@ -12,6 +13,12 @@ class ModeratorDashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tools = [
+      _ModeratorTool(
+        icon: Icons.insights_outlined,
+        title: 'Gebruikersactiviteit',
+        description: 'Bekijk recente functionele events en moderatoracties.',
+        screen: const ActivityLogScreen(),
+      ),
       _ModeratorTool(
         icon: Icons.scoreboard_outlined,
         title: 'Uitslagen invoeren',

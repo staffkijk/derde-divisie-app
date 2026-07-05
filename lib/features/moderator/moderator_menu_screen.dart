@@ -29,8 +29,7 @@ class _ModeratorMenuScreenState extends State<ModeratorMenuScreen> {
   Query<Map<String, dynamic>> _matchesQuery() {
     return SeasonPaths.currentSeasonMatches
         .where('division', isEqualTo: _division)
-        .where('round', isEqualTo: _round)
-        .orderBy('roundMatchIndex');
+        .where('round', isEqualTo: _round);
   }
 
   @override
@@ -199,7 +198,9 @@ class _ModeratorMenuScreenState extends State<ModeratorMenuScreen> {
         _showSnack(
           status == 'postponed'
               ? 'Wedstrijd gemarkeerd als In te halen.'
-              : 'Wedstrijd afgelast.',
+              : status == 'cancelled'
+                  ? 'Wedstrijd afgelast.'
+                  : 'Wedstrijd gestaakt.',
         );
       }
     } catch (e) {
@@ -342,7 +343,8 @@ class _ModeratorMenuScreenState extends State<ModeratorMenuScreen> {
 
                             final matches = docs
                                 .map((doc) => _MatchDoc.fromSnapshot(doc))
-                                .toList();
+                                .toList()
+                              ..sort(_MatchDoc.compareForInput);
 
                             return Column(
                               children: [
@@ -670,6 +672,7 @@ class _ResultRow extends StatelessWidget {
           itemBuilder: (_) => const [
             PopupMenuItem(value: 'postponed', child: Text('In te halen')),
             PopupMenuItem(value: 'cancelled', child: Text('Afgelast')),
+            PopupMenuItem(value: 'abandoned', child: Text('Gestaakt')),
           ],
         ),
         const SizedBox(width: 10),
@@ -733,6 +736,7 @@ class _ResultRow extends StatelessWidget {
               itemBuilder: (_) => const [
                 PopupMenuItem(value: 'postponed', child: Text('In te halen')),
                 PopupMenuItem(value: 'cancelled', child: Text('Afgelast')),
+                PopupMenuItem(value: 'abandoned', child: Text('Gestaakt')),
               ],
             ),
             const Spacer(),
@@ -879,6 +883,8 @@ class _StatusPill extends StatelessWidget {
         return 'In te halen';
       case 'cancelled':
         return 'Afgelast';
+      case 'abandoned':
+        return 'Gestaakt';
       case 'scheduled':
       default:
         return 'Gepland';
@@ -892,6 +898,8 @@ class _StatusPill extends StatelessWidget {
       case 'postponed':
         return Colors.blueGrey.shade700;
       case 'cancelled':
+        return Colors.red.shade700;
+      case 'abandoned':
         return Colors.red.shade700;
       case 'scheduled':
       default:
@@ -1036,6 +1044,12 @@ class _MatchDoc {
         data['awayScore'] ?? data['uitslagUit'],
       ),
     );
+  }
+
+  static int compareForInput(_MatchDoc a, _MatchDoc b) {
+    final indexResult = a.roundMatchIndex.compareTo(b.roundMatchIndex);
+    if (indexResult != 0) return indexResult;
+    return a.homeTeam.compareTo(b.homeTeam);
   }
 
   static String _string(dynamic value, String fallback) {

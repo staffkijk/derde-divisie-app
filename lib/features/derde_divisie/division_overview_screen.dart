@@ -3,12 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../data/config/team_logo_assets.dart';
+import '../../data/config/season_config.dart';
 import '../../data/firestore/season_paths.dart';
+import '../../core/utils/match_formatters.dart';
 import 'periode_standen_screen.dart';
 import 'historical_standings_screen.dart';
 import 'stand_derde_divisie_screen.dart';
-
-const String kProgramSeason = '2026-2027';
 
 class DivisionOverviewScreen extends StatelessWidget {
   final String division;
@@ -258,7 +258,7 @@ class _StandCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Voorlopige deelnemerslijst seizoen 2026/2027. De stand wordt automatisch gevuld zodra er uitslagen zijn verwerkt.',
+            'Stand seizoen ${SeasonConfig.activeSeasonLabel}. De stand wordt bijgewerkt na verwerkte uitslagen.',
             style: TextStyle(
               color: Colors.grey.shade700,
               height: 1.3,
@@ -320,7 +320,7 @@ class _MatchesCard extends StatelessWidget {
   });
 
   Stream<QuerySnapshot<Map<String, dynamic>>> _stream() {
-    return SeasonPaths.matches(kProgramSeason).snapshots();
+    return SeasonPaths.currentSeasonMatches.snapshots();
   }
 
   String get _divisionCode => division.toLowerCase().contains(' b') ? 'B' : 'A';
@@ -638,9 +638,11 @@ class _MatchTile extends StatelessWidget {
                   ? 'In te halen'
                   : match.status == 'cancelled'
                       ? 'Afgelast'
-                      : scoreKnown
-                          ? '${match.homeScore}-${match.awayScore}'
-                          : 'vs',
+                      : match.status == 'abandoned'
+                          ? 'Gestaakt'
+                          : scoreKnown
+                              ? '${match.homeScore}-${match.awayScore}'
+                              : 'vs',
               style: const TextStyle(
                 color: Color(0xFF153B2A),
                 fontWeight: FontWeight.w900,
@@ -690,7 +692,7 @@ class _MatchDayHeader extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       color: const Color(0xFFF3F6F1),
       child: Text(
-        DateFormat('EEEE d MMMM y', 'nl_NL').format(date!),
+        MatchDateTimeFormatter.dayHeader(date!),
         style: const TextStyle(
           color: Color(0xFF153B2A),
           fontSize: 12,

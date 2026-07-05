@@ -5,6 +5,7 @@ import 'package:logging/logging.dart';
 
 import 'package:derde_divisie/data/config/season_config.dart';
 import 'package:derde_divisie/core/utils/gemeenten.dart';
+import 'package:derde_divisie/data/services/activity_log_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -35,6 +36,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String? _selectedAssetAvatar;
 
   bool voorspellingenZichtbaar = true;
+  bool allowEmailSharingWithPouleOwner = false;
   bool _usernameChanged = false;
   bool isLoading = true;
   bool isSaving = false;
@@ -102,6 +104,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         favorieteClub = normalizedClub;
         voorspellingenZichtbaar =
             data?['voorspellingenZichtbaar'] as bool? ?? true;
+        allowEmailSharingWithPouleOwner =
+            data?['allowEmailSharingWithPouleOwner'] as bool? ?? false;
         _usernameChanged = data?['usernameChanged'] as bool? ?? false;
 
         _descController.text = profileDescription ?? '';
@@ -192,11 +196,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
 
     try {
+      final favoriteChanged = favorieteClub != _selectedClub;
       final canoniek = _canoniekeGemeente(_woonplaatsController.text.trim());
       final rawWoonplaats = _woonplaatsController.text.trim();
 
       final woonplaatsToSave =
           rawWoonplaats.isEmpty ? null : canoniek ?? rawWoonplaats;
+      final selectedTeam =
+          _selectedClub == null || _selectedClub == 'Geen voorkeur'
+              ? null
+              : SeasonConfig.teamByName(_selectedClub!);
 
       await userDocRef.set({
         'avatarUrl': avatarUrl,
@@ -204,11 +213,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
         'woonplaats': woonplaatsToSave,
         'favorieteCompetitie': _selectedCompetitie,
         'favorieteClub': _selectedClub,
+        'favoriteTeamSlug': selectedTeam?.id ?? FieldValue.delete(),
+        'favoriteTeamName': selectedTeam?.label ?? FieldValue.delete(),
+        'favoriteDivision': selectedTeam?.division ?? FieldValue.delete(),
         'voorspellingenZichtbaar': voorspellingenZichtbaar,
+        'allowEmailSharingWithPouleOwner': allowEmailSharingWithPouleOwner,
+        'emailSharingConsentAt': allowEmailSharingWithPouleOwner
+            ? FieldValue.serverTimestamp()
+            : FieldValue.delete(),
         if (!_usernameChanged) 'username': username?.trim(),
         if (!_usernameChanged) 'usernameChanged': true,
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
+      if (favoriteChanged) {
+        await ActivityLogService().log(
+          eventType: ActivityEventType.favoriteTeamChanged,
+          entityType: 'team',
+          entityId: selectedTeam?.id,
+        );
+      }
 
       if (!mounted) return;
 
@@ -1021,14 +1044,64 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
                 Switch(
-  value: voorspellingenZichtbaar,
-  activeColor: _green,
-  onChanged: (val) {
-    setState(() {
-      voorspellingenZichtbaar = val;
-    });
-  },
-),
+                  value: voorspellingenZichtbaar,
+                  activeColor: _green,
+                  onChanged: (val) {
+                    setState(() {
+                      voorspellingenZichtbaar = val;
+                    });
+                  },
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: _softGreen,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: _borderGreen),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.mark_email_read_outlined,
+                  color: _darkGreen,
+                ),
+                const SizedBox(width: 14),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'E-mailadres delen met poulebeheerder',
+                        style: TextStyle(
+                          color: _textDark,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      SizedBox(height: 3),
+                      Text(
+                        'Alleen beheerders van jouw poules mogen je e-mailadres exporteren. Standaard uit.',
+                        style: TextStyle(
+                          color: _textMuted,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Switch(
+                  value: allowEmailSharingWithPouleOwner,
+                  activeColor: _green,
+                  onChanged: (value) {
+                    setState(() {
+                      allowEmailSharingWithPouleOwner = value;
+                    });
+                  },
+                ),
               ],
             ),
           ),

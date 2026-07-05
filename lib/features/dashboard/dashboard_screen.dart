@@ -706,10 +706,10 @@ class DashboardScreen extends StatelessWidget {
                           ),
                           borderRadius: BorderRadius.circular(24),
                         ),
-                        child: const Column(
+                        child: Column(
                           children: [
                             Text(
-                              'Derde Divisie 2026/2027',
+                              'DerdeDiv.nl · ${SeasonConfig.activeSeasonLabel}',
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 color: Colors.white,
@@ -717,9 +717,9 @@ class DashboardScreen extends StatelessWidget {
                                 fontWeight: FontWeight.w900,
                               ),
                             ),
-                            SizedBox(height: 8),
-                            Text(
-                              'Volg standen, programma, uitslagen en voorspellingen',
+                            const SizedBox(height: 8),
+                            const Text(
+                              'Standen, programma, uitslagen en voorspellingen voor de Derde Divisie.',
                               textAlign: TextAlign.center,
                               style: TextStyle(color: Colors.white70),
                             ),

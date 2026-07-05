@@ -4,14 +4,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../data/config/team_logo_assets.dart';
+import '../../data/config/season_config.dart';
 import '../../data/firestore/season_paths.dart';
+import '../../core/utils/match_formatters.dart';
 import '../moderator/result_processing_service.dart';
 
 class ProgramScreen extends StatefulWidget {
   const ProgramScreen({
     super.key,
     required this.division,
-    this.season = '2026-2027',
+    this.season = SeasonConfig.activeSeasonId,
   });
 
   final String division;
@@ -62,8 +64,7 @@ class _ProgramScreenState extends State<ProgramScreen> {
   Query<Map<String, dynamic>> _matchesQuery() {
     return SeasonPaths.matches(widget.season)
         .where('division', isEqualTo: widget.division)
-        .where('round', isEqualTo: _selectedRound)
-        .orderBy('roundMatchIndex');
+        .where('round', isEqualTo: _selectedRound);
   }
 
   @override
@@ -118,8 +119,10 @@ class _ProgramScreenState extends State<ProgramScreen> {
                       );
                     }
 
-                    final matches =
-                        docs.map((doc) => _MatchDoc.fromSnapshot(doc)).toList();
+                    final matches = docs
+                        .map((doc) => _MatchDoc.fromSnapshot(doc))
+                        .toList()
+                      ..sort(_MatchDoc.compareForPublicDisplay);
 
                     return _MatchesList(
                       matches: matches,
@@ -438,39 +441,7 @@ class _DateGroupCard extends StatelessWidget {
       return '$weekdayNL $date';
     }
 
-    const months = [
-      'januari',
-      'februari',
-      'maart',
-      'april',
-      'mei',
-      'juni',
-      'juli',
-      'augustus',
-      'september',
-      'oktober',
-      'november',
-      'december',
-    ];
-
-    final weekday = weekdayNL.isNotEmpty ? weekdayNL : _weekdayName(parsed);
-    final month = months[parsed.month - 1];
-
-    return '$weekday ${parsed.day} $month ${parsed.year}';
-  }
-
-  static String _weekdayName(DateTime date) {
-    const weekdays = [
-      'maandag',
-      'dinsdag',
-      'woensdag',
-      'donderdag',
-      'vrijdag',
-      'zaterdag',
-      'zondag',
-    ];
-
-    return weekdays[date.weekday - 1];
+    return MatchDateTimeFormatter.dayHeader(parsed);
   }
 }
 
@@ -787,6 +758,8 @@ class _StatusBadge extends StatelessWidget {
         return _StatusConfig('In te halen', Colors.blueGrey.shade700);
       case 'cancelled':
         return _StatusConfig('Afgelast', Colors.red.shade700);
+      case 'abandoned':
+        return _StatusConfig('Gestaakt', Colors.red.shade700);
       case 'scheduled':
       default:
         return _StatusConfig('Gepland', const Color(0xFF153B2A));
@@ -870,6 +843,7 @@ class _EditMatchDialogState extends State<_EditMatchDialog> {
     'finished',
     'postponed',
     'cancelled',
+    'abandoned',
   ];
 
   late final TextEditingController _dateController;
@@ -1085,7 +1059,9 @@ class _EditMatchDialogState extends State<_EditMatchDialog> {
           homeTeamSlug: widget.match.homeTeamSlug,
           awayTeamSlug: widget.match.awayTeamSlug,
         );
-      } else if (_status == 'postponed' || _status == 'cancelled') {
+      } else if (_status == 'postponed' ||
+          _status == 'cancelled' ||
+          _status == 'abandoned') {
         await processor.saveWithoutScore(
           matchRef: widget.match.ref,
           status: _status,
@@ -1169,6 +1145,8 @@ class _EditMatchDialogState extends State<_EditMatchDialog> {
         return 'In te halen';
       case 'cancelled':
         return 'Afgelast';
+      case 'abandoned':
+        return 'Gestaakt';
       case 'scheduled':
       default:
         return 'Gepland';
@@ -1266,6 +1244,24 @@ class _MatchDoc {
       homeScore: _nullableInt(data['homeScore']),
       awayScore: _nullableInt(data['awayScore']),
     );
+  }
+
+  static int compareForPublicDisplay(_MatchDoc a, _MatchDoc b) {
+    final aDate = DateTime.tryParse(a.date);
+    final bDate = DateTime.tryParse(b.date);
+    if (aDate != null && bDate != null) {
+      final dateResult = aDate.compareTo(bDate);
+      if (dateResult != 0) return dateResult;
+    } else if (aDate != null) {
+      return -1;
+    } else if (bDate != null) {
+      return 1;
+    }
+    final timeResult = a.kickoffTime.compareTo(b.kickoffTime);
+    if (timeResult != 0) return timeResult;
+    final indexResult = a.roundMatchIndex.compareTo(b.roundMatchIndex);
+    if (indexResult != 0) return indexResult;
+    return a.homeTeam.compareTo(b.homeTeam);
   }
 
   static String _string(dynamic value, String fallback) {

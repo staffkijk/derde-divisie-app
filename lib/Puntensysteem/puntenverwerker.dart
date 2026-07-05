@@ -467,6 +467,15 @@ Future<void> verwerkVoorspellingenVoorWedstrijd(
         .where('matchId', isEqualTo: wedstrijdId)
         .get();
   }
+  if (voorspellingenSnapshot.docs.isEmpty) {
+    // Backward compatible: de huidige voorspel-UI schrijft nog naar de
+    // bestaande centrale rootcollectie. Deze fallback blijft nodig tot de
+    // gecontroleerde season-migratie is afgerond.
+    voorspellingenSnapshot = await firestore
+        .collection('voorspellingen')
+        .where('wedstrijdId', isEqualTo: wedstrijdId)
+        .get();
+  }
 
   final nieuweUitslag = '$uitslagThuis-$uitslagUit';
 

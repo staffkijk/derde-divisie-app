@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'app_update.dart';
+import 'package:derde_divisie/data/services/activity_log_service.dart';
 
 class UpdateService {
   static const _guestLastSeenKey = 'last_seen_update_millis';
@@ -67,6 +68,11 @@ class UpdateService {
       return;
     }
     await doc.set({'lastSeenUpdateAt': upTo}, SetOptions(merge: true));
+    await ActivityLogService().log(
+      eventType: ActivityEventType.updateRead,
+      entityType: 'app_update',
+      metadata: {'upToMillis': upTo.millisecondsSinceEpoch},
+    );
   }
 
   Future<Timestamp?> _guestLastSeen() async {
