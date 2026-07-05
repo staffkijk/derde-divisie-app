@@ -23,10 +23,8 @@ Future<List<String>> bepaalVorm(String teamCode, String competitie) async {
 
     // Filter wedstrijden van dit team (thuis of uit)
     final teamMatches = alleWedstrijden.where((m) {
-      final homeCode =
-          (m['homeTeamCode'] ?? '').toString().toLowerCase();
-      final awayCode =
-          (m['awayTeamCode'] ?? '').toString().toLowerCase();
+      final homeCode = (m['homeTeamCode'] ?? '').toString().toLowerCase();
+      final awayCode = (m['awayTeamCode'] ?? '').toString().toLowerCase();
       return homeCode == normalizedCode || awayCode == normalizedCode;
     }).toList();
 
@@ -43,13 +41,11 @@ Future<List<String>> bepaalVorm(String teamCode, String competitie) async {
 
     // Bepaal de laatste 5 resultaten (nieuwste links)
     final laatsteVijf = teamMatches.take(5).map((m) {
-      final isThuis = (m['homeTeamCode'] ?? '').toString().toLowerCase() ==
-          normalizedCode;
+      final isThuis =
+          (m['homeTeamCode'] ?? '').toString().toLowerCase() == normalizedCode;
       final thuisGoals = m['uitslagThuis'] ?? 0;
       final uitGoals = m['uitslagUit'] ?? 0;
-      final diff = isThuis
-          ? (thuisGoals - uitGoals)
-          : (uitGoals - thuisGoals);
+      final diff = isThuis ? (thuisGoals - uitGoals) : (uitGoals - thuisGoals);
       if (diff > 0) return 'W';
       if (diff == 0) return 'G';
       return 'V';

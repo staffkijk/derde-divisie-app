@@ -8,6 +8,9 @@ import '../../data/models/wedstrijd.dart';
 import '../../data/services/wedstrijden_data.dart';
 import 'package:derde_divisie/helpers/sync_service.dart';
 import 'package:derde_divisie/data/services/activity_log_service.dart';
+import 'package:derde_divisie/data/services/division_data_service.dart';
+import 'package:derde_divisie/core/design/app_design.dart';
+import 'package:derde_divisie/data/config/season_config.dart';
 
 class WedstrijdenSchermDerdeDivisieA extends StatefulWidget {
   final String divisie;
@@ -35,11 +38,33 @@ class _WedstrijdenSchermDerdeDivisieAState
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _seasonMatchesSub;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _matchesSub;
   bool _usingSeasonMatches = false;
+  String? _expandedQuickPickId;
+  String? _favoriteTeamId;
+  bool _favoriteOnly = false;
 
   @override
   void initState() {
     super.initState();
     _init();
+    _loadFavoriteTeam();
+  }
+
+  Future<void> _loadFavoriteTeam() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    final snapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
+    final data = snapshot.data();
+    final team = SeasonConfig.teamById(
+          (data?['favoriteTeamSlug'] ?? '').toString(),
+        ) ??
+        SeasonConfig.teamByName(
+          (data?['favoriteTeamName'] ?? data?['favorieteClub'] ?? '')
+              .toString(),
+        );
+    if (mounted && team != null) setState(() => _favoriteTeamId = team.id);
   }
 
   @override
@@ -167,18 +192,7 @@ class _WedstrijdenSchermDerdeDivisieAState
   }
 
   bool _matchesDivision(Map<String, dynamic> data) {
-    final raw = _readString(data, const [
-      'division',
-      'divisie',
-      'competition',
-      'competitie',
-    ]).toLowerCase();
-
-    if (raw.isEmpty) return true;
-    return raw == 'a' ||
-        raw == 'dda' ||
-        raw.contains('divisie a') ||
-        raw.contains('derde divisie a');
+    return DivisionDataService.matchBelongsToDivision(data, 'A');
   }
 
   List<Wedstrijd> _parseSeasonMatches(
@@ -416,6 +430,13 @@ class _WedstrijdenSchermDerdeDivisieAState
     final deadlineTekst = (_deadline != null)
         ? DateFormat('EEEE d-MM-yyyy – HH:mm', 'nl').format(_deadline!)
         : 'n.v.t.';
+    final visibleMatches = _favoriteOnly && _favoriteTeamId != null
+        ? _wedstrijden.where((match) {
+            final home = SeasonConfig.teamByName(match.thuis)?.id;
+            final away = SeasonConfig.teamByName(match.uit)?.id;
+            return home == _favoriteTeamId || away == _favoriteTeamId;
+          }).toList()
+        : _wedstrijden;
 
     return SafeArea(
       child: Center(
@@ -433,9 +454,9 @@ class _WedstrijdenSchermDerdeDivisieAState
                   width: double.infinity,
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.amber.shade50,
+                    color: AppColors.surface,
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.amber.shade100),
+                    border: Border.all(color: AppColors.border),
                   ),
                   child: Text(
                     'Deadline voorspellen: $deadlineTekst',
@@ -446,8 +467,19 @@ class _WedstrijdenSchermDerdeDivisieAState
                   ),
                 ),
               ),
+              if (_favoriteTeamId != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: FilterChip(
+                    selected: _favoriteOnly,
+                    label: const Text('Alleen mijn favoriete club'),
+                    avatar: const Icon(Icons.favorite_outline, size: 17),
+                    onSelected: (value) =>
+                        setState(() => _favoriteOnly = value),
+                  ),
+                ),
               Expanded(
-                child: _wedstrijden.isEmpty
+                child: visibleMatches.isEmpty
                     ? const Center(
                         child: Padding(
                           padding: EdgeInsets.all(24),
@@ -459,9 +491,9 @@ class _WedstrijdenSchermDerdeDivisieAState
                       )
                     : ListView.builder(
                         padding: const EdgeInsets.symmetric(horizontal: 8),
-                        itemCount: _wedstrijden.length,
+                        itemCount: visibleMatches.length,
                         itemBuilder: (context, index) {
-                          final w = _wedstrijden[index];
+                          final w = visibleMatches[index];
                           final id = w.id;
                           final thuis = _werkelijkeUitslagThuis[id];
                           final uit = _werkelijkeUitslagUit[id];
@@ -532,8 +564,26 @@ class _WedstrijdenSchermDerdeDivisieAState
                                   ],
                                 ),
                                 if (!isLocked) ...[
-                                  const SizedBox(height: 10),
-                                  _buildQuickScores(w),
+                                  Align(
+                                    alignment: Alignment.center,
+                                    child: TextButton.icon(
+                                      onPressed: () {
+                                        setState(() {
+                                          _expandedQuickPickId =
+                                              _expandedQuickPickId == id
+                                                  ? null
+                                                  : id;
+                                        });
+                                      },
+                                      icon: const Icon(
+                                        Icons.bolt_outlined,
+                                        size: 17,
+                                      ),
+                                      label: const Text('Snelle uitslag'),
+                                    ),
+                                  ),
+                                  if (_expandedQuickPickId == id)
+                                    _buildQuickScores(w),
                                 ],
                                 const SizedBox(height: 8),
                                 if (uitslagBekend)

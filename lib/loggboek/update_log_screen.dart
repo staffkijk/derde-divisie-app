@@ -76,17 +76,15 @@ class UpdateLogScreen extends StatelessWidget {
                           const SizedBox(width: 8),
                           Text(
                             _formatTs(created),
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
-                                ?.copyWith(
-                                  // withOpacity is deprecated in nieuwere Flutter versies:
-                                  // gebruik withValues(alpha: ...)
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurface
-                                      .withValues(alpha: 0.6),
-                                ),
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      // withOpacity is deprecated in nieuwere Flutter versies:
+                                      // gebruik withValues(alpha: ...)
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurface
+                                          .withValues(alpha: 0.6),
+                                    ),
                           ),
                         ],
                       ),
@@ -103,8 +101,7 @@ class UpdateLogScreen extends StatelessWidget {
           );
         },
       ),
-      floatingActionButton:
-          isAdmin ? _AdminAddButton(service: service) : null,
+      floatingActionButton: isAdmin ? _AdminAddButton(service: service) : null,
     );
   }
 }

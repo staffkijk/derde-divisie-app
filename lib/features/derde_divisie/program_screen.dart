@@ -6,18 +6,22 @@ import 'package:flutter/services.dart';
 import '../../data/config/team_logo_assets.dart';
 import '../../data/config/season_config.dart';
 import '../../data/firestore/season_paths.dart';
+import '../../data/services/division_data_service.dart';
 import '../../core/utils/match_formatters.dart';
 import '../moderator/result_processing_service.dart';
+import '../clubs/club_detail_screen.dart';
 
 class ProgramScreen extends StatefulWidget {
   const ProgramScreen({
     super.key,
     required this.division,
     this.season = SeasonConfig.activeSeasonId,
+    this.showAllMatches = false,
   });
 
   final String division;
   final String season;
+  final bool showAllMatches;
 
   @override
   State<ProgramScreen> createState() => _ProgramScreenState();
@@ -36,6 +40,37 @@ class _ProgramScreenState extends State<ProgramScreen> {
     super.initState();
     _rounds = List<int>.generate(34, (index) => index + 1);
     _loadModeratorStatus();
+    _selectRelevantRound();
+  }
+
+  Future<void> _selectRelevantRound() async {
+    try {
+      final snapshot = await SeasonPaths.matches(widget.season)
+          .where('division', isEqualTo: widget.division)
+          .get();
+      final openRounds = snapshot.docs
+          .where((doc) {
+            final status = (doc.data()['status'] ?? 'scheduled').toString();
+            return status == 'scheduled' || status == 'postponed';
+          })
+          .map((doc) => _MatchDoc._int(doc.data()['round'], 0))
+          .where((round) => round > 0)
+          .toList()
+        ..sort();
+      final allRounds = snapshot.docs
+          .map((doc) => _MatchDoc._int(doc.data()['round'], 0))
+          .where((round) => round > 0)
+          .toList()
+        ..sort();
+      final relevant = openRounds.isNotEmpty
+          ? openRounds.first
+          : allRounds.isNotEmpty
+              ? allRounds.last
+              : 1;
+      if (mounted) setState(() => _selectedRound = relevant);
+    } catch (error) {
+      debugPrint('Eerstvolgende speelronde kon niet worden bepaald: $error');
+    }
   }
 
   Future<void> _loadModeratorStatus() async {
@@ -62,9 +97,10 @@ class _ProgramScreenState extends State<ProgramScreen> {
   }
 
   Query<Map<String, dynamic>> _matchesQuery() {
-    return SeasonPaths.matches(widget.season)
-        .where('division', isEqualTo: widget.division)
-        .where('round', isEqualTo: _selectedRound);
+    final divisionQuery = SeasonPaths.matches(widget.season)
+        .where('division', isEqualTo: widget.division);
+    if (widget.showAllMatches) return divisionQuery;
+    return divisionQuery.where('round', isEqualTo: _selectedRound);
   }
 
   @override
@@ -83,6 +119,7 @@ class _ProgramScreenState extends State<ProgramScreen> {
                 title: title,
                 selectedRound: _selectedRound,
                 rounds: _rounds,
+                showRoundSelector: !widget.showAllMatches,
                 onRoundChanged: (round) {
                   if (round == null) return;
                   setState(() => _selectedRound = round);
@@ -107,7 +144,14 @@ class _ProgramScreenState extends State<ProgramScreen> {
                       return const Center(child: CircularProgressIndicator());
                     }
 
-                    final docs = snapshot.data?.docs ?? [];
+                    final docs = (snapshot.data?.docs ?? [])
+                        .where(
+                          (doc) => DivisionDataService.matchBelongsToDivision(
+                            doc.data(),
+                            widget.division,
+                          ),
+                        )
+                        .toList();
 
                     if (docs.isEmpty) {
                       return const _StateCard(
@@ -128,6 +172,7 @@ class _ProgramScreenState extends State<ProgramScreen> {
                       matches: matches,
                       isModerator: _isModerator,
                       onEdit: _openEditDialog,
+                      showRoundHeaders: widget.showAllMatches,
                     );
                   },
                 ),
@@ -162,12 +207,14 @@ class _HeaderCard extends StatelessWidget {
     required this.selectedRound,
     required this.rounds,
     required this.onRoundChanged,
+    required this.showRoundSelector,
   });
 
   final String title;
   final int selectedRound;
   final List<int> rounds;
   final ValueChanged<int?> onRoundChanged;
+  final bool showRoundSelector;
 
   @override
   Widget build(BuildContext context) {
@@ -192,23 +239,27 @@ class _HeaderCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _TitleBlock(title: title),
-                const SizedBox(height: 14),
-                _RoundSelector(
-                  selectedRound: selectedRound,
-                  rounds: rounds,
-                  onRoundChanged: onRoundChanged,
-                ),
+                if (showRoundSelector) ...[
+                  const SizedBox(height: 14),
+                  _RoundSelector(
+                    selectedRound: selectedRound,
+                    rounds: rounds,
+                    onRoundChanged: onRoundChanged,
+                  ),
+                ],
               ],
             )
           : Row(
               children: [
                 Expanded(child: _TitleBlock(title: title)),
-                const SizedBox(width: 18),
-                _RoundSelector(
-                  selectedRound: selectedRound,
-                  rounds: rounds,
-                  onRoundChanged: onRoundChanged,
-                ),
+                if (showRoundSelector) ...[
+                  const SizedBox(width: 18),
+                  _RoundSelector(
+                    selectedRound: selectedRound,
+                    rounds: rounds,
+                    onRoundChanged: onRoundChanged,
+                  ),
+                ],
               ],
             ),
     );
@@ -318,18 +369,23 @@ class _MatchesList extends StatelessWidget {
     required this.matches,
     required this.isModerator,
     required this.onEdit,
+    required this.showRoundHeaders,
   });
 
   final List<_MatchDoc> matches;
   final bool isModerator;
   final ValueChanged<_MatchDoc> onEdit;
+  final bool showRoundHeaders;
 
   @override
   Widget build(BuildContext context) {
     final grouped = <String, List<_MatchDoc>>{};
 
     for (final match in matches) {
-      final key = match.date.isEmpty ? 'Datum onbekend' : match.date;
+      final date = match.date.isEmpty ? 'Datum onbekend' : match.date;
+      final key = showRoundHeaders
+          ? '${match.round.toString().padLeft(2, '0')}|$date'
+          : date;
       grouped.putIfAbsent(key, () => []).add(match);
     }
 
@@ -339,11 +395,13 @@ class _MatchesList extends StatelessWidget {
       itemCount: dates.length,
       separatorBuilder: (_, __) => const SizedBox(height: 16),
       itemBuilder: (context, index) {
-        final date = dates[index];
-        final dayMatches = grouped[date] ?? [];
+        final key = dates[index];
+        final dayMatches = grouped[key] ?? [];
+        final date = showRoundHeaders ? key.split('|').skip(1).join('|') : key;
 
         return _DateGroupCard(
           date: date,
+          round: showRoundHeaders ? dayMatches.first.round : null,
           weekdayNL: dayMatches.first.weekdayNL,
           matches: dayMatches,
           isModerator: isModerator,
@@ -361,6 +419,7 @@ class _DateGroupCard extends StatelessWidget {
 
   const _DateGroupCard({
     required this.date,
+    this.round,
     required this.weekdayNL,
     required this.matches,
     required this.isModerator,
@@ -368,6 +427,7 @@ class _DateGroupCard extends StatelessWidget {
   });
 
   final String date;
+  final int? round;
   final String weekdayNL;
   final List<_MatchDoc> matches;
   final bool isModerator;
@@ -403,7 +463,9 @@ class _DateGroupCard extends StatelessWidget {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    displayDate,
+                    round == null
+                        ? displayDate
+                        : 'Speelronde $round · $displayDate',
                     style: const TextStyle(
                       color: _darkGreen,
                       fontSize: 16,
@@ -492,6 +554,11 @@ class _MatchRow extends StatelessWidget {
               match.homeTeam,
             ],
             alignEnd: false,
+            onTap: () => _openClub(
+              context,
+              match.homeTeamSlug,
+              match.homeTeam,
+            ),
           ),
         ),
         const SizedBox(width: 12),
@@ -511,6 +578,11 @@ class _MatchRow extends StatelessWidget {
               match.awayTeam,
             ],
             alignEnd: true,
+            onTap: () => _openClub(
+              context,
+              match.awayTeamSlug,
+              match.awayTeam,
+            ),
           ),
         ),
         const SizedBox(width: 14),
@@ -545,6 +617,11 @@ class _MatchRow extends StatelessWidget {
                   match.homeTeam,
                 ],
                 alignEnd: false,
+                onTap: () => _openClub(
+                  context,
+                  match.homeTeamSlug,
+                  match.homeTeam,
+                ),
               ),
             ),
             const SizedBox(width: 10),
@@ -563,6 +640,11 @@ class _MatchRow extends StatelessWidget {
                   match.awayTeam,
                 ],
                 alignEnd: true,
+                onTap: () => _openClub(
+                  context,
+                  match.awayTeamSlug,
+                  match.awayTeam,
+                ),
               ),
             ),
           ],
@@ -583,6 +665,14 @@ class _MatchRow extends StatelessWidget {
       ],
     );
   }
+
+  void _openClub(BuildContext context, String slug, String name) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ClubDetailScreen(teamSlug: slug, teamName: name),
+      ),
+    );
+  }
 }
 
 class _TeamBlock extends StatelessWidget {
@@ -593,12 +683,14 @@ class _TeamBlock extends StatelessWidget {
     required this.slug,
     required this.logoValues,
     required this.alignEnd,
+    this.onTap,
   });
 
   final String name;
   final String slug;
   final List<Object?> logoValues;
   final bool alignEnd;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -622,9 +714,16 @@ class _TeamBlock extends StatelessWidget {
       ),
     ];
 
-    return Row(
-      textDirection: alignEnd ? TextDirection.rtl : TextDirection.ltr,
-      children: children,
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Row(
+          textDirection: alignEnd ? TextDirection.rtl : TextDirection.ltr,
+          children: children,
+        ),
+      ),
     );
   }
 }
@@ -1247,6 +1346,8 @@ class _MatchDoc {
   }
 
   static int compareForPublicDisplay(_MatchDoc a, _MatchDoc b) {
+    final roundResult = a.round.compareTo(b.round);
+    if (roundResult != 0) return roundResult;
     final aDate = DateTime.tryParse(a.date);
     final bDate = DateTime.tryParse(b.date);
     if (aDate != null && bDate != null) {

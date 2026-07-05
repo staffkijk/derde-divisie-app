@@ -31,8 +31,10 @@ class PouleService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   Future<bool> checkUniqueName(String name) async {
-    final snapshot =
-        await _firestore.collection('poules').where('name', isEqualTo: name).get();
+    final snapshot = await _firestore
+        .collection('poules')
+        .where('name', isEqualTo: name)
+        .get();
     return snapshot.docs.isEmpty;
   }
 
@@ -64,13 +66,15 @@ class PouleService {
     // Haal wedstrijd-datum op (voor deadline 12:00 op wedstrijddag)
     final matchDoc = await _firestore.collection('matches').doc(matchId).get();
     final matchData = matchDoc.data();
-    final Timestamp? ts =
-        (matchData?['timestamp'] as Timestamp?) ?? (matchData?['datum'] as Timestamp?);
+    final Timestamp? ts = (matchData?['timestamp'] as Timestamp?) ??
+        (matchData?['datum'] as Timestamp?);
     if (ts == null) {
-      developer.log('⚠️ Geen datum/timestamp bij match $matchId — skip deadline-check.');
+      developer.log(
+          '⚠️ Geen datum/timestamp bij match $matchId — skip deadline-check.');
     }
-    final DateTime? deadline =
-        ts == null ? null : DateTime(ts.toDate().year, ts.toDate().month, ts.toDate().day, 12);
+    final DateTime? deadline = ts == null
+        ? null
+        : DateTime(ts.toDate().year, ts.toDate().month, ts.toDate().day, 12);
 
     // Verwerk de drie collecties
     await _verwerkCollectieVoorPoule(
@@ -119,12 +123,14 @@ class PouleService {
         .get();
 
     if (snap.docs.isEmpty) {
-      developer.log('ℹ️ Geen voorspellingen in $collectieNaam voor poule=$pouleId, match=$matchId');
+      developer.log(
+          'ℹ️ Geen voorspellingen in $collectieNaam voor poule=$pouleId, match=$matchId');
       return;
     }
 
     final String uitslagKey = '$echteHome-$echteAway';
-    final Map<String, int> plusPerDeelnemer = {}; // userId -> +punten (som in deze collectie)
+    final Map<String, int> plusPerDeelnemer =
+        {}; // userId -> +punten (som in deze collectie)
 
     for (final d in snap.docs) {
       final m = d.data();
@@ -134,8 +140,10 @@ class PouleService {
           : (m['gebruikerId'] as String);
 
       // NB: in alle poulecollecties gebruiken we 'matchId' en scoreThuis/scoreUit
-      final int voorspeldHome = int.tryParse(m['scoreThuis']?.toString() ?? '') ?? 0;
-      final int voorspeldAway = int.tryParse(m['scoreUit']?.toString() ?? '') ?? 0;
+      final int voorspeldHome =
+          int.tryParse(m['scoreThuis']?.toString() ?? '') ?? 0;
+      final int voorspeldAway =
+          int.tryParse(m['scoreUit']?.toString() ?? '') ?? 0;
 
       final DateTime? ingevuldOp = (m['timestamp'] as Timestamp?)?.toDate();
       final bool alVerwerkt = m['verwerkt'] == true;
@@ -207,7 +215,8 @@ class PouleService {
         SetOptions(merge: true),
       );
 
-      developer.log('💾 [$collectieNaam] deelnemer ${entry.key} +${entry.value} punten');
+      developer.log(
+          '💾 [$collectieNaam] deelnemer ${entry.key} +${entry.value} punten');
     }
   }
 }

@@ -2,8 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:derde_divisie/helpers/club_logo_helper.dart';
 
-
-
 class ModeratorScreenshotViewB extends StatelessWidget {
   final int speelronde;
 
@@ -26,7 +24,8 @@ class ModeratorScreenshotViewB extends StatelessWidget {
         .where('divisie', isEqualTo: 'B')
         .get();
 
-    List<Map<String, dynamic>> lijst = snapshot.docs.map((doc) => doc.data()).toList();
+    List<Map<String, dynamic>> lijst =
+        snapshot.docs.map((doc) => doc.data()).toList();
 
     lijst.sort((a, b) {
       int punten = (b['punten'] ?? 0).compareTo(a['punten'] ?? 0);
@@ -40,10 +39,13 @@ class ModeratorScreenshotViewB extends StatelessWidget {
       int doelsaldo = doelsaldoB.compareTo(doelsaldoA);
       if (doelsaldo != 0) return doelsaldo;
 
-      int doelpuntenVoor = (b['doelpuntenVoor'] ?? 0).compareTo(a['doelpuntenVoor'] ?? 0);
+      int doelpuntenVoor =
+          (b['doelpuntenVoor'] ?? 0).compareTo(a['doelpuntenVoor'] ?? 0);
       if (doelpuntenVoor != 0) return doelpuntenVoor;
 
-      return (a['team'] ?? '').toString().compareTo((b['team'] ?? '').toString());
+      return (a['team'] ?? '')
+          .toString()
+          .compareTo((b['team'] ?? '').toString());
     });
 
     return lijst;
@@ -66,7 +68,8 @@ class ModeratorScreenshotViewB extends StatelessWidget {
             const SizedBox(width: 4),
             getLogo(uit, size: 20),
           ]),
-          if (uitslag != null) Text(uitslag, style: const TextStyle(fontWeight: FontWeight.bold))
+          if (uitslag != null)
+            Text(uitslag, style: const TextStyle(fontWeight: FontWeight.bold))
         ],
       ),
     );
@@ -90,14 +93,17 @@ class ModeratorScreenshotViewB extends StatelessWidget {
           const SizedBox(width: 6),
           getLogo(team['team'], size: 18),
           const SizedBox(width: 4),
-          Expanded(child: Text(team['team'] ?? '-', overflow: TextOverflow.ellipsis)),
+          Expanded(
+              child:
+                  Text(team['team'] ?? '-', overflow: TextOverflow.ellipsis)),
           Text('${team['gespeeld'] ?? 0}  '),
           Text('${team['gewonnen'] ?? 0}  '),
           Text('${team['gelijk'] ?? 0}  '),
           Text('${team['verloren'] ?? 0}  '),
           Text('${team['punten'] ?? 0}  '),
           Text('$ds  '),
-          Text('${team['doelpuntenVoor'] ?? 0}-${team['doelpuntenTegen'] ?? 0}'),
+          Text(
+              '${team['doelpuntenVoor'] ?? 0}-${team['doelpuntenTegen'] ?? 0}'),
         ],
       ),
     );
@@ -114,7 +120,6 @@ class ModeratorScreenshotViewB extends StatelessWidget {
             _getStand(),
           ]),
           builder: (context, AsyncSnapshot<List<dynamic>> snapshot) {
-
             if (!snapshot.hasData) {
               return const Center(child: CircularProgressIndicator());
             }
@@ -127,20 +132,25 @@ class ModeratorScreenshotViewB extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Derde Divisie B – Speelronde $speelronde', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text('Derde Divisie B – Speelronde $speelronde',
+                      style: const TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
-                  const Text('Wedstrijdprogramma:', style: TextStyle(decoration: TextDecoration.underline)),
+                  const Text('Wedstrijdprogramma:',
+                      style: TextStyle(decoration: TextDecoration.underline)),
                   const SizedBox(height: 4),
                   ...programma.map((match) => _buildRij(
                         match['thuisteam'] ?? '',
                         match['uitteam'] ?? '',
                         match['tijd'] ?? '',
-                        match['uitslagThuis'] != null && match['uitslagUit'] != null
+                        match['uitslagThuis'] != null &&
+                                match['uitslagUit'] != null
                             ? '${match['uitslagThuis']}-${match['uitslagUit']}'
                             : null,
                       )),
                   const Divider(thickness: 1.5),
-                  const Text('Stand:', style: TextStyle(decoration: TextDecoration.underline)),
+                  const Text('Stand:',
+                      style: TextStyle(decoration: TextDecoration.underline)),
                   Container(
                     padding: const EdgeInsets.symmetric(vertical: 4),
                     color: Colors.grey.shade200,
@@ -152,7 +162,10 @@ class ModeratorScreenshotViewB extends StatelessWidget {
                       ],
                     ),
                   ),
-                  ...stand.asMap().entries.map((entry) => _buildStandRij(entry.value, entry.key)),
+                  ...stand
+                      .asMap()
+                      .entries
+                      .map((entry) => _buildStandRij(entry.value, entry.key)),
                 ],
               ),
             );

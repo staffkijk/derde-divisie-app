@@ -49,7 +49,8 @@ void main() {
 void _setupLogging() {
   Logger.root.level = Level.ALL;
   Logger.root.onRecord.listen((record) {
-    debugPrint('[${record.level.name}] ${record.loggerName}: ${record.message}');
+    debugPrint(
+        '[${record.level.name}] ${record.loggerName}: ${record.message}');
   });
 }
 
@@ -78,7 +79,8 @@ class SplashWrapper extends StatelessWidget {
     WidgetsFlutterBinding.ensureInitialized();
 
     // 1) Firebase init met productieconfig
-    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+    await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform);
 
     // 2) In DEBUG optioneel naar emulators (alleen als USE_EMULATORS==true)
     await _connectToEmulatorsIfDebug();

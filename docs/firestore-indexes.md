@@ -41,3 +41,13 @@ firebase deploy --only firestore:indexes
 
 Indexbouw kan enige tijd duren. Deploy indexen vóór een release die de
 bijbehorende query activeert.
+
+De nieuwe homepage, clubdetailpagina en CSV-export lezen de season-collecties
+zonder aanvullende samengestelde filters. Daarvoor zijn geen extra composite
+indexen nodig. Het moderatoractiviteitsscherm gebruikt de reeds opgenomen
+`eventType + createdAt`-index.
+
+De divisie-matrix gebruikt afzonderlijke gelijkheidsqueries op `division` voor
+matches en standings. Deze gebruiken single-field indexen. De pouleweergave
+leest de bestaande collectie en deelnemerssubcollecties zonder samengestelde
+sortering; hiervoor is geen nieuwe composite index toegevoegd.

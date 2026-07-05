@@ -284,7 +284,9 @@ class SyncService {
         round: round,
       );
       if (deadlineUTC == null) continue;
-      if (DateTime.now().toUtc().isAfter(deadlineUTC)) continue; // ronde gesloten
+      if (DateTime.now().toUtc().isAfter(deadlineUTC)) {
+        continue; // ronde gesloten
+      }
 
       // whereIn max 10 -> chunken
       for (final chunk in _chunk(m.ids, 10)) {
@@ -356,7 +358,9 @@ class SyncService {
       final kickoffUtc = ts.toDate().toUtc();
       final deadlineUtc = _deadlineUtcForMatchDate(kickoffUtc);
 
-      if (DateTime.now().toUtc().isAfter(deadlineUtc)) continue; // wedstrijd gesloten
+      if (DateTime.now().toUtc().isAfter(deadlineUtc)) {
+        continue; // wedstrijd gesloten
+      }
 
       // globale voorspelling van deze user voor deze match
       // (query i.p.v. docId aannames)
@@ -410,9 +414,9 @@ class SyncService {
         .collection('deelnemers')
         .doc(userId)
         .set(
-          {'syncEnabled': true, 'syncStartAt': FieldValue.serverTimestamp()},
-          SetOptions(merge: true),
-        );
+      {'syncEnabled': true, 'syncStartAt': FieldValue.serverTimestamp()},
+      SetOptions(merge: true),
+    );
 
     if (competitionRaw == 'dda' || competitionRaw == 'ddb') {
       await _backfillCompetitionPool(
@@ -547,6 +551,7 @@ class SyncService {
         .doc(poolId)
         .collection('deelnemers')
         .doc(userId)
-        .set({'syncEnabled': false, 'syncStartAt': null}, SetOptions(merge: true));
+        .set({'syncEnabled': false, 'syncStartAt': null},
+            SetOptions(merge: true));
   }
 }

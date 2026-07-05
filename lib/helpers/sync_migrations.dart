@@ -20,10 +20,8 @@ class SyncMigrations {
 
     QueryDocumentSnapshot<Map<String, dynamic>>? lastPool;
     while (true) {
-      Query<Map<String, dynamic>> q = db
-          .collection('poules')
-          .orderBy(FieldPath.documentId)
-          .limit(200);
+      Query<Map<String, dynamic>> q =
+          db.collection('poules').orderBy(FieldPath.documentId).limit(200);
 
       if (lastPool != null) {
         q = q.startAfter([lastPool.id]);

@@ -78,7 +78,8 @@ class _JuridischSchermState extends State<JuridischScherm> {
       body: SafeArea(
         child: SingleChildScrollView(
           controller: _scrollController,
-          padding: EdgeInsets.fromLTRB(horizontalPadding, 24, horizontalPadding, 32),
+          padding:
+              EdgeInsets.fromLTRB(horizontalPadding, 24, horizontalPadding, 32),
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 1180),
@@ -115,7 +116,8 @@ class _JuridischSchermState extends State<JuridischScherm> {
                         'Technische gegevens, zoals apparaat, browser, foutmeldingen, beveiligingslogs en datum en tijd van gebruik.',
                         'Berichten, feedback of supportvragen die je zelf aan ons stuurt.',
                       ]),
-                      _LegalSubTitle('3. Waarvoor gebruiken wij deze gegevens?'),
+                      _LegalSubTitle(
+                          '3. Waarvoor gebruiken wij deze gegevens?'),
                       _LegalBullets([
                         'Om accounts aan te maken en gebruikers te laten inloggen.',
                         'Om voorspellingen, poules, punten, standen en ranglijsten te verwerken.',
@@ -360,8 +362,6 @@ class _QuickNav extends StatelessWidget {
     required this.onVoorwaarden,
     required this.onDisclaimer,
   });
-
-
 
   @override
   Widget build(BuildContext context) {

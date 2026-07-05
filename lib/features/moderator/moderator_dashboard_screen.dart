@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'package:derde_divisie/core/design/app_design.dart';
+import 'package:derde_divisie/data/firestore/season_paths.dart';
 import 'package:derde_divisie/features/moderator/moderator_menu_screen.dart';
 import 'package:derde_divisie/features/moderator/moderator_tools_screen.dart';
 import 'package:derde_divisie/helpers/herbereken_standen_tool.dart';
 import 'package:derde_divisie/loggboek/update_log_screen.dart';
 import 'package:derde_divisie/loggboek/update_service.dart';
 import 'package:derde_divisie/features/moderator/activity_log_screen.dart';
+import 'package:derde_divisie/features/moderator/moderator_export_screen.dart';
 
 class ModeratorDashboardScreen extends StatelessWidget {
   const ModeratorDashboardScreen({super.key});
@@ -47,6 +51,12 @@ class ModeratorDashboardScreen extends StatelessWidget {
         ),
       ),
       _ModeratorTool(
+        icon: Icons.download_outlined,
+        title: 'CSV-exports',
+        description: 'Exporteer programma en verwerkte uitslagen.',
+        screen: const ModeratorExportScreen(),
+      ),
+      _ModeratorTool(
         icon: Icons.build_outlined,
         title: 'Technische controles',
         description: 'Open de bestaande audit- en hersteltools.',
@@ -66,17 +76,24 @@ class ModeratorDashboardScreen extends StatelessWidget {
             child: Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 1100),
-                child: Wrap(
-                  spacing: 16,
-                  runSpacing: 16,
-                  children: tools
-                      .map(
-                        (tool) => SizedBox(
-                          width: cardWidth,
-                          child: _ModeratorToolCard(tool: tool),
-                        ),
-                      )
-                      .toList(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const _ModeratorSummary(),
+                    const SizedBox(height: AppSpacing.lg),
+                    Wrap(
+                      spacing: 16,
+                      runSpacing: 16,
+                      children: tools
+                          .map(
+                            (tool) => SizedBox(
+                              width: cardWidth,
+                              child: _ModeratorToolCard(tool: tool),
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -85,6 +102,159 @@ class ModeratorDashboardScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+class _ModeratorSummary extends StatelessWidget {
+  const _ModeratorSummary();
+
+  Future<_SummaryData> _load() async {
+    final results = await Future.wait([
+      SeasonPaths.currentSeasonMatches.get(),
+      FirebaseFirestore.instance
+          .collection('activityLogs')
+          .orderBy('createdAt', descending: true)
+          .limit(100)
+          .get(),
+    ]);
+    final matches = results[0];
+    final activities = results[1];
+    var processed = 0;
+    var errors = 0;
+    final statuses = <String, int>{};
+    for (final doc in matches.docs.where((doc) => doc.id != '_meta')) {
+      final data = doc.data();
+      final status = (data['status'] ?? 'scheduled').toString();
+      statuses[status] = (statuses[status] ?? 0) + 1;
+      if (data['processed'] == true || data['verwerkt'] == true) processed++;
+      if ((data['processingError'] ?? '').toString().trim().isNotEmpty) {
+        errors++;
+      }
+    }
+    return _SummaryData(
+      matches: matches.docs.where((doc) => doc.id != '_meta').length,
+      processed: processed,
+      errors: errors,
+      recentActivities: activities.docs.length,
+      scheduled: statuses['scheduled'] ?? 0,
+      postponed: statuses['postponed'] ?? 0,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<_SummaryData>(
+      future: _load(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return const AppCard(
+            child: Text(
+              'Dashboardstatistieken konden niet worden geladen.',
+              style: AppTextStyles.bodyMuted,
+            ),
+          );
+        }
+        if (!snapshot.hasData) {
+          return const AppCard(
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+        final data = snapshot.data!;
+        return AppCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Seizoensoverzicht',
+                style: AppTextStyles.sectionTitle,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Wrap(
+                spacing: AppSpacing.sm,
+                runSpacing: AppSpacing.sm,
+                children: [
+                  _Metric('Wedstrijden', data.matches, Icons.sports_soccer),
+                  _Metric('Gepland', data.scheduled, Icons.event_outlined),
+                  _Metric('Uitgesteld', data.postponed, Icons.schedule),
+                  _Metric('Verwerkt', data.processed, Icons.check_circle),
+                  _Metric('Fouten', data.errors, Icons.error_outline),
+                  _Metric(
+                    'Recente events',
+                    data.recentActivities,
+                    Icons.insights_outlined,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _Metric extends StatelessWidget {
+  const _Metric(this.label, this.value, this.icon);
+
+  final String label;
+  final int value;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 150,
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(AppRadius.small),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: AppColors.primary, size: 22),
+          const SizedBox(width: AppSpacing.xs),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '$value',
+                style: const TextStyle(
+                  color: AppColors.primaryDark,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              Text(
+                label,
+                style: const TextStyle(
+                  color: AppColors.textMuted,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SummaryData {
+  const _SummaryData({
+    required this.matches,
+    required this.processed,
+    required this.errors,
+    required this.recentActivities,
+    required this.scheduled,
+    required this.postponed,
+  });
+
+  final int matches;
+  final int processed;
+  final int errors;
+  final int recentActivities;
+  final int scheduled;
+  final int postponed;
 }
 
 class _ModeratorTool {

@@ -29,7 +29,8 @@ class _ZoekPouleScreenState extends State<ZoekPouleScreen> {
     try {
       final userDoc = await _firestore.collection('users').doc(_userId).get();
       setState(() {
-        _aantalGejoinedePoules = (userDoc.data()?['gejoinedePoules'] ?? 0) as int;
+        _aantalGejoinedePoules =
+            (userDoc.data()?['gejoinedePoules'] ?? 0) as int;
       });
     } catch (_) {
       // negeren; laat 0 staan
@@ -62,7 +63,8 @@ class _ZoekPouleScreenState extends State<ZoekPouleScreen> {
       'joinedAt': FieldValue.serverTimestamp(),
       'punten': 0,
       'rol': rol,
-      'voorspellingenZichtbaarVoorDeadline': voorspellingenZichtbaarVoorDeadline,
+      'voorspellingenZichtbaarVoorDeadline':
+          voorspellingenZichtbaarVoorDeadline,
       'syncEnabled': syncEnabled,
       // syncStartAt alleen zetten als syncEnabled true is (alleen vooruit vanaf nú)
       if (syncEnabled) 'syncStartAt': FieldValue.serverTimestamp(),

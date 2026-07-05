@@ -4,7 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app_reloader_impl_stub.dart'
-  if (dart.library.html) 'app_reloader_impl_web.dart';
+    if (dart.library.html) 'app_reloader_impl_web.dart';
 
 final AppReloaderImpl _impl = getAppReloader();
 
@@ -55,9 +55,7 @@ class AppReloader {
 
   /// Moderator-actie: stuur een reload-signaal naar alle clients
   static Future<void> pushReloadToAllClients() {
-    return FirebaseFirestore.instance
-        .collection('system')
-        .doc('ui')
-        .set({'reloadAt': FieldValue.serverTimestamp()}, SetOptions(merge: true));
+    return FirebaseFirestore.instance.collection('system').doc('ui').set(
+        {'reloadAt': FieldValue.serverTimestamp()}, SetOptions(merge: true));
   }
 }

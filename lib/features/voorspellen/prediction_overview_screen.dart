@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import 'package:derde_divisie/core/design/app_design.dart';
 import 'package:derde_divisie/data/config/season_config.dart';
 import 'package:derde_divisie/features/voorspellen/archived_prediction_ranking_screen.dart';
 import 'package:derde_divisie/features/voorspellen/eindstand_voorspelling_screen.dart';
@@ -28,6 +30,17 @@ class PredictionOverviewScreen extends StatelessWidget {
                 child: const Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    _PredictionHeader(),
+                    SizedBox(height: AppSpacing.md),
+                    _SectionTitle(
+                      icon: Icons.emoji_events_rounded,
+                      title: 'Algemene ranking',
+                    ),
+                    SizedBox(height: AppSpacing.xs),
+                    _GlobalTopThree(),
+                    SizedBox(height: AppSpacing.xs),
+                    _RankingLinks(),
+                    SizedBox(height: AppSpacing.lg),
                     _SectionTitle(
                       icon: Icons.sports_soccer_rounded,
                       title: 'Wedstrijden voorspellen',
@@ -70,11 +83,11 @@ class PredictionOverviewScreen extends StatelessWidget {
                           action: _PredictionAction.tableB,
                         ),
                         _ActionCard(
-  icon: Icons.emoji_events_rounded,
-  title: 'Voorspelranking afgelopen seizoen',
-  subtitle: 'Eindranglijst voorspellers 2025/2026',
-  action: _PredictionAction.lastSeason,
-),
+                          icon: Icons.emoji_events_rounded,
+                          title: 'Voorspelranking afgelopen seizoen',
+                          subtitle: 'Eindranglijst voorspellers 2025/2026',
+                          action: _PredictionAction.lastSeason,
+                        ),
                       ],
                     ),
                     SizedBox(height: 24),
@@ -93,17 +106,6 @@ class PredictionOverviewScreen extends StatelessWidget {
                         ),
                       ],
                     ),
-                    SizedBox(height: 28),
-                    Divider(),
-                    SizedBox(height: 20),
-                    _SectionTitle(
-                      icon: Icons.emoji_events_rounded,
-                      title: 'Ranglijsten',
-                    ),
-                    SizedBox(height: 10),
-                    _GlobalTopThree(),
-                    SizedBox(height: 12),
-                    _RankingLinks(),
                     SizedBox(height: 24),
                   ],
                 ),
@@ -111,6 +113,77 @@ class PredictionOverviewScreen extends StatelessWidget {
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+class _PredictionHeader extends StatelessWidget {
+  const _PredictionHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    return AppCard(
+      child: Row(
+        children: [
+          Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: .12),
+              borderRadius: BorderRadius.circular(AppRadius.card),
+            ),
+            child: const Icon(
+              Icons.edit_calendar_outlined,
+              color: AppColors.primary,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Voorspellen', style: AppTextStyles.pageTitle),
+                SizedBox(height: AppSpacing.xxs),
+                Text(
+                  'Kies een competitie of team. De deadline staat compact bij iedere speelronde.',
+                  style: AppTextStyles.bodyMuted,
+                ),
+              ],
+            ),
+          ),
+          if (user != null)
+            FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+              future: FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(user.uid)
+                  .get(),
+              builder: (context, snapshot) {
+                final data = snapshot.data?.data();
+                final team = SeasonConfig.teamById(
+                      (data?['favoriteTeamSlug'] ?? '').toString(),
+                    ) ??
+                    SeasonConfig.teamByName(
+                      (data?['favoriteTeamName'] ??
+                              data?['favorieteClub'] ??
+                              '')
+                          .toString(),
+                    );
+                if (team == null) return const SizedBox.shrink();
+                return Chip(
+                  avatar: Image.asset(
+                    team.logoPath,
+                    width: 22,
+                    height: 22,
+                    errorBuilder: (_, __, ___) =>
+                        const Icon(Icons.shield_outlined, size: 20),
+                  ),
+                  label: Text(team.listLabel),
+                );
+              },
+            ),
+        ],
       ),
     );
   }
@@ -153,7 +226,9 @@ class _ActionGrid extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth >= 760
-            ? (constraints.maxWidth - 12) / 2
+            ? constraints.maxWidth >= 1050
+                ? (constraints.maxWidth - 24) / 3
+                : (constraints.maxWidth - 12) / 2
             : constraints.maxWidth;
         return Wrap(
           spacing: 12,
@@ -183,45 +258,45 @@ class _ActionCard extends StatelessWidget {
   final _PredictionAction action;
 
   Future<void> _open(BuildContext context) async {
-  switch (action) {
-    case _PredictionAction.matchesA:
-    case _PredictionAction.matchesB:
-      final division = action == _PredictionAction.matchesA ? 'A' : 'B';
-      await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => PredictionScreen(divisie: division),
-        ),
-      );
-      return;
-
-    case _PredictionAction.tableA:
-    case _PredictionAction.tableB:
-      final division = action == _PredictionAction.tableA ? 'A' : 'B';
-      await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => EindstandVoorspellingScreen(divisie: division),
-        ),
-      );
-      return;
-
-    case _PredictionAction.team:
-      await _chooseTeam(context);
-      return;
-
-    case _PredictionAction.lastSeason:
-      await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => const ArchivedPredictionRankingScreen(
-            initialSeason: '2025-2026',
+    switch (action) {
+      case _PredictionAction.matchesA:
+      case _PredictionAction.matchesB:
+        final division = action == _PredictionAction.matchesA ? 'A' : 'B';
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => PredictionScreen(divisie: division),
           ),
-        ),
-      );
-      return;
+        );
+        return;
+
+      case _PredictionAction.tableA:
+      case _PredictionAction.tableB:
+        final division = action == _PredictionAction.tableA ? 'A' : 'B';
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => EindstandVoorspellingScreen(divisie: division),
+          ),
+        );
+        return;
+
+      case _PredictionAction.team:
+        await _chooseTeam(context);
+        return;
+
+      case _PredictionAction.lastSeason:
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const ArchivedPredictionRankingScreen(
+              initialSeason: '2025-2026',
+            ),
+          ),
+        );
+        return;
+    }
   }
-}
 
   Future<void> _chooseTeam(BuildContext context) async {
     final team = await showModalBottomSheet<SeasonTeam>(
@@ -341,7 +416,6 @@ class _GlobalTopThree extends StatelessWidget {
       future: FirebaseFirestore.instance
           .collection('users')
           .orderBy('totalen', descending: true)
-          .limit(3)
           .get(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -355,23 +429,40 @@ class _GlobalTopThree extends StatelessWidget {
               text: 'De ranglijst kan nu niet worden geladen.');
         }
 
-        final docs = snapshot.data!.docs
+        final ranked = snapshot.data!.docs
             .where((doc) => (doc.data()['totalen'] as num? ?? 0) > 0)
             .toList();
-        if (docs.isEmpty) {
+        if (ranked.isEmpty) {
           return const _EmptyRanking(
             text: 'Er is nog geen ranglijst beschikbaar.',
           );
         }
+        final userId = FirebaseAuth.instance.currentUser?.uid;
+        final userIndex =
+            userId == null ? -1 : ranked.indexWhere((doc) => doc.id == userId);
+        final docs = ranked.take(5).toList();
 
-        return Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: const Color(0xFFE3EADF)),
-          ),
+        return AppCard(
+          padding: EdgeInsets.zero,
           child: Column(
             children: [
+              if (userIndex >= 0)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.person_outline,
+                        color: AppColors.primary,
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
+                      Text(
+                        'Jouw positie: ${userIndex + 1}',
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                    ],
+                  ),
+                ),
               for (var i = 0; i < docs.length; i++)
                 ListTile(
                   leading: CircleAvatar(

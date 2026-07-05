@@ -37,20 +37,21 @@ class VoorspelWedstrijdCard extends StatelessWidget {
     this.werkelijkeUit,
     this.behaaldePunten,
     this.eigenVoorspellingThuis, // <-- nieuw
-    this.eigenVoorspellingUit,   // <-- nieuw
+    this.eigenVoorspellingUit, // <-- nieuw
     this.onThuisScoreChanged,
     this.onUitScoreChanged,
   });
 
   String getLogoAssetPath(String clubnaam) {
-    String clean = clubnaam.replaceAll(RegExp(r'[^\w]'), '').replaceAll(' ', '');
+    String clean =
+        clubnaam.replaceAll(RegExp(r'[^\w]'), '').replaceAll(' ', '');
     return 'assets/images/logo_$clean.png';
   }
 
   @override
   Widget build(BuildContext context) {
     final thuisLogo = getLogoAssetPath(thuisteam);
-    final uitLogo   = getLogoAssetPath(uitteam);
+    final uitLogo = getLogoAssetPath(uitteam);
 
     final bool uitslagIngevuld =
         werkelijkeThuis != null && werkelijkeUit != null;
@@ -91,7 +92,8 @@ class VoorspelWedstrijdCard extends StatelessWidget {
             if (isDisabled && uitslagIngevuld) ...[
               Text(
                 'Uitslag: $werkelijkeThuis - $werkelijkeUit',
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                style:
+                    const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
               ),
               if (puntenBeschikbaar) ...[
                 const SizedBox(height: 6),
@@ -107,12 +109,16 @@ class VoorspelWedstrijdCard extends StatelessWidget {
                   style: const TextStyle(fontSize: 13, color: Colors.blueGrey),
                 ),
               ],
-            ] else if (isDisabled && !uitslagIngevuld && heeftEigenVoorspelling) ...[
+            ] else if (isDisabled &&
+                !uitslagIngevuld &&
+                heeftEigenVoorspelling) ...[
               Text(
                 'Jouw voorspelling: $eigenVoorspellingThuis - $eigenVoorspellingUit',
                 style: const TextStyle(fontSize: 13, color: Colors.blueGrey),
               ),
-            ] else if (isDisabled && !uitslagIngevuld && !heeftEigenVoorspelling) ...[
+            ] else if (isDisabled &&
+                !uitslagIngevuld &&
+                !heeftEigenVoorspelling) ...[
               Text(
                 'Gesloten',
                 style: TextStyle(fontSize: 12, color: Colors.grey.shade600),

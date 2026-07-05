@@ -3,6 +3,9 @@
 ## Publiek en account
 
 - [ ] Home als gast: desktop en mobiel, loading/empty/error states
+- [ ] Wedstrijdcentrum toont komende wedstrijden en laatste uitslagen
+- [ ] Homeknoppen openen Programma, Stand A/B en Voorspellen
+- [ ] Favoriete club verschijnt op home; ontbrekende club toont profiel-CTA
 - [ ] Login met knop en Enter vanuit e-mail/wachtwoord
 - [ ] Verkeerde login toont duidelijke fout zonder crash
 - [ ] Registratie maakt bestaande uservelden én compatibele favorite-teamvelden
@@ -12,12 +15,24 @@
 
 ## Programma en standen
 
+- [ ] Er is één menu-item Programma met Divisie A/B-segment
+- [ ] Weergave Speelronde toont alleen gekozen ronde
+- [ ] Weergave Alle wedstrijden toont 34 rondes gegroepeerd en scrollbaar
+- [ ] Moderator kan in beide programmaweergaven dezelfde editor openen
+- [ ] Oude directe `ProgramScreen`-instantiaties blijven werken
 - [ ] Programma toont de juiste ronde, divisie en datumgroepen
 - [ ] Programmafilter A en B
+- [ ] Divisie A toont geen enkele club of wedstrijd uit B, en omgekeerd
 - [ ] Wedstrijden op dezelfde dag staan op tijd gesorteerd
 - [ ] Ontbrekende tijd toont `Tijd onbekend`, geen onbedoelde 00:00
 - [ ] Statussen gepland, afgelopen, uitgesteld, afgelast en gestaakt
+- [ ] Klik op thuis- of uitclub opent read-only clubdetail
+- [ ] Clubdetail toont positie, cijfers, volgende wedstrijd en resultaten
+- [ ] Matrix toont thuisteams als rij en uitteams als kolom
+- [ ] Matrix toont datum, uitslag en donkere diagonale cellen
+- [ ] Matrix is horizontaal bruikbaar op desktop en mobiel
 - [ ] Stand A/B toont ook teams met nul wedstrijden
+- [ ] Iedere stand bevat maximaal 18 unieke clubs
 - [ ] Standvolgorde: punten, doelsaldo, goals voor, teamnaam
 - [ ] Periodestanden tonen alleen finished wedstrijden
 
@@ -33,7 +48,14 @@
 
 ## Poules
 
+- [ ] Overzicht scheidt Mijn poules en Openbare poules
+- [ ] Poulekaart toont type, privacy, beheerder en deelnemersaantal
+- [ ] Openbare poule kan veilig worden gejoined zonder dubbeltelling
+- [ ] Privépoule kan niet via detail zonder wachtwoord worden gejoined
+- [ ] Uitnodigen/deellink bevat poulecode
 - [ ] Poule aanmaken met bestaand datamodel
+- [ ] Poule aanmaken/bewerken met scope Wedstrijden, Eindstand of Beide
+- [ ] Oude poule zonder `predictionScope` blijft op Wedstrijden staan
 - [ ] Open/gesloten poule joinen
 - [ ] Pouledetail en ranking
 - [ ] Centrale voorspelling telt mee
@@ -43,6 +65,10 @@
 
 ## Moderator
 
+- [ ] Dashboardstatistieken laden wedstrijden, statussen, fouten en events
+- [ ] Programma-export downloadt geldige CSV op web
+- [ ] Uitslagenexport bevat alleen finished wedstrijden
+- [ ] Rankingexport toont uitleg en geen misleidende actieve knop
 - [ ] Uitslag invoeren en bulk opslaan
 - [ ] `processingAttempts` en `lastProcessingRunId` worden gevuld
 - [ ] Succes vult `processedAt` en `processedBy`

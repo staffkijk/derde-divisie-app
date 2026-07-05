@@ -32,12 +32,14 @@ Future<void> verwerkEindstandPunten(String divisieLetter) async {
   // 2) Eindstand opbouwen
   final Map<String, Map<String, int>> clubPunten = {};
   void initClub(String norm) {
-    clubPunten.putIfAbsent(norm, () => {
-          'punten': 0,
-          'doelsaldo': 0,
-          'gespeeld': 0,
-          'doelpuntenVoor': 0,
-        });
+    clubPunten.putIfAbsent(
+        norm,
+        () => {
+              'punten': 0,
+              'doelsaldo': 0,
+              'gespeeld': 0,
+              'doelpuntenVoor': 0,
+            });
   }
 
   for (final m in matches) {
@@ -63,10 +65,8 @@ Future<void> verwerkEindstandPunten(String divisieLetter) async {
     clubPunten[away]!['doelpuntenVoor'] =
         clubPunten[away]!['doelpuntenVoor']! + a;
 
-    clubPunten[home]!['doelsaldo'] =
-        clubPunten[home]!['doelsaldo']! + (h - a);
-    clubPunten[away]!['doelsaldo'] =
-        clubPunten[away]!['doelsaldo']! + (a - h);
+    clubPunten[home]!['doelsaldo'] = clubPunten[home]!['doelsaldo']! + (h - a);
+    clubPunten[away]!['doelsaldo'] = clubPunten[away]!['doelsaldo']! + (a - h);
 
     if (h > a) {
       clubPunten[home]!['punten'] = clubPunten[home]!['punten']! + 3;
@@ -134,9 +134,8 @@ Future<void> verwerkEindstandPunten(String divisieLetter) async {
     final prevFromDoc = divisieLetter == 'A'
         ? (data['eindstand_A_punten'] ?? 0)
         : (data['eindstand_B_punten'] ?? 0);
-    final oud = (prevFromDoc is int)
-        ? prevFromDoc
-        : int.tryParse('$prevFromDoc') ?? 0;
+    final oud =
+        (prevFromDoc is int) ? prevFromDoc : int.tryParse('$prevFromDoc') ?? 0;
 
     final delta = nieuw - oud; // wat er bij/af moet
 

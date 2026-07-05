@@ -82,7 +82,8 @@ class FaqScreen extends StatelessWidget {
                             'Open je profielpagina en kies daar een andere profielfoto. De beschikbare opties kunnen per versie verschillen.',
                       ),
                       _FaqItem(
-                        question: 'Waarom is mijn profiel zichtbaar in ranglijsten?',
+                        question:
+                            'Waarom is mijn profiel zichtbaar in ranglijsten?',
                         answer:
                             'Ranglijsten tonen deelnemers zodat poules en algemene standen goed werken. Afhankelijk van je instellingen kan beperkte profielinformatie zichtbaar zijn.',
                       ),
@@ -105,7 +106,8 @@ class FaqScreen extends StatelessWidget {
                             'Bij een teampoule voorspel je wedstrijden van één club. Bij een volledige poule voorspel je wedstrijden binnen de gekozen divisie of competitie.',
                       ),
                       _FaqItem(
-                        question: 'Kan ik later nog mensen toevoegen aan mijn poule?',
+                        question:
+                            'Kan ik later nog mensen toevoegen aan mijn poule?',
                         answer:
                             'Ja, zolang de poule instellingen dit toestaan. De beheerder van de poule bepaalt meestal wie kan deelnemen.',
                       ),

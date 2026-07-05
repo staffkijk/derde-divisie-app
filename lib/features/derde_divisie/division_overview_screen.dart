@@ -5,10 +5,12 @@ import 'package:intl/intl.dart';
 import '../../data/config/team_logo_assets.dart';
 import '../../data/config/season_config.dart';
 import '../../data/firestore/season_paths.dart';
+import '../../data/services/division_data_service.dart';
 import '../../core/utils/match_formatters.dart';
 import 'periode_standen_screen.dart';
 import 'historical_standings_screen.dart';
 import 'stand_derde_divisie_screen.dart';
+import 'division_schedule_matrix.dart';
 
 class DivisionOverviewScreen extends StatelessWidget {
   final String division;
@@ -103,6 +105,8 @@ class DivisionOverviewScreen extends StatelessWidget {
                           mode: _MatchCardMode.results,
                         ),
                       ],
+                      const SizedBox(height: 18),
+                      DivisionScheduleMatrix(division: _shortDivision),
                     ],
                   ),
                 ),
@@ -326,20 +330,7 @@ class _MatchesCard extends StatelessWidget {
   String get _divisionCode => division.toLowerCase().contains(' b') ? 'B' : 'A';
 
   bool _matchesDivision(Map<String, dynamic> data) {
-    final rawDivision = (data['division'] ??
-            data['divisie'] ??
-            data['competition'] ??
-            data['competitie'] ??
-            data['league'] ??
-            '')
-        .toString()
-        .trim();
-
-    if (rawDivision.isEmpty) {
-      return true;
-    }
-
-    return _normalizeDivision(rawDivision) == _divisionCode;
+    return DivisionDataService.matchBelongsToDivision(data, _divisionCode);
   }
 
   List<_MatchInfo> _selectMatches(
@@ -799,19 +790,6 @@ class _SectionTitle extends StatelessWidget {
       ],
     );
   }
-}
-
-String _normalizeDivision(String value) {
-  final text = value.toLowerCase().trim();
-
-  if (text == 'b' ||
-      text == 'divisie b' ||
-      text == 'derde divisie b' ||
-      text.contains(' b')) {
-    return 'B';
-  }
-
-  return 'A';
 }
 
 int? _asInt(dynamic value) {

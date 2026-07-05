@@ -84,7 +84,8 @@ Future<void> _deleteCollectionDocs(
 }
 
 DateTime? _matchDeadline(Map<String, dynamic> match) {
-  final ts = (match['timestamp'] as Timestamp?) ?? (match['datum'] as Timestamp?);
+  final ts =
+      (match['timestamp'] as Timestamp?) ?? (match['datum'] as Timestamp?);
   if (ts == null) return null;
 
   final d = ts.toDate();
@@ -364,7 +365,8 @@ Future<void> herstelVoorspellingenVoorWedstrijden(
       continue;
     }
 
-    final matchDoc = await _db.collection('matches').doc(cleanWedstrijdId).get();
+    final matchDoc =
+        await _db.collection('matches').doc(cleanWedstrijdId).get();
 
     if (!matchDoc.exists) {
       matchesOvergeslagen++;
@@ -405,8 +407,9 @@ Future<void> herstelAlleAlgemeneVoorspellingenEnUserTotalen() async {
     '🛠️ [HERSTEL] Start algemene voorspellingen + usertotalen zonder deadlinefilter',
   );
 
-  final logRef =
-      _db.collection('sync_logs').doc('herstel_algemene_voorspellingen_laatste');
+  final logRef = _db
+      .collection('sync_logs')
+      .doc('herstel_algemene_voorspellingen_laatste');
 
   await logRef.set({
     'status': 'running',
@@ -628,7 +631,8 @@ Future<void> herstelAlleAlgemeneVoorspellingenEnUserTotalen() async {
       'summary': {
         'voorspellingenGezien': voorspellingenGezien,
         'voorspellingenBijgewerkt': voorspellingenBijgewerkt,
-        'overgeslagenGeenMatchOfWedstrijdId': overgeslagenGeenMatchOfWedstrijdId,
+        'overgeslagenGeenMatchOfWedstrijdId':
+            overgeslagenGeenMatchOfWedstrijdId,
         'overgeslagenGeenUitslag': overgeslagenGeenUitslag,
         'overgeslagenGeenScore': overgeslagenGeenScore,
         'timestampNaDeadlineAlleenWaarschuwing':
@@ -649,7 +653,8 @@ Future<void> herstelAlleAlgemeneVoorspellingenEnUserTotalen() async {
       'summary': {
         'voorspellingenGezien': voorspellingenGezien,
         'voorspellingenBijgewerkt': voorspellingenBijgewerkt,
-        'overgeslagenGeenMatchOfWedstrijdId': overgeslagenGeenMatchOfWedstrijdId,
+        'overgeslagenGeenMatchOfWedstrijdId':
+            overgeslagenGeenMatchOfWedstrijdId,
         'overgeslagenGeenUitslag': overgeslagenGeenUitslag,
         'overgeslagenGeenScore': overgeslagenGeenScore,
         'timestampNaDeadlineAlleenWaarschuwing':
@@ -670,7 +675,8 @@ Future<void> herstelAlleAlgemeneVoorspellingenEnUserTotalen() async {
 }
 
 Future<void> markeerVoorspellingenZonderWedstrijdIdOngeldig() async {
-  developer.log('🧹 [HERSTEL] Start markeren voorspellingen zonder wedstrijdId');
+  developer
+      .log('🧹 [HERSTEL] Start markeren voorspellingen zonder wedstrijdId');
 
   final logRef = _db
       .collection('sync_logs')
@@ -845,7 +851,8 @@ Future<void> herstelAllePoulePunten() async {
 
         final data = doc.data();
         final pouleId = _asString(data['pouleId'] ?? data['poule']);
-        final uid = _asString(data['gebruikerId'] ?? data['userId'] ?? data['uid']);
+        final uid =
+            _asString(data['gebruikerId'] ?? data['userId'] ?? data['uid']);
         final matchId = _asString(data['matchId'] ?? data['wedstrijdId']);
 
         if (pouleId.isEmpty || uid.isEmpty || matchId.isEmpty) {
@@ -874,7 +881,8 @@ Future<void> herstelAllePoulePunten() async {
           timestampNaDeadlineAlleenWaarschuwing++;
         }
 
-        final ts = (data['timestamp'] as Timestamp?)?.millisecondsSinceEpoch ?? 0;
+        final ts =
+            (data['timestamp'] as Timestamp?)?.millisecondsSinceEpoch ?? 0;
         final key = '$collectie|$pouleId|$uid|$matchId';
 
         if (!grouped.containsKey(key) || ts >= (groupedTs[key] ?? -1)) {
@@ -887,7 +895,8 @@ Future<void> herstelAllePoulePunten() async {
         final data = doc.data();
 
         final pouleId = _asString(data['pouleId'] ?? data['poule']);
-        final uid = _asString(data['gebruikerId'] ?? data['userId'] ?? data['uid']);
+        final uid =
+            _asString(data['gebruikerId'] ?? data['userId'] ?? data['uid']);
         final matchId = _asString(data['matchId'] ?? data['wedstrijdId']);
 
         final match = matchesById[matchId];
@@ -1220,8 +1229,7 @@ Future<void> voerVolledigeEindcontroleAuditUit() async {
         await writer.addIssue(
           severity: 'warning',
           type: 'VOORSPELLING_GEMARKEERD_ONGELDIG',
-          message:
-              'Voorspelling is gemarkeerd als ongeldig en telt niet mee.',
+          message: 'Voorspelling is gemarkeerd als ongeldig en telt niet mee.',
           uid: uid.isEmpty ? null : uid,
           username: uid.isEmpty ? null : usernameFor(uid),
           wedstrijdId: wedstrijdId.isEmpty ? null : wedstrijdId,
@@ -1367,7 +1375,8 @@ Future<void> voerVolledigeEindcontroleAuditUit() async {
         await writer.addIssue(
           severity: 'critical',
           type: 'VERWERKT_VOOR_UITSLAG_FOUT',
-          message: 'verwerktVoorUitslag komt niet overeen met de echte uitslag.',
+          message:
+              'verwerktVoorUitslag komt niet overeen met de echte uitslag.',
           uid: uid,
           username: usernameFor(uid),
           wedstrijdId: wedstrijdId,
@@ -1961,8 +1970,7 @@ Map<String, Map<String, int>> _berekenPeriodeStand({
   required int periode,
   required Map<String, Map<String, dynamic>> matchesById,
 }) {
-  final competitie =
-      divisieCode == 'A' ? 'Derde Divisie A' : 'Derde Divisie B';
+  final competitie = divisieCode == 'A' ? 'Derde Divisie A' : 'Derde Divisie B';
 
   final startRonde = periode == 1
       ? 1
@@ -2087,7 +2095,8 @@ Future<int> _auditPoules({
       final data = doc.data();
 
       final pouleId = _asString(data['pouleId'] ?? data['poule']);
-      final uid = _asString(data['gebruikerId'] ?? data['userId'] ?? data['uid']);
+      final uid =
+          _asString(data['gebruikerId'] ?? data['userId'] ?? data['uid']);
       final matchId = _asString(data['matchId'] ?? data['wedstrijdId']);
 
       if (pouleId.isEmpty || uid.isEmpty || matchId.isEmpty) {
@@ -2162,13 +2171,16 @@ Future<int> _auditPoules({
       final data = doc.data();
 
       final pouleId = _asString(data['pouleId'] ?? data['poule']);
-      final uid = _asString(data['gebruikerId'] ?? data['userId'] ?? data['uid']);
+      final uid =
+          _asString(data['gebruikerId'] ?? data['userId'] ?? data['uid']);
       final matchId = _asString(data['matchId'] ?? data['wedstrijdId']);
 
       final match = matchesById[matchId];
 
       if (match == null) continue;
-      if (match['uitslagThuis'] == null || match['uitslagUit'] == null) continue;
+      if (match['uitslagThuis'] == null || match['uitslagUit'] == null) {
+        continue;
+      }
       if (!_hasScoreFields(data)) continue;
 
       final scoreThuis = _toIntMod(data['scoreThuis']);

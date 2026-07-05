@@ -18,8 +18,10 @@ class SpeelrondeResetService {
   /// - Herberekent competitie- en periodestanden
   Future<void> resetSpeelronde(String divisie, int speelronde) async {
     try {
-      final competitieNaam = divisie == 'A' ? 'Derde Divisie A' : 'Derde Divisie B';
-      final periodeCode = divisie == 'A' ? 'dda' : 'ddb'; // <- vereist door PeriodestandService
+      final competitieNaam =
+          divisie == 'A' ? 'Derde Divisie A' : 'Derde Divisie B';
+      final periodeCode =
+          divisie == 'A' ? 'dda' : 'ddb'; // <- vereist door PeriodestandService
 
       final wedstrijdenSnapshot = await _firestore
           .collection('matches')
@@ -28,7 +30,8 @@ class SpeelrondeResetService {
           .get();
 
       if (wedstrijdenSnapshot.docs.isEmpty) {
-        _log.info('ℹ️ Geen wedstrijden voor $competitieNaam – speelronde $speelronde');
+        _log.info(
+            'ℹ️ Geen wedstrijden voor $competitieNaam – speelronde $speelronde');
         return;
       }
 
@@ -42,7 +45,8 @@ class SpeelrondeResetService {
       await StandenService().herberekenStandVoorDivisie(divisie);
 
       // Herbereken periodestanden (service verwacht 'dda' of 'ddb')
-      await PeriodestandService().herberekenAllePeriodesVoorDivisie(periodeCode);
+      await PeriodestandService()
+          .herberekenAllePeriodesVoorDivisie(periodeCode);
 
       _log.info('✅ Speelronde $speelronde ($competitieNaam) volledig gereset.');
     } catch (e, st) {

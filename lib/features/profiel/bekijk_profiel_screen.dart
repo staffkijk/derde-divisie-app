@@ -27,7 +27,10 @@ class _BekijkProfielScreenState extends State<BekijkProfielScreen> {
 
   Future<void> _laadProfiel() async {
     try {
-      final doc = await FirebaseFirestore.instance.collection('users').doc(widget.userId).get();
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.userId)
+          .get();
       final data = doc.data();
 
       if (data != null) {
@@ -55,7 +58,8 @@ class _BekijkProfielScreenState extends State<BekijkProfielScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text(username ?? 'Profiel'), backgroundColor: Colors.green),
+      appBar: AppBar(
+          title: Text(username ?? 'Profiel'), backgroundColor: Colors.green),
       body: Padding(
         padding: const EdgeInsets.all(24),
         child: ListView(
@@ -74,31 +78,37 @@ class _BekijkProfielScreenState extends State<BekijkProfielScreen> {
             Center(
               child: Text(
                 username ?? 'Gebruiker',
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                style:
+                    const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
             ),
             const SizedBox(height: 32),
-
-            if (profielbeschrijving != null && profielbeschrijving!.isNotEmpty) ...[
-              const Text('Over mij', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            if (profielbeschrijving != null &&
+                profielbeschrijving!.isNotEmpty) ...[
+              const Text('Over mij',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               const SizedBox(height: 4),
               Text(profielbeschrijving!, style: const TextStyle(fontSize: 16)),
               const SizedBox(height: 20),
             ],
             if (woonplaats != null && woonplaats!.isNotEmpty) ...[
-              const Text('Woonplaats', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              const Text('Woonplaats',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               const SizedBox(height: 4),
               Text(woonplaats!, style: const TextStyle(fontSize: 16)),
               const SizedBox(height: 20),
             ],
-            if (favorieteCompetitie != null && favorieteCompetitie!.isNotEmpty) ...[
-              const Text('Favoriete competitie', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            if (favorieteCompetitie != null &&
+                favorieteCompetitie!.isNotEmpty) ...[
+              const Text('Favoriete competitie',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               const SizedBox(height: 4),
               Text(favorieteCompetitie!, style: const TextStyle(fontSize: 16)),
               const SizedBox(height: 20),
             ],
             if (favorieteClub != null && favorieteClub!.isNotEmpty) ...[
-              const Text('Favoriete club', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              const Text('Favoriete club',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               const SizedBox(height: 4),
               Text(favorieteClub!, style: const TextStyle(fontSize: 16)),
               const SizedBox(height: 20),

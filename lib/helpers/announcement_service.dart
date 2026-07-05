@@ -32,7 +32,7 @@ class AnnouncementService {
   static const _kActive = 'rc_announcement_active';
   static const _kMsg = 'rc_announcement_message';
   static const _kStart = 'rc_announcement_start'; // epoch ms
-  static const _kEnd = 'rc_announcement_end';     // epoch ms
+  static const _kEnd = 'rc_announcement_end'; // epoch ms
   static const _kRequireLogin = 'rc_announcement_require_login';
   static const _kType = 'rc_announcement_type'; // dialog|banner|snackbar
   static const _kDismissible = 'rc_announcement_dismissible';
@@ -45,7 +45,8 @@ class AnnouncementService {
 
     await rc.setConfigSettings(RemoteConfigSettings(
       fetchTimeout: const Duration(seconds: 10),
-      minimumFetchInterval: const Duration(minutes: 0), // tijdens testen evt. op 0 zetten
+      minimumFetchInterval:
+          const Duration(minutes: 0), // tijdens testen evt. op 0 zetten
     ));
 
     await rc.setDefaults({
@@ -74,14 +75,17 @@ class AnnouncementService {
 
     if (!active || id.isEmpty || msg.isEmpty) return null;
 
-    DateTime? startAt = startMs > 0 ? DateTime.fromMillisecondsSinceEpoch(startMs) : null;
-    DateTime? endAt = endMs > 0 ? DateTime.fromMillisecondsSinceEpoch(endMs) : null;
+    DateTime? startAt =
+        startMs > 0 ? DateTime.fromMillisecondsSinceEpoch(startMs) : null;
+    DateTime? endAt =
+        endMs > 0 ? DateTime.fromMillisecondsSinceEpoch(endMs) : null;
     final now = DateTime.now();
 
     if (startAt != null && now.isBefore(startAt)) return null;
     if (endAt != null && now.isAfter(endAt)) return null;
 
-    final normalizedType = (type == 'banner' || type == 'snackbar') ? type : 'dialog';
+    final normalizedType =
+        (type == 'banner' || type == 'snackbar') ? type : 'dialog';
 
     return Announcement(
       id: id,
@@ -112,7 +116,8 @@ class AnnouncementService {
 
   /// Toon automatisch (bij app-open of direct na login).
   /// - Houdt rekening met 'repeat' en 'requireLogin'.
-  static Future<void> maybeShow(BuildContext context, {required bool isLoggedIn}) async {
+  static Future<void> maybeShow(BuildContext context,
+      {required bool isLoggedIn}) async {
     final ann = await _fetchConfig();
     if (ann == null) return;
     if (ann.requireLogin && !isLoggedIn) return;
@@ -125,7 +130,8 @@ class AnnouncementService {
 
   /// Handmatige "opnieuw tonen" knop.
   /// - Negeert de "gezien"-vlag, maar respecteert active/timing en requireLogin.
-  static Future<void> showAgain(BuildContext context, {required bool isLoggedIn}) async {
+  static Future<void> showAgain(BuildContext context,
+      {required bool isLoggedIn}) async {
     final ann = await _fetchConfig();
     if (ann == null) {
       _toast(context, 'Er is momenteel geen actieve melding.');
@@ -155,7 +161,8 @@ class AnnouncementService {
     }
   }
 
-  static Future<void> _showDialog(BuildContext context, Announcement ann) async {
+  static Future<void> _showDialog(
+      BuildContext context, Announcement ann) async {
     await showDialog(
       context: context,
       barrierDismissible: ann.dismissible,
@@ -202,7 +209,8 @@ class AnnouncementService {
     final messenger = ScaffoldMessenger.of(context);
     messenger.clearSnackBars();
     messenger.showSnackBar(
-      SnackBar(content: Text(ann.message), duration: const Duration(seconds: 4)),
+      SnackBar(
+          content: Text(ann.message), duration: const Duration(seconds: 4)),
     );
   }
 

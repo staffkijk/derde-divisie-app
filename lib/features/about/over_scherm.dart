@@ -25,7 +25,8 @@ class OverScherm extends StatelessWidget {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(horizontalPadding, 24, horizontalPadding, 32),
+          padding:
+              EdgeInsets.fromLTRB(horizontalPadding, 24, horizontalPadding, 32),
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 1180),
@@ -155,22 +156,26 @@ class _InfoGrid extends StatelessWidget {
           _InfoCard(
             icon: Icons.groups_rounded,
             title: 'Voor en door fans',
-            text: 'De app is ontstaan vanuit de behoefte aan één duidelijke plek voor de Derde Divisie, met aandacht voor beide divisies en voor de community rond de competitie.',
+            text:
+                'De app is ontstaan vanuit de behoefte aan één duidelijke plek voor de Derde Divisie, met aandacht voor beide divisies en voor de community rond de competitie.',
           ),
           _InfoCard(
             icon: Icons.trending_up_rounded,
             title: 'Ranglijsten en competitie',
-            text: 'Deelnemers kunnen punten verzamelen met voorspellingen. Algemene ranglijsten en poules maken het seizoen extra interessant.',
+            text:
+                'Deelnemers kunnen punten verzamelen met voorspellingen. Algemene ranglijsten en poules maken het seizoen extra interessant.',
           ),
           _InfoCard(
             icon: Icons.build_rounded,
             title: 'Doorontwikkeling',
-            text: 'Nieuwe functies, verbeteringen en correcties worden stap voor stap toegevoegd. Feedback van gebruikers helpt om de app beter te maken.',
+            text:
+                'Nieuwe functies, verbeteringen en correcties worden stap voor stap toegevoegd. Feedback van gebruikers helpt om de app beter te maken.',
           ),
           _InfoCard(
             icon: Icons.verified_rounded,
             title: 'Zorgvuldigheid',
-            text: 'Uitslagen, standen en programma’s worden met zorg verwerkt. Bij fouten of correcties kan informatie later worden aangepast.',
+            text:
+                'Uitslagen, standen en programma’s worden met zorg verwerkt. Bij fouten of correcties kan informatie later worden aangepast.',
           ),
         ];
 
@@ -193,16 +198,20 @@ class _InfoGrid extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(child: _InfoCard(
+                Expanded(
+                    child: _InfoCard(
                   icon: Icons.groups_rounded,
                   title: 'Voor en door fans',
-                  text: 'De app is ontstaan vanuit de behoefte aan één duidelijke plek voor de Derde Divisie, met aandacht voor beide divisies en voor de community rond de competitie.',
+                  text:
+                      'De app is ontstaan vanuit de behoefte aan één duidelijke plek voor de Derde Divisie, met aandacht voor beide divisies en voor de community rond de competitie.',
                 )),
                 SizedBox(width: 16),
-                Expanded(child: _InfoCard(
+                Expanded(
+                    child: _InfoCard(
                   icon: Icons.trending_up_rounded,
                   title: 'Ranglijsten en competitie',
-                  text: 'Deelnemers kunnen punten verzamelen met voorspellingen. Algemene ranglijsten en poules maken het seizoen extra interessant.',
+                  text:
+                      'Deelnemers kunnen punten verzamelen met voorspellingen. Algemene ranglijsten en poules maken het seizoen extra interessant.',
                 )),
               ],
             ),
@@ -210,16 +219,20 @@ class _InfoGrid extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(child: _InfoCard(
+                Expanded(
+                    child: _InfoCard(
                   icon: Icons.build_rounded,
                   title: 'Doorontwikkeling',
-                  text: 'Nieuwe functies, verbeteringen en correcties worden stap voor stap toegevoegd. Feedback van gebruikers helpt om de app beter te maken.',
+                  text:
+                      'Nieuwe functies, verbeteringen en correcties worden stap voor stap toegevoegd. Feedback van gebruikers helpt om de app beter te maken.',
                 )),
                 SizedBox(width: 16),
-                Expanded(child: _InfoCard(
+                Expanded(
+                    child: _InfoCard(
                   icon: Icons.verified_rounded,
                   title: 'Zorgvuldigheid',
-                  text: 'Uitslagen, standen en programma’s worden met zorg verwerkt. Bij fouten of correcties kan informatie later worden aangepast.',
+                  text:
+                      'Uitslagen, standen en programma’s worden met zorg verwerkt. Bij fouten of correcties kan informatie later worden aangepast.',
                 )),
               ],
             ),

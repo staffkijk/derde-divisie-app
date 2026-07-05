@@ -26,7 +26,8 @@ class PuntentellingScreen extends StatelessWidget {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(horizontalPadding, 24, horizontalPadding, 32),
+          padding:
+              EdgeInsets.fromLTRB(horizontalPadding, 24, horizontalPadding, 32),
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 1180),
@@ -45,21 +46,36 @@ class PuntentellingScreen extends StatelessWidget {
                           title: 'Wedstrijdvoorspellingen',
                           subtitle: 'Punten per gespeelde wedstrijd',
                           rules: [
-                            _ScoreRule('Exacte uitslag goed', '10 punten', 'Bijvoorbeeld 2-1 voorspeld en 2-1 gespeeld.'),
-                            _ScoreRule('Gelijkspel goed voorspeld', '7 punten', 'Je voorspelt een gelijkspel en de wedstrijd eindigt gelijk.'),
-                            _ScoreRule('Winnaar goed voorspeld', '5 punten', 'Je voorspelt de juiste winnaar, maar niet de exacte uitslag.'),
-                            _ScoreRule('Doelpunten thuis of uit goed', '2 punten', 'Per juist voorspeld aantal doelpunten.'),
+                            _ScoreRule('Exacte uitslag goed', '10 punten',
+                                'Bijvoorbeeld 2-1 voorspeld en 2-1 gespeeld.'),
+                            _ScoreRule('Gelijkspel goed voorspeld', '7 punten',
+                                'Je voorspelt een gelijkspel en de wedstrijd eindigt gelijk.'),
+                            _ScoreRule('Winnaar goed voorspeld', '5 punten',
+                                'Je voorspelt de juiste winnaar, maar niet de exacte uitslag.'),
+                            _ScoreRule(
+                                'Doelpunten thuis of uit goed',
+                                '2 punten',
+                                'Per juist voorspeld aantal doelpunten.'),
                           ],
                         ),
                         const _RuleCard(
                           icon: Icons.emoji_events_rounded,
                           title: 'Eindstandvoorspellingen',
-                          subtitle: 'Extra punten aan het einde van het seizoen',
+                          subtitle:
+                              'Extra punten aan het einde van het seizoen',
                           rules: [
-                            _ScoreRule('Kampioen correct voorspeld', '30 punten', 'De kampioen van de divisie staat op plek 1 in jouw voorspelling.'),
-                            _ScoreRule('Exacte eindpositie correct', '10 punten', 'Geldt voor clubs die niet als kampioen eindigen.'),
-                            _ScoreRule('Één plek verschil', '6 punten', 'Bijvoorbeeld 4e voorspeld en 5e geworden.'),
-                            _ScoreRule('Twee plekken verschil', '2 punten', 'Bijvoorbeeld 7e voorspeld en 9e geworden.'),
+                            _ScoreRule(
+                                'Kampioen correct voorspeld',
+                                '30 punten',
+                                'De kampioen van de divisie staat op plek 1 in jouw voorspelling.'),
+                            _ScoreRule(
+                                'Exacte eindpositie correct',
+                                '10 punten',
+                                'Geldt voor clubs die niet als kampioen eindigen.'),
+                            _ScoreRule('Één plek verschil', '6 punten',
+                                'Bijvoorbeeld 4e voorspeld en 5e geworden.'),
+                            _ScoreRule('Twee plekken verschil', '2 punten',
+                                'Bijvoorbeeld 7e voorspeld en 9e geworden.'),
                           ],
                         ),
                       ];
@@ -286,7 +302,6 @@ class _RuleRow extends StatelessWidget {
 
   const _RuleRow({required this.rule});
 
- 
   static const Color _cardBorder = PuntentellingScreen._cardBorder;
   static const Color _text = PuntentellingScreen._text;
   static const Color _muted = PuntentellingScreen._muted;
@@ -399,7 +414,8 @@ class _ExampleCard extends StatelessWidget {
                     style: TextStyle(fontWeight: FontWeight.w800, color: _text),
                   ),
                   TextSpan(
-                    text: 'voorspel je 2-1 en wordt het 2-1, dan ontvang je 10 punten. Voorspel je 2-1 en wordt het 3-1, dan heb je de winnaar goed en krijg je punten voor het juiste uitdoelpunt.',
+                    text:
+                        'voorspel je 2-1 en wordt het 2-1, dan ontvang je 10 punten. Voorspel je 2-1 en wordt het 3-1, dan heb je de winnaar goed en krijg je punten voor het juiste uitdoelpunt.',
                     style: TextStyle(color: _muted),
                   ),
                 ],

@@ -103,7 +103,8 @@ class RankingScreen extends StatelessWidget {
             return ListTile(
               tileColor: highlight ? Colors.green[50] : null,
               leading: GestureDetector(
-                onTap: () => _toonActiesVoorGebruiker(context, user, contextType),
+                onTap: () =>
+                    _toonActiesVoorGebruiker(context, user, contextType),
                 child: Stack(
                   alignment: Alignment.center,
                   children: [

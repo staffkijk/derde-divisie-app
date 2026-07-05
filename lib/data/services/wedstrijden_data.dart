@@ -22,4 +22,3 @@ List<Wedstrijd> getWedstrijden(String divisie) {
   wedstrijden.sort((a, b) => a.datum.compareTo(b.datum));
   return wedstrijden;
 }
-

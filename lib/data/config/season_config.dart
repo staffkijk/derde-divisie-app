@@ -28,7 +28,7 @@ class SeasonTeam {
         .replaceFirst(RegExp(r'\.(png|webp|jpg|jpeg)$'), '');
   }
 
-   String get listLabel {
+  String get listLabel {
     switch (id) {
       case 'ado20':
         return "ADO '20";
@@ -116,9 +116,8 @@ class SeasonConfig {
   static const String divisionAName = 'Derde Divisie A';
   static const String divisionBName = 'Derde Divisie B';
 
-  /// Tijdelijk true zolang de definitieve A/B-indeling nog niet verwerkt is.
-  /// Nu: eerste 18 teams uit de centrale lijst = A, laatste 18 = B.
-  static const bool useProvisionalDivisionSplit = true;
+  /// De definitieve A/B-indeling voor 2026/2027 is verwerkt.
+  static const bool useProvisionalDivisionSplit = false;
 
   static const List<SeasonTeam> teams = [
     SeasonTeam(
@@ -140,7 +139,7 @@ class SeasonConfig {
       id: 'blauw_geel_38',
       name: 'Blauw Geel 38',
       displayName: 'Blauw Geel’38',
-      division: divisionA,
+      division: divisionB,
       logoFileName: 'logo_BlauwGeel38JUMBO.png',
       aliases: [
         'Blauw Geel38',
@@ -162,7 +161,7 @@ class SeasonConfig {
     SeasonTeam(
       id: 'evv_echt',
       name: 'EVV Echt',
-      division: divisionA,
+      division: divisionB,
       logoFileName: 'logo_EVVEcht.png',
       aliases: ['EVV', 'EVV Echt-Susteren'],
     ),
@@ -182,21 +181,21 @@ class SeasonConfig {
     SeasonTeam(
       id: 'excelsior_maassluis',
       name: 'Excelsior Maassluis',
-      division: divisionA,
+      division: divisionB,
       logoFileName: 'logo_ExcelsiorMaassluis.png',
       aliases: ['Excelsior M'],
     ),
     SeasonTeam(
       id: 'fc_lisse',
       name: 'FC Lisse',
-      division: divisionA,
+      division: divisionB,
       logoFileName: 'logo_FCLisse.png',
       aliases: ['Lisse'],
     ),
     SeasonTeam(
       id: 'fc_rijnvogels',
       name: 'FC Rijnvogels',
-      division: divisionA,
+      division: divisionB,
       logoFileName: 'logo_Rijnvogels.png',
       aliases: ['Rijnvogels', 'Rijnvogels Katwijk'],
     ),
@@ -223,14 +222,14 @@ class SeasonConfig {
     SeasonTeam(
       id: 'rbc',
       name: 'RBC',
-      division: divisionA,
+      division: divisionB,
       logoFileName: 'logo_RBC.png',
       aliases: ['RBC Roosendaal'],
     ),
     SeasonTeam(
       id: 'rksv_groene_ster',
       name: 'RKSV Groene Ster',
-      division: divisionA,
+      division: divisionB,
       logoFileName: 'logo_GroeneSter.png',
       aliases: ['Groene Ster', 'Groene Ster Heerlen'],
     ),
@@ -257,7 +256,7 @@ class SeasonConfig {
     SeasonTeam(
       id: 'sv_poortugaal',
       name: 'SV Poortugaal',
-      division: divisionA,
+      division: divisionB,
       logoFileName: 'logo_Poortugaal.png',
       aliases: ['Poortugaal'],
     ),
@@ -271,7 +270,7 @@ class SeasonConfig {
     SeasonTeam(
       id: 'svzw',
       name: 'SVZW',
-      division: divisionB,
+      division: divisionA,
       logoFileName: 'logo_SVZW.png',
       aliases: ['SVZW Wierden'],
     ),
@@ -299,7 +298,7 @@ class SeasonConfig {
     SeasonTeam(
       id: 'usv_hercules',
       name: 'USV Hercules',
-      division: divisionB,
+      division: divisionA,
       logoFileName: 'logo_Hercules.png',
       aliases: ['Hercules'],
     ),
@@ -320,14 +319,14 @@ class SeasonConfig {
     SeasonTeam(
       id: 'vv_dovo',
       name: 'VV DOVO',
-      division: divisionB,
+      division: divisionA,
       logoFileName: 'logo_DOVO.png',
       aliases: ['DOVO'],
     ),
     SeasonTeam(
       id: 'vv_eemdijk',
       name: 'VV Eemdijk',
-      division: divisionB,
+      division: divisionA,
       logoFileName: 'logo_Eemdijk.png',
       aliases: ['Eemdijk', 'v.v. Eemdijk'],
     ),
@@ -349,7 +348,7 @@ class SeasonConfig {
     SeasonTeam(
       id: 'vv_hoogeveen',
       name: 'VV Hoogeveen',
-      division: divisionB,
+      division: divisionA,
       logoFileName: 'logo_Hoogeveen.png',
       aliases: ['Hoogeveen', 'v.v. Hoogeveen'],
     ),
@@ -363,21 +362,21 @@ class SeasonConfig {
     SeasonTeam(
       id: 'vv_scherpenzeel',
       name: 'VV Scherpenzeel',
-      division: divisionB,
+      division: divisionA,
       logoFileName: 'logo_Scherpenzeel.png',
       aliases: ['Scherpenzeel', 'v.v. Scherpenzeel'],
     ),
     SeasonTeam(
       id: 'vv_sparta_nijkerk',
       name: 'VV Sparta Nijkerk',
-      division: divisionB,
+      division: divisionA,
       logoFileName: 'logo_SpartaNijkerk.png',
       aliases: ['Sparta Nijkerk'],
     ),
     SeasonTeam(
       id: 'vv_staphorst',
       name: 'VV Staphorst',
-      division: divisionB,
+      division: divisionA,
       logoFileName: 'logo_Staphorst.png',
       aliases: ['Staphorst', 'v.v. Staphorst'],
     ),
@@ -432,6 +431,9 @@ class SeasonConfig {
   }
 
   static List<SeasonTeam> teamsForProvisionalStandDivision(String division) {
+    if (!useProvisionalDivisionSplit) {
+      return teamsForDivision(division);
+    }
     final sorted = List<SeasonTeam>.from(teams)
       ..sort(
         (a, b) =>

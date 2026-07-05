@@ -41,7 +41,6 @@ int berekenPunten({
   return punten;
 }
 
-
 /// Trek eerdere uitslag af van de stand
 Future<void> corrigeerStand(String club, int oudeVoor, int oudeTegen) async {
   final doc = FirebaseFirestore.instance.collection('standen').doc(club);

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:derde_divisie/data/config/season_config.dart';
 import 'package:derde_divisie/data/firestore/season_paths.dart';
+import 'package:derde_divisie/data/services/division_data_service.dart';
 import 'periode_standen_screen.dart';
 import 'package:derde_divisie/data/config/team_logo_assets.dart';
 
@@ -160,6 +161,25 @@ class StandEntry {
     );
   }
 
+  factory StandEntry.fromDivisionTeam(DivisionTeam team) {
+    return StandEntry(
+      data: const {},
+      naam: team.shortName,
+      code: _normName(team.name),
+      docCode: _normName(team.id),
+      logoAsset: team.logoPath,
+      positie: 0,
+      gespeeld: 0,
+      gewonnen: 0,
+      gelijk: 0,
+      verloren: 0,
+      punten: 0,
+      doelpuntenVoor: 0,
+      doelpuntenTegen: 0,
+      doelsaldo: 0,
+    );
+  }
+
   factory StandEntry.fromCurrentStandingDoc(
     QueryDocumentSnapshot<Map<String, dynamic>> doc,
   ) {
@@ -180,18 +200,18 @@ class StandEntry {
       code: _normName(team?.listLabel ?? naam),
       docCode: _normName((data['teamId'] ?? data['id'] ?? doc.id).toString()),
       logoAsset: teamLogoAssetFromValues([
-  data['logoAsset'],
-  team?.logoPath,
-  team?.listLabel,
-  naam,
-  data['teamName'],
-  data['name'],
-  data['team'],
-  data['club'],
-  data['teamId'],
-  data['id'],
-  doc.id,
-]),
+        data['logoAsset'],
+        team?.logoPath,
+        team?.listLabel,
+        naam,
+        data['teamName'],
+        data['name'],
+        data['team'],
+        data['club'],
+        data['teamId'],
+        data['id'],
+        doc.id,
+      ]),
       positie: _toInt(data['position'] ?? data['positie'] ?? data['rank']),
       gespeeld: _toInt(data['played'] ?? data['gespeeld']),
       gewonnen: _toInt(data['wins'] ?? data['won'] ?? data['gewonnen']),
@@ -223,18 +243,18 @@ class StandEntry {
       code: _normName(team?.listLabel ?? naam),
       docCode: _normName(doc.id),
       logoAsset: teamLogoAssetFromValues([
-  data['logoAsset'],
-  team?.logoPath,
-  team?.listLabel,
-  naam,
-  data['teamName'],
-  data['name'],
-  data['team'],
-  data['club'],
-  data['teamId'],
-  data['id'],
-  doc.id,
-]),
+        data['logoAsset'],
+        team?.logoPath,
+        team?.listLabel,
+        naam,
+        data['teamName'],
+        data['name'],
+        data['team'],
+        data['club'],
+        data['teamId'],
+        data['id'],
+        doc.id,
+      ]),
       positie: _toInt(data['position'] ?? data['positie']),
       gespeeld: _toInt(data['played'] ?? data['gespeeld']),
       gewonnen: _toInt(data['won'] ?? data['wins'] ?? data['gewonnen']),
@@ -556,23 +576,15 @@ class StandDerdeDivisie extends StatelessWidget {
 
   Future<Map<String, List<String>>> _vormMapFuture() async {
     if (!_isActueel) return {};
-
-    final snap = await FirebaseFirestore.instance
-        .collection('matches')
-        .where('competitie', isEqualTo: divisie)
-        .where('verwerkt', isEqualTo: true)
-        .get();
-
-    final matches =
-        snap.docs.map((d) => d.data()).cast<Map<String, dynamic>>().toList();
-
-    return berekenVormPerTeam(matches);
-  }
-
-  List<StandEntry> _buildCurrentSeasonEntries() {
-    return SeasonConfig.teamsForProvisionalStandDivision(divisie)
-        .map(StandEntry.fromSeasonTeam)
-        .toList();
+    final data = await const DivisionDataService().loadDivision(divisie);
+    return berekenVormPerTeam(
+      data.matches
+          .where(
+            (match) => (match.data['status'] ?? '').toString() == 'finished',
+          )
+          .map((match) => match.data)
+          .toList(),
+    );
   }
 
   bool _matchesDivision(Map<String, dynamic> data) {
@@ -581,7 +593,7 @@ class StandDerdeDivisie extends StatelessWidget {
             .toString()
             .trim();
 
-    if (rawDivision.isEmpty) return true;
+    if (rawDivision.isEmpty) return false;
 
     return SeasonConfig.normalizeDivisionCode(rawDivision) ==
         SeasonConfig.normalizeDivisionCode(divisie);
@@ -668,21 +680,33 @@ class StandDerdeDivisie extends StatelessWidget {
           final seasonEntries = standSnap.hasData
               ? _buildCurrentSeasonEntriesFromDocs(standSnap.data!.docs)
               : <StandEntry>[];
-          final entries = seasonEntries.isNotEmpty
-              ? seasonEntries
-              : _buildCurrentSeasonEntries();
-
-          return FutureBuilder<Map<String, List<String>>>(
-            future: _vormMapFuture(),
-            builder: (context, vormSnap) {
-              if (!vormSnap.hasData) {
+          return FutureBuilder<DivisionData?>(
+            future: seasonEntries.isEmpty
+                ? const DivisionDataService()
+                    .loadDivision(divisie)
+                    .then<DivisionData?>((value) => value)
+                : Future<DivisionData?>.value(),
+            builder: (context, divisionSnap) {
+              if (seasonEntries.isEmpty && !divisionSnap.hasData) {
                 return const Center(child: CircularProgressIndicator());
               }
-
-              return _buildTable(
-                context: context,
-                entries: entries,
-                vormMap: vormSnap.data ?? {},
+              final entries = seasonEntries.isNotEmpty
+                  ? seasonEntries
+                  : (divisionSnap.data?.teams ?? const <DivisionTeam>[])
+                      .map(StandEntry.fromDivisionTeam)
+                      .toList();
+              return FutureBuilder<Map<String, List<String>>>(
+                future: _vormMapFuture(),
+                builder: (context, vormSnap) {
+                  if (!vormSnap.hasData) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  return _buildTable(
+                    context: context,
+                    entries: entries,
+                    vormMap: vormSnap.data ?? {},
+                  );
+                },
               );
             },
           );

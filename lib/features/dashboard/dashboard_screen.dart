@@ -11,6 +11,7 @@ import 'package:url_launcher/url_launcher_string.dart';
 import 'package:derde_divisie/data/config/season_config.dart';
 import 'package:derde_divisie/data/firestore/season_paths.dart';
 import 'package:derde_divisie/features/derde_divisie/historical_standings_screen.dart';
+import 'package:derde_divisie/features/dashboard/dashboard_match_center.dart';
 
 /// ---------------------------
 /// Firestore veldmapping
@@ -297,6 +298,8 @@ class DashboardScreen extends StatelessWidget {
   final VoidCallback? onOpenDivisionB;
   final VoidCallback? onOpenPredict;
   final VoidCallback? onOpenPoules;
+  final VoidCallback? onOpenProgram;
+  final VoidCallback? onOpenProfile;
   final VoidCallback? onOpenHistoricalStandings;
 
   const DashboardScreen({
@@ -305,6 +308,8 @@ class DashboardScreen extends StatelessWidget {
     this.onOpenDivisionB,
     this.onOpenPredict,
     this.onOpenPoules,
+    this.onOpenProgram,
+    this.onOpenProfile,
     this.onOpenHistoricalStandings,
   });
 
@@ -723,39 +728,63 @@ class DashboardScreen extends StatelessWidget {
                               textAlign: TextAlign.center,
                               style: TextStyle(color: Colors.white70),
                             ),
+                            const SizedBox(height: 16),
+                            OutlinedButton.icon(
+                              onPressed: () => Share.share(
+                                'Doe mee met de Derde Divisie Voorspelpoule op DerdeDiv.nl!',
+                                subject: 'Daag je vrienden uit',
+                              ),
+                              icon: const Icon(Icons.ios_share_outlined),
+                              label: const Text('Daag je vrienden uit'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.white,
+                                side: const BorderSide(color: Colors.white54),
+                              ),
+                            ),
                           ],
                         ),
                       ),
-                      const SizedBox(height: 22),
-                      const RotatingLogo(),
-                      const SizedBox(height: 16),
-                      ElevatedButton.icon(
-                        onPressed: () async {
-                          const message =
-                              '🏆 Doe mee met de Derde Divisie Voorspelpoule!\n'
-                              'Voorspel uitslagen, daag je vrienden uit en klim in de ranglijst.\n'
-                              '👉 Download de app of volg @Derde_Div op X!';
+                      const SizedBox.shrink(),
+                      const SizedBox.shrink(),
+                      const SizedBox.shrink(),
+                      Visibility(
+                        visible: false,
+                        child: ElevatedButton.icon(
+                          onPressed: () async {
+                            const message =
+                                '🏆 Doe mee met de Derde Divisie Voorspelpoule!\n'
+                                'Voorspel uitslagen, daag je vrienden uit en klim in de ranglijst.\n'
+                                '👉 Download de app of volg @Derde_Div op X!';
 
-                          await Share.share(
-                            message,
-                            subject: 'Daag je vrienden uit!',
-                          );
-                        },
-                        icon: const Icon(Icons.emoji_events_rounded,
-                            color: Colors.white),
-                        label: const Text(
-                          'Daag je vrienden uit',
-                          style: TextStyle(
-                              color: Colors.white, fontWeight: FontWeight.bold),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF2E7D32),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            await Share.share(
+                              message,
+                              subject: 'Daag je vrienden uit!',
+                            );
+                          },
+                          icon: const Icon(Icons.emoji_events_rounded,
+                              color: Colors.white),
+                          label: const Text(
+                            'Daag je vrienden uit',
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold),
                           ),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 10),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF2E7D32),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 10),
+                          ),
                         ),
+                      ),
+                      const SizedBox(height: 24),
+                      DashboardMatchCenter(
+                        showHero: false,
+                        onOpenProgram: onOpenProgram ?? () {},
+                        onOpenPredict: onOpenPredict ?? () {},
+                        onOpenProfile: onOpenProfile ?? () {},
                       ),
                       const SizedBox(height: 24),
                       _quickLinksCard(context),

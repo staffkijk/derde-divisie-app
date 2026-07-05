@@ -4,7 +4,8 @@ import 'dart:developer' as developer;
 final _firestore = FirebaseFirestore.instance;
 
 /// Verwerk alle voorspellingen van een bepaalde wedstrijd en update gebruikerspunten.
-Future<void> verwerkVoorspellingenVoorWedstrijd(String wedstrijdId, int echtThuis, int echtUit) async {
+Future<void> verwerkVoorspellingenVoorWedstrijd(
+    String wedstrijdId, int echtThuis, int echtUit) async {
   final voorspellingen = await _firestore
       .collection('matches')
       .doc(wedstrijdId)
@@ -27,7 +28,8 @@ Future<void> verwerkVoorspellingenVoorWedstrijd(String wedstrijdId, int echtThui
     final gebruikerDoc = await gebruikerRef.get();
 
     if (!gebruikerDoc.exists) {
-      developer.log('⚠️ Gebruiker $gebruikerId bestaat niet (voorspelling ${doc.id}) — overslaan');
+      developer.log(
+          '⚠️ Gebruiker $gebruikerId bestaat niet (voorspelling ${doc.id}) — overslaan');
       continue;
     }
 
@@ -44,7 +46,8 @@ Future<void> verwerkVoorspellingenVoorWedstrijd(String wedstrijdId, int echtThui
     // Voeg 'punten' toe of werk bij
     if (!gebruikerDoc.data()!.containsKey('punten')) {
       await gebruikerRef.set({'punten': nieuwePunten}, SetOptions(merge: true));
-      developer.log('✅ Punten toegevoegd voor nieuwe gebruiker $gebruikerId: $nieuwePunten');
+      developer.log(
+          '✅ Punten toegevoegd voor nieuwe gebruiker $gebruikerId: $nieuwePunten');
     } else {
       final verschil = nieuwePunten - oudePunten;
       await gebruikerRef.update({

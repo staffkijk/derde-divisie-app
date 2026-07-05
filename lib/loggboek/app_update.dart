@@ -25,7 +25,8 @@ class AppUpdate {
       title: data['title'] ?? '',
       body: data['body'] ?? '',
       type: data['type'] ?? 'notice',
-      createdAt: data['createdAt'], // kan null zijn totdat serverTimestamp gezet is
+      createdAt:
+          data['createdAt'], // kan null zijn totdat serverTimestamp gezet is
     );
   }
 

@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
 import 'package:derde_divisie/data/config/season_config.dart';
+import 'package:derde_divisie/core/design/app_design.dart';
+import 'package:derde_divisie/data/models/poule_prediction_scope.dart';
 import 'poule_detail_screen.dart';
 
 class CreatePouleScreen extends StatefulWidget {
@@ -23,6 +25,7 @@ class _CreatePouleScreenState extends State<CreatePouleScreen> {
   bool _loading = false;
   String _type = 'competition';
   SeasonTeam? _team;
+  PoulePredictionScope _predictionScope = PoulePredictionScope.matches;
 
   @override
   void dispose() {
@@ -63,6 +66,11 @@ class _CreatePouleScreenState extends State<CreatePouleScreen> {
         'teamName': _type == 'team' ? _team?.listLabel : null,
         'division': _type == 'team' ? _team?.division : null,
         'seasonId': SeasonConfig.activeSeasonId,
+        'predictionScope': _predictionScope.firestoreValue,
+        'includeMatchPredictions':
+            _predictionScope != PoulePredictionScope.finalRanking,
+        'includeFinalStandingPredictions':
+            _predictionScope != PoulePredictionScope.matches,
         'createdAt': FieldValue.serverTimestamp(),
       });
       batch.set(
@@ -103,6 +111,7 @@ class _CreatePouleScreenState extends State<CreatePouleScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('Poule aanmaken')),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -113,106 +122,155 @@ class _CreatePouleScreenState extends State<CreatePouleScreen> {
                   child: Center(
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 720),
-                      child: Form(
-                        key: _formKey,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            TextFormField(
-                              controller: _nameController,
-                              decoration:
-                                  const InputDecoration(labelText: 'Poulenaam'),
-                              validator: (value) =>
-                                  value == null || value.trim().isEmpty
-                                      ? 'Vul een poulenaam in.'
-                                      : null,
-                            ),
-                            const SizedBox(height: 14),
-                            TextFormField(
-                              controller: _descriptionController,
-                              maxLength: 300,
-                              maxLines: 3,
-                              decoration: const InputDecoration(
-                                labelText: 'Beschrijving (optioneel)',
+                      child: AppCard(
+                        child: Form(
+                          key: _formKey,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              const Text(
+                                'Nieuwe poule',
+                                style: AppTextStyles.pageTitle,
                               ),
-                            ),
-                            const SizedBox(height: 6),
-                            DropdownButtonFormField<String>(
-                              value: _type,
-                              decoration:
-                                  const InputDecoration(labelText: 'Pouletype'),
-                              items: const [
-                                DropdownMenuItem(
-                                  value: 'competition',
-                                  child: Text('Hele competitie'),
-                                ),
-                                DropdownMenuItem(
-                                  value: 'team',
-                                  child: Text('Eén team'),
-                                ),
-                              ],
-                              onChanged: (value) {
-                                if (value == null) return;
-                                setState(() {
-                                  _type = value;
-                                  if (value != 'team') _team = null;
-                                });
-                              },
-                            ),
-                            if (_type == 'team') ...[
-                              const SizedBox(height: 14),
-                              DropdownButtonFormField<SeasonTeam>(
-                                value: _team,
-                                isExpanded: true,
-                                decoration:
-                                    const InputDecoration(labelText: 'Team'),
-                                items: SeasonConfig.teamsInListOrder
-                                    .map(
-                                      (team) => DropdownMenuItem(
-                                        value: team,
-                                        child: Text(team.listLabel),
-                                      ),
-                                    )
-                                    .toList(),
-                                onChanged: (value) =>
-                                    setState(() => _team = value),
+                              const SizedBox(height: AppSpacing.xs),
+                              const Text(
+                                'Je centrale voorspellingen tellen automatisch mee. Er wordt geen aparte voorspelling voor deze poule opgeslagen.',
+                                style: AppTextStyles.bodyMuted,
+                              ),
+                              const SizedBox(height: AppSpacing.lg),
+                              TextFormField(
+                                controller: _nameController,
+                                decoration: const InputDecoration(
+                                    labelText: 'Poulenaam'),
                                 validator: (value) =>
-                                    _type == 'team' && value == null
-                                        ? 'Kies een team.'
+                                    value == null || value.trim().isEmpty
+                                        ? 'Vul een poulenaam in.'
                                         : null,
                               ),
-                            ],
-                            const SizedBox(height: 8),
-                            SwitchListTile(
-                              contentPadding: EdgeInsets.zero,
-                              title: const Text('Openbare poule'),
-                              subtitle: const Text(
-                                'Iedereen kan deze poule vinden en deelnemen.',
-                              ),
-                              value: _isPublic,
-                              onChanged: (value) =>
-                                  setState(() => _isPublic = value),
-                            ),
-                            if (!_isPublic) ...[
-                              const SizedBox(height: 8),
+                              const SizedBox(height: 14),
                               TextFormField(
-                                controller: _passwordController,
-                                obscureText: true,
+                                controller: _descriptionController,
+                                maxLength: 300,
+                                maxLines: 3,
                                 decoration: const InputDecoration(
-                                    labelText: 'Wachtwoord'),
-                                validator: (value) => !_isPublic &&
-                                        (value == null || value.isEmpty)
-                                    ? 'Vul een wachtwoord in.'
-                                    : null,
+                                  labelText: 'Beschrijving (optioneel)',
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              DropdownButtonFormField<String>(
+                                value: _type,
+                                decoration: const InputDecoration(
+                                    labelText: 'Pouletype'),
+                                items: const [
+                                  DropdownMenuItem(
+                                    value: 'competition',
+                                    child: Text('Hele competitie'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'team',
+                                    child: Text('Eén team'),
+                                  ),
+                                ],
+                                onChanged: (value) {
+                                  if (value == null) return;
+                                  setState(() {
+                                    _type = value;
+                                    if (value != 'team') _team = null;
+                                  });
+                                },
+                              ),
+                              if (_type == 'team') ...[
+                                const SizedBox(height: 14),
+                                DropdownButtonFormField<SeasonTeam>(
+                                  value: _team,
+                                  isExpanded: true,
+                                  decoration:
+                                      const InputDecoration(labelText: 'Team'),
+                                  items: SeasonConfig.teamsInListOrder
+                                      .map(
+                                        (team) => DropdownMenuItem(
+                                          value: team,
+                                          child: Text(team.listLabel),
+                                        ),
+                                      )
+                                      .toList(),
+                                  onChanged: (value) =>
+                                      setState(() => _team = value),
+                                  validator: (value) =>
+                                      _type == 'team' && value == null
+                                          ? 'Kies een team.'
+                                          : null,
+                                ),
+                              ],
+                              const SizedBox(height: AppSpacing.lg),
+                              const Text(
+                                'Wat telt mee?',
+                                style: AppTextStyles.sectionTitle,
+                              ),
+                              const SizedBox(height: AppSpacing.xs),
+                              SegmentedButton<PoulePredictionScope>(
+                                showSelectedIcon: false,
+                                segments: const [
+                                  ButtonSegment(
+                                    value: PoulePredictionScope.matches,
+                                    icon: Icon(Icons.scoreboard_outlined),
+                                    label: Text('Wedstrijden'),
+                                  ),
+                                  ButtonSegment(
+                                    value: PoulePredictionScope.finalRanking,
+                                    icon: Icon(Icons.format_list_numbered),
+                                    label: Text('Eindstand'),
+                                  ),
+                                  ButtonSegment(
+                                    value: PoulePredictionScope.both,
+                                    icon: Icon(Icons.done_all),
+                                    label: Text('Beide'),
+                                  ),
+                                ],
+                                selected: {_predictionScope},
+                                onSelectionChanged: (selection) {
+                                  setState(
+                                    () => _predictionScope = selection.first,
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: AppSpacing.xs),
+                              Text(
+                                _predictionScope.explanation,
+                                style: AppTextStyles.bodyMuted,
+                              ),
+                              const SizedBox(height: 8),
+                              SwitchListTile(
+                                contentPadding: EdgeInsets.zero,
+                                title: const Text('Openbare poule'),
+                                subtitle: const Text(
+                                  'Iedereen kan deze poule vinden en deelnemen.',
+                                ),
+                                value: _isPublic,
+                                onChanged: (value) =>
+                                    setState(() => _isPublic = value),
+                              ),
+                              if (!_isPublic) ...[
+                                const SizedBox(height: 8),
+                                TextFormField(
+                                  controller: _passwordController,
+                                  obscureText: true,
+                                  decoration: const InputDecoration(
+                                      labelText: 'Wachtwoord'),
+                                  validator: (value) => !_isPublic &&
+                                          (value == null || value.isEmpty)
+                                      ? 'Vul een wachtwoord in.'
+                                      : null,
+                                ),
+                              ],
+                              const SizedBox(height: 20),
+                              ElevatedButton.icon(
+                                onPressed: _save,
+                                icon: const Icon(Icons.add_rounded),
+                                label: const Text('Poule aanmaken'),
                               ),
                             ],
-                            const SizedBox(height: 20),
-                            ElevatedButton.icon(
-                              onPressed: _save,
-                              icon: const Icon(Icons.add_rounded),
-                              label: const Text('Poule aanmaken'),
-                            ),
-                          ],
+                          ),
                         ),
                       ),
                     ),

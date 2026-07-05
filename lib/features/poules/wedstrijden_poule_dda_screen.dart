@@ -9,7 +9,7 @@ import 'package:derde_divisie/data/services/wedstrijden_data.dart';
 import 'package:derde_divisie/features/voorspellen/widgets/voorspel_wedstrijd_card.dart';
 
 class WedstrijdenPouleDdaScreen extends StatefulWidget {
-  final String divisie;   // bv. "Derde Divisie A" of "Divisie A"
+  final String divisie; // bv. "Derde Divisie A" of "Divisie A"
   final String pouleId;
 
   const WedstrijdenPouleDdaScreen({
@@ -112,9 +112,10 @@ class _WedstrijdenPouleDdaScreenState extends State<WedstrijdenPouleDdaScreen> {
 
   void _laadWedstrijdenBasisVoorSpeelronde(int speelronde) {
     final alleWedstrijden = getWedstrijden(widget.divisie);
-    final wedstrijdenVoorRonde =
-        alleWedstrijden.where((w) => w.speelronde == speelronde).toList()
-          ..sort((a, b) => a.datum.compareTo(b.datum));
+    final wedstrijdenVoorRonde = alleWedstrijden
+        .where((w) => w.speelronde == speelronde)
+        .toList()
+      ..sort((a, b) => a.datum.compareTo(b.datum));
 
     _wedstrijden = wedstrijdenVoorRonde;
 
@@ -199,11 +200,11 @@ class _WedstrijdenPouleDdaScreenState extends State<WedstrijdenPouleDdaScreen> {
 
         // zet controllers (voorkom cursor-jump door alleen te updaten als tekst anders is)
         final thuisTxt = data['scoreThuis']?.toString() ?? '';
-        final uitTxt   = data['scoreUit']?.toString() ?? '';
+        final uitTxt = data['scoreUit']?.toString() ?? '';
         final tc = _thuisControllers[matchId];
         final uc = _uitControllers[matchId];
         if (tc != null && tc.text != thuisTxt) tc.text = thuisTxt;
-        if (uc != null && uc.text != uitTxt)   uc.text = uitTxt;
+        if (uc != null && uc.text != uitTxt) uc.text = uitTxt;
 
         // punten tonen zodra verwerkt
         _behaaldePunten[matchId] = data['punten'];
@@ -217,13 +218,15 @@ class _WedstrijdenPouleDdaScreenState extends State<WedstrijdenPouleDdaScreen> {
     return n != null && n >= 0;
   }
 
-  Future<void> _opslaanVoorspelling(Wedstrijd w, String thuis, String uit) async {
+  Future<void> _opslaanVoorspelling(
+      Wedstrijd w, String thuis, String uit) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
     if (!_isGeldigGetal(thuis) || !_isGeldigGetal(uit)) return;
 
     // Alleen opslaan als synchronisatie UIT staat en deadline niet verstreken is
-    final isLocked = (_deadline != null) ? DateTime.now().isAfter(_deadline!) : false;
+    final isLocked =
+        (_deadline != null) ? DateTime.now().isAfter(_deadline!) : false;
     if (_syncEnabled || isLocked) return;
 
     await FirebaseFirestore.instance
@@ -232,8 +235,8 @@ class _WedstrijdenPouleDdaScreenState extends State<WedstrijdenPouleDdaScreen> {
         .set({
       'pouleId': widget.pouleId,
       'gebruikerId': user.uid,
-      'matchId': w.id,            // ✅ consistente sleutel
-      'wedstrijdId': w.id,        // (compat - mag blijven)
+      'matchId': w.id, // ✅ consistente sleutel
+      'wedstrijdId': w.id, // (compat - mag blijven)
       'scoreThuis': int.parse(thuis),
       'scoreUit': int.parse(uit),
       'syncedFromGeneral': false, // expliciet handmatig
@@ -247,7 +250,8 @@ class _WedstrijdenPouleDdaScreenState extends State<WedstrijdenPouleDdaScreen> {
         ? DateFormat('EEEE d-MM-yyyy – HH:mm', 'nl').format(_deadline!)
         : 'n.v.t.';
 
-    final bool rondeLocked = (_deadline != null) ? DateTime.now().isAfter(_deadline!) : false;
+    final bool rondeLocked =
+        (_deadline != null) ? DateTime.now().isAfter(_deadline!) : false;
     final bool inputsDisabled = _syncEnabled || rondeLocked;
 
     return Scaffold(
@@ -325,16 +329,18 @@ class _WedstrijdenPouleDdaScreenState extends State<WedstrijdenPouleDdaScreen> {
                   // eigen voorspelling
                   final ingevuld =
                       (_thuisControllers[id]?.text.isNotEmpty ?? false) &&
-                      (_uitControllers[id]?.text.isNotEmpty ?? false);
-                  final int? eigenThuis =
-                      ingevuld ? int.tryParse(_thuisControllers[id]!.text) : null;
+                          (_uitControllers[id]?.text.isNotEmpty ?? false);
+                  final int? eigenThuis = ingevuld
+                      ? int.tryParse(_thuisControllers[id]!.text)
+                      : null;
                   final int? eigenUit =
                       ingevuld ? int.tryParse(_uitControllers[id]!.text) : null;
 
                   // punten (tonen als zowel uitslag als voorspelling bekend zijn)
-                  final int? punten = (thuisScore != null && uitScore != null && ingevuld)
-                      ? _behaaldePunten[id]
-                      : null;
+                  final int? punten =
+                      (thuisScore != null && uitScore != null && ingevuld)
+                          ? _behaaldePunten[id]
+                          : null;
 
                   return VoorspelWedstrijdCard(
                     thuisteam: w.thuis,
@@ -342,7 +348,8 @@ class _WedstrijdenPouleDdaScreenState extends State<WedstrijdenPouleDdaScreen> {
                     datum: datumTekst,
                     thuisController: _thuisControllers[id]!,
                     uitController: _uitControllers[id]!,
-                    isDisabled: inputsDisabled, // 🔒 geblokkeerd bij sync of na deadline
+                    isDisabled:
+                        inputsDisabled, // 🔒 geblokkeerd bij sync of na deadline
                     werkelijkeThuis: thuisScore,
                     werkelijkeUit: uitScore,
                     behaaldePunten: punten,
@@ -350,12 +357,14 @@ class _WedstrijdenPouleDdaScreenState extends State<WedstrijdenPouleDdaScreen> {
                     eigenVoorspellingUit: eigenUit,
                     onThuisScoreChanged: (value) {
                       if (!inputsDisabled) {
-                        _opslaanVoorspelling(w, value, _uitControllers[id]!.text);
+                        _opslaanVoorspelling(
+                            w, value, _uitControllers[id]!.text);
                       }
                     },
                     onUitScoreChanged: (value) {
                       if (!inputsDisabled) {
-                        _opslaanVoorspelling(w, _thuisControllers[id]!.text, value);
+                        _opslaanVoorspelling(
+                            w, _thuisControllers[id]!.text, value);
                       }
                     },
                   );
@@ -368,4 +377,3 @@ class _WedstrijdenPouleDdaScreenState extends State<WedstrijdenPouleDdaScreen> {
     );
   }
 }
-

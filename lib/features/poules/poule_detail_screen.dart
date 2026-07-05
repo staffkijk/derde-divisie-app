@@ -1,8 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 
+import 'package:derde_divisie/core/design/app_design.dart';
 import 'package:derde_divisie/data/config/season_config.dart';
+import 'package:derde_divisie/data/models/poule_prediction_scope.dart';
 import 'package:derde_divisie/data/firestore/season_paths.dart';
 import 'package:derde_divisie/features/voorspellen/prediction_overview_screen.dart';
 import 'package:derde_divisie/features/voorspellen/voorspel_een_team_screen.dart';
@@ -53,6 +56,19 @@ class _PouleDetailScreenState extends State<PouleDetailScreen> {
 
   Future<void> _leave() async {
     if (_userId == null) return;
+    final memberRef = _db
+        .collection('poules')
+        .doc(widget.pouleId)
+        .collection('deelnemers')
+        .doc(_userId);
+    if (!(await memberRef.get()).exists) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Je neemt niet deel aan deze poule.')),
+        );
+      }
+      return;
+    }
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -75,13 +91,7 @@ class _PouleDetailScreenState extends State<PouleDetailScreen> {
     if (confirmed != true) return;
 
     final batch = _db.batch();
-    batch.delete(
-      _db
-          .collection('poules')
-          .doc(widget.pouleId)
-          .collection('deelnemers')
-          .doc(_userId),
-    );
+    batch.delete(memberRef);
     batch.delete(_db.doc('users/$_userId/poules/${widget.pouleId}'));
     batch.set(
       _db.collection('users').doc(_userId),
@@ -91,6 +101,51 @@ class _PouleDetailScreenState extends State<PouleDetailScreen> {
     await batch.commit();
 
     if (mounted) Navigator.of(context).pop();
+  }
+
+  Future<void> _join() async {
+    if (_userId == null) return;
+    final pouleRef = _db.collection('poules').doc(widget.pouleId);
+    final memberRef = pouleRef.collection('deelnemers').doc(_userId);
+    if ((await memberRef.get()).exists) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Je neemt al deel aan deze poule.')),
+        );
+      }
+      return;
+    }
+    final batch = _db.batch();
+    batch.set(memberRef, {
+      'joinedAt': FieldValue.serverTimestamp(),
+      'punten': 0,
+      'rol': 'deelnemer',
+      'voorspellingenZichtbaarVoorDeadline': false,
+      'syncEnabled': true,
+    });
+    batch.set(
+      _db.doc('users/$_userId/poules/${widget.pouleId}'),
+      {'joinedAt': FieldValue.serverTimestamp()},
+    );
+    batch.set(
+      _db.collection('users').doc(_userId),
+      {'gejoinedePoules': FieldValue.increment(1)},
+      SetOptions(merge: true),
+    );
+    await batch.commit();
+    if (mounted) {
+      setState(() => _reloadKey = Object());
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Je neemt nu deel aan deze poule.')),
+      );
+    }
+  }
+
+  Future<void> _share(String name) {
+    return Share.share(
+      'Doe mee met mijn poule "$name" op DerdeDiv.nl. Poulecode: ${widget.pouleId}',
+      subject: 'Uitnodiging voor $name',
+    );
   }
 
   void _openPredictions(Map<String, dynamic> data) {
@@ -118,6 +173,7 @@ class _PouleDetailScreenState extends State<PouleDetailScreen> {
   Widget build(BuildContext context) {
     final pouleRef = _db.collection('poules').doc(widget.pouleId);
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Poule'),
         actions: [
@@ -141,6 +197,8 @@ class _PouleDetailScreenState extends State<PouleDetailScreen> {
 
           final data = snapshot.data!.data() ?? {};
           final type = _type(data);
+          final predictionScope =
+              parsePoulePredictionScope(data['predictionScope']);
           final teamName = _teamName(data);
           final isOwner = data['ownerId'] == _userId;
           final explanation = type == 'team'
@@ -156,13 +214,8 @@ class _PouleDetailScreenState extends State<PouleDetailScreen> {
                     padding:
                         EdgeInsets.all(constraints.maxWidth < 600 ? 14 : 24),
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(18),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: const Color(0xFFE3EADF)),
-                        ),
+                      AppCard(
+                        padding: const EdgeInsets.all(AppSpacing.lg),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -224,6 +277,26 @@ class _PouleDetailScreenState extends State<PouleDetailScreen> {
                                         : 'Hele competitie',
                                   ),
                                 ),
+                                Chip(
+                                  avatar: const Icon(
+                                    Icons.tune_outlined,
+                                    size: 18,
+                                  ),
+                                  label: Text(predictionScope.label),
+                                ),
+                                Chip(
+                                  avatar: Icon(
+                                    data['isPublic'] == false
+                                        ? Icons.lock_outline
+                                        : Icons.public,
+                                    size: 18,
+                                  ),
+                                  label: Text(
+                                    data['isPublic'] == false
+                                        ? 'Privé'
+                                        : 'Openbaar',
+                                  ),
+                                ),
                                 if (type == 'team' && teamName.isNotEmpty)
                                   Chip(
                                     label: Text(
@@ -234,21 +307,41 @@ class _PouleDetailScreenState extends State<PouleDetailScreen> {
                             ),
                             const SizedBox(height: 12),
                             Text(
-                              explanation,
+                              '$explanation ${predictionScope.explanation}',
                               style: TextStyle(
                                 color: Colors.grey.shade700,
                                 height: 1.4,
                               ),
                             ),
                             const SizedBox(height: 14),
-                            ElevatedButton.icon(
-                              onPressed: () => _openPredictions(data),
-                              icon: const Icon(Icons.edit_calendar_outlined),
-                              label: Text(
-                                type == 'team'
-                                    ? 'Naar Team voorspellen'
-                                    : 'Naar voorspellen',
-                              ),
+                            Wrap(
+                              spacing: AppSpacing.xs,
+                              runSpacing: AppSpacing.xs,
+                              children: [
+                                ElevatedButton.icon(
+                                  onPressed: () => _openPredictions(data),
+                                  icon:
+                                      const Icon(Icons.edit_calendar_outlined),
+                                  label: Text(
+                                    type == 'team'
+                                        ? 'Team voorspellen'
+                                        : 'Voorspellen',
+                                  ),
+                                ),
+                                OutlinedButton.icon(
+                                  onPressed: () => _share(
+                                    (data['name'] ?? 'Poule').toString(),
+                                  ),
+                                  icon: const Icon(Icons.share_outlined),
+                                  label: const Text('Uitnodigen'),
+                                ),
+                                if (!isOwner && data['isPublic'] != false)
+                                  OutlinedButton.icon(
+                                    onPressed: _join,
+                                    icon: const Icon(Icons.group_add_outlined),
+                                    label: const Text('Deelnemen'),
+                                  ),
+                              ],
                             ),
                           ],
                         ),
@@ -394,8 +487,8 @@ class _ParticipantsRanking extends StatelessWidget {
         return Container(
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: const Color(0xFFE3EADF)),
+            borderRadius: BorderRadius.circular(AppRadius.card),
+            border: Border.all(color: AppColors.border),
           ),
           child: Column(
             children: [

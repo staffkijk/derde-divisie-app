@@ -9,7 +9,7 @@ import 'helpers/announcement_service.dart';
 import 'features/dashboard/dashboard_screen.dart';
 import 'features/derde_divisie/division_overview_screen.dart';
 import 'features/derde_divisie/historical_standings_screen.dart';
-import 'features/derde_divisie/program_screen.dart';
+import 'features/derde_divisie/unified_program_screen.dart';
 import 'package:derde_divisie/features/profiel/profile_screen.dart';
 import 'features/moderator/moderator_dashboard_screen.dart';
 import 'package:derde_divisie/features/poules/poules_overzicht_screen.dart';
@@ -56,15 +56,8 @@ class _MainScreenState extends State<MainScreen> {
       protected: false,
     ),
     _NavItem(
-      label: 'Programma A',
-      shortLabel: 'Prog. A',
-      icon: Icons.calendar_month_outlined,
-      selectedIcon: Icons.calendar_month,
-      protected: false,
-    ),
-    _NavItem(
-      label: 'Programma B',
-      shortLabel: 'Prog. B',
+      label: 'Programma',
+      shortLabel: 'Programma',
       icon: Icons.calendar_month_outlined,
       selectedIcon: Icons.calendar_month,
       protected: false,
@@ -82,6 +75,13 @@ class _MainScreenState extends State<MainScreen> {
       icon: Icons.groups_2_outlined,
       selectedIcon: Icons.groups_2,
       protected: true,
+    ),
+    _NavItem(
+      label: 'Geschiedenis',
+      shortLabel: 'Historie',
+      icon: Icons.history_outlined,
+      selectedIcon: Icons.history,
+      protected: false,
     ),
     _NavItem(
       label: 'Profiel',
@@ -159,8 +159,10 @@ class _MainScreenState extends State<MainScreen> {
         DashboardScreen(
           onOpenDivisionA: () => _selectIndex(1),
           onOpenDivisionB: () => _selectIndex(2),
-          onOpenPredict: () => _selectIndex(5),
-          onOpenPoules: () => _selectIndex(6),
+          onOpenProgram: () => _selectIndex(3),
+          onOpenPredict: () => _selectIndex(4),
+          onOpenPoules: () => _selectIndex(5),
+          onOpenProfile: () => _selectIndex(7),
           onOpenHistoricalStandings: () {
             Navigator.of(context).push(
               MaterialPageRoute(
@@ -171,10 +173,10 @@ class _MainScreenState extends State<MainScreen> {
         ),
         const DivisionOverviewScreen(division: 'Derde Divisie A'),
         const DivisionOverviewScreen(division: 'Derde Divisie B'),
-        const ProgramScreen(division: 'A'),
-        const ProgramScreen(division: 'B'),
+        const UnifiedProgramScreen(),
         const PredictionOverviewScreen(),
         const PoulesOverzichtScreen(),
+        const HistoricalStandingsScreen(),
         const ProfileScreen(),
       ];
 
@@ -208,6 +210,52 @@ class _MainScreenState extends State<MainScreen> {
       context,
       MaterialPageRoute(builder: (_) => const ModeratorDashboardScreen()),
     );
+  }
+
+  Future<void> _showMobileMenu() async {
+    final selected = await showModalBottomSheet<int>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final index in [4, 5, 6, 7])
+                  ListTile(
+                    leading: Icon(
+                      _selectedIndex == index
+                          ? _navItems[index].selectedIcon
+                          : _navItems[index].icon,
+                    ),
+                    title: Text(_navItems[index].label),
+                    trailing: _navItems[index].protected &&
+                            FirebaseAuth.instance.currentUser == null
+                        ? const Icon(Icons.lock_outline, size: 17)
+                        : null,
+                    selected: _selectedIndex == index,
+                    onTap: () => Navigator.of(context).pop(index),
+                  ),
+                if (isModerator)
+                  ListTile(
+                    leading: const Icon(Icons.admin_panel_settings_outlined),
+                    title: const Text('Moderator'),
+                    onTap: () => Navigator.of(context).pop(99),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+    if (!mounted || selected == null) return;
+    if (selected == 99) {
+      _openModerator();
+    } else {
+      await _selectIndex(selected);
+    }
   }
 
   void _showAnnouncement(bool loggedIn) {
@@ -287,7 +335,7 @@ class _MainScreenState extends State<MainScreen> {
                     Text(
                       isTablet
                           ? _navItems[_selectedIndex].label
-                          : 'Derde Divisie',
+                          : _navItems[_selectedIndex].shortLabel,
                     ),
                   ],
                 ),
@@ -331,18 +379,28 @@ class _MainScreenState extends State<MainScreen> {
               ),
               body: screens[_selectedIndex],
               bottomNavigationBar: NavigationBar(
-                selectedIndex: _selectedIndex,
-                onDestinationSelected: _selectIndex,
+                selectedIndex: _selectedIndex <= 3 ? _selectedIndex : 4,
+                onDestinationSelected: (index) {
+                  if (index < 4) {
+                    _selectIndex(index);
+                  } else {
+                    _showMobileMenu();
+                  }
+                },
                 labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-                destinations: _navItems
-                    .map(
-                      (item) => NavigationDestination(
-                        icon: Icon(item.icon),
-                        selectedIcon: Icon(item.selectedIcon),
-                        label: item.shortLabel,
-                      ),
-                    )
-                    .toList(),
+                destinations: [
+                  for (final item in _navItems.take(4))
+                    NavigationDestination(
+                      icon: Icon(item.icon),
+                      selectedIcon: Icon(item.selectedIcon),
+                      label: item.shortLabel,
+                    ),
+                  const NavigationDestination(
+                    icon: Icon(Icons.more_horiz),
+                    selectedIcon: Icon(Icons.more),
+                    label: 'Meer',
+                  ),
+                ],
               ),
             );
           },
@@ -448,9 +506,14 @@ class _DesktopNavigation extends StatelessWidget {
                     color: Colors.white.withValues(alpha: .10),
                   ),
                 ),
-                child: const Text(
-                  'Volg standen, programma en cijfers zonder account. Log in wanneer je wilt voorspellen of een poule wilt beheren.',
-                  style: TextStyle(color: Colors.white70, height: 1.35),
+                child: Text(
+                  loggedIn
+                      ? 'Welkom terug. Je voorspellingen, poules en profiel zijn direct beschikbaar.'
+                      : 'Volg standen en programma zonder account. Log in om te voorspellen of een poule te beheren.',
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    height: 1.35,
+                  ),
                 ),
               ),
               const SizedBox(height: 22),
@@ -564,7 +627,7 @@ class _DesktopNavButton extends StatelessWidget {
                   ),
                 ),
               ),
-              if (item.protected)
+              if (item.protected && !enabled)
                 Icon(
                   Icons.lock_outline,
                   size: 16,
