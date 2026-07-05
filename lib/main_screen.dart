@@ -9,6 +9,7 @@ import 'helpers/announcement_service.dart';
 import 'features/dashboard/dashboard_screen.dart';
 import 'features/derde_divisie/division_overview_screen.dart';
 import 'features/derde_divisie/historical_standings_screen.dart';
+import 'features/derde_divisie/program_screen.dart';
 import 'package:derde_divisie/features/profiel/profile_screen.dart';
 import 'features/moderator/moderator_dashboard_screen.dart';
 import 'package:derde_divisie/features/poules/poules_overzicht_screen.dart';
@@ -52,6 +53,20 @@ class _MainScreenState extends State<MainScreen> {
       shortLabel: 'B',
       icon: Icons.leaderboard_outlined,
       selectedIcon: Icons.leaderboard,
+      protected: false,
+    ),
+    _NavItem(
+      label: 'Programma A',
+      shortLabel: 'Prog. A',
+      icon: Icons.calendar_month_outlined,
+      selectedIcon: Icons.calendar_month,
+      protected: false,
+    ),
+    _NavItem(
+      label: 'Programma B',
+      shortLabel: 'Prog. B',
+      icon: Icons.calendar_month_outlined,
+      selectedIcon: Icons.calendar_month,
       protected: false,
     ),
     _NavItem(
@@ -144,8 +159,8 @@ class _MainScreenState extends State<MainScreen> {
         DashboardScreen(
           onOpenDivisionA: () => _selectIndex(1),
           onOpenDivisionB: () => _selectIndex(2),
-          onOpenPredict: () => _selectIndex(3),
-          onOpenPoules: () => _selectIndex(4),
+          onOpenPredict: () => _selectIndex(5),
+          onOpenPoules: () => _selectIndex(6),
           onOpenHistoricalStandings: () {
             Navigator.of(context).push(
               MaterialPageRoute(
@@ -156,6 +171,8 @@ class _MainScreenState extends State<MainScreen> {
         ),
         const DivisionOverviewScreen(division: 'Derde Divisie A'),
         const DivisionOverviewScreen(division: 'Derde Divisie B'),
+        const ProgramScreen(division: 'A'),
+        const ProgramScreen(division: 'B'),
         const PredictionOverviewScreen(),
         const PoulesOverzichtScreen(),
         const ProfileScreen(),
@@ -267,9 +284,11 @@ class _MainScreenState extends State<MainScreen> {
                       height: 30,
                     ),
                     const SizedBox(width: 10),
-                    Text(isTablet
-                        ? _navItems[_selectedIndex].label
-                        : 'Derde Divisie'),
+                    Text(
+                      isTablet
+                          ? _navItems[_selectedIndex].label
+                          : 'Derde Divisie',
+                    ),
                   ],
                 ),
                 actions: [
@@ -379,7 +398,7 @@ class _DesktopNavigation extends StatelessWidget {
       width: 292,
       color: _darkGreen,
       child: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -425,8 +444,9 @@ class _DesktopNavigation extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: .08),
                   borderRadius: BorderRadius.circular(20),
-                  border:
-                      Border.all(color: Colors.white.withValues(alpha: .10)),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: .10),
+                  ),
                 ),
                 child: const Text(
                   'Volg standen, programma en cijfers zonder account. Log in wanneer je wilt voorspellen of een poule wilt beheren.',
@@ -437,30 +457,32 @@ class _DesktopNavigation extends StatelessWidget {
               ...List.generate(items.length, (index) {
                 final item = items[index];
                 final selected = index == selectedIndex;
+
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 8),
                   child: _DesktopNavButton(
                     item: item,
                     selected: selected,
+                    enabled: !item.protected || loggedIn,
                     onTap: () => onSelect(index),
                   ),
                 );
               }),
-              const Spacer(),
-              if (isModerator)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: OutlinedButton.icon(
-                    onPressed: onModerator,
-                    icon: const Icon(Icons.admin_panel_settings_outlined),
-                    label: const Text('Moderator'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      side: BorderSide(
-                          color: Colors.white.withValues(alpha: .26)),
+              if (isModerator) ...[
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: onModerator,
+                  icon: const Icon(Icons.admin_panel_settings_outlined),
+                  label: const Text('Moderator'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    side: BorderSide(
+                      color: Colors.white.withValues(alpha: .26),
                     ),
                   ),
                 ),
+              ],
+              const SizedBox(height: 8),
               if (loggedIn)
                 OutlinedButton.icon(
                   onPressed: onLogout,
@@ -468,8 +490,9 @@ class _DesktopNavigation extends StatelessWidget {
                   label: const Text('Uitloggen'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.white,
-                    side:
-                        BorderSide(color: Colors.white.withValues(alpha: .26)),
+                    side: BorderSide(
+                      color: Colors.white.withValues(alpha: .26),
+                    ),
                   ),
                 )
               else
@@ -493,16 +516,30 @@ class _DesktopNavigation extends StatelessWidget {
 class _DesktopNavButton extends StatelessWidget {
   final _NavItem item;
   final bool selected;
+  final bool enabled;
   final VoidCallback onTap;
 
   const _DesktopNavButton({
     required this.item,
     required this.selected,
+    required this.enabled,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final foreground = selected
+        ? const Color(0xFF153B2A)
+        : enabled
+            ? Colors.white
+            : Colors.white54;
+
+    final iconColor = selected
+        ? const Color(0xFF153B2A)
+        : enabled
+            ? Colors.white70
+            : Colors.white38;
+
     return Material(
       color: selected ? Colors.white : Colors.transparent,
       borderRadius: BorderRadius.circular(18),
@@ -515,14 +552,14 @@ class _DesktopNavButton extends StatelessWidget {
             children: [
               Icon(
                 selected ? item.selectedIcon : item.icon,
-                color: selected ? const Color(0xFF153B2A) : Colors.white70,
+                color: iconColor,
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   item.label,
                   style: TextStyle(
-                    color: selected ? const Color(0xFF153B2A) : Colors.white,
+                    color: foreground,
                     fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
                   ),
                 ),

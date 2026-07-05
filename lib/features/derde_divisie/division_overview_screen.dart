@@ -6,6 +6,8 @@ import 'periode_standen_screen.dart';
 import 'historical_standings_screen.dart';
 import 'stand_derde_divisie_screen.dart';
 
+const String kProgramSeason = '2026-2027';
+
 class DivisionOverviewScreen extends StatelessWidget {
   final String division;
 
@@ -13,6 +15,7 @@ class DivisionOverviewScreen extends StatelessWidget {
 
   String get _shortDivision =>
       division.toLowerCase().contains(' b') ? 'B' : 'A';
+
   String get _title => 'Derde Divisie $_shortDivision';
 
   @override
@@ -78,7 +81,9 @@ class DivisionOverviewScreen extends StatelessWidget {
                         )
                       else ...[
                         _StandCard(
-                            title: 'Stand $_shortDivision', division: division),
+                          title: 'Stand $_shortDivision',
+                          division: division,
+                        ),
                         const SizedBox(height: 14),
                         _MatchesCard(
                           title: 'Komende speelronde',
@@ -112,7 +117,10 @@ class _DivisionHeader extends StatelessWidget {
   final String title;
   final String division;
 
-  const _DivisionHeader({required this.title, required this.division});
+  const _DivisionHeader({
+    required this.title,
+    required this.division,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -133,6 +141,7 @@ class _DivisionHeader extends StatelessWidget {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final compact = constraints.maxWidth < 620;
+
           final textBlock = Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -158,7 +167,9 @@ class _DivisionHeader extends StatelessWidget {
           final periodButton = ElevatedButton.icon(
             onPressed: () {
               Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const PeriodeStandenScreen()),
+                MaterialPageRoute(
+                  builder: (_) => const PeriodeStandenScreen(),
+                ),
               );
             },
             icon: const Icon(Icons.bar_chart_rounded, size: 18),
@@ -166,7 +177,10 @@ class _DivisionHeader extends StatelessWidget {
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF2F8F3B),
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
+              ),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(18),
               ),
@@ -208,7 +222,10 @@ class _DivisionHeader extends StatelessWidget {
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
-                children: [archiveButton, periodButton],
+                children: [
+                  archiveButton,
+                  periodButton,
+                ],
               ),
             ],
           );
@@ -222,7 +239,10 @@ class _StandCard extends StatelessWidget {
   final String title;
   final String division;
 
-  const _StandCard({required this.title, required this.division});
+  const _StandCard({
+    required this.title,
+    required this.division,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -230,11 +250,17 @@ class _StandCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _SectionTitle(icon: Icons.leaderboard_rounded, title: title),
+          _SectionTitle(
+            icon: Icons.leaderboard_rounded,
+            title: title,
+          ),
           const SizedBox(height: 4),
           Text(
             'Voorlopige deelnemerslijst seizoen 2026/2027. De stand wordt automatisch gevuld zodra er uitslagen zijn verwerkt.',
-            style: TextStyle(color: Colors.grey.shade700, height: 1.3),
+            style: TextStyle(
+              color: Colors.grey.shade700,
+              height: 1.3,
+            ),
           ),
           const SizedBox(height: 10),
           StandDerdeDivisie(
@@ -247,7 +273,10 @@ class _StandCard extends StatelessWidget {
   }
 }
 
-enum _MatchCardMode { upcoming, results }
+enum _MatchCardMode {
+  upcoming,
+  results,
+}
 
 class _MatchInfo {
   final String homeTeam;
@@ -256,6 +285,7 @@ class _MatchInfo {
   final int? awayScore;
   final DateTime? date;
   final bool played;
+  final int round;
 
   const _MatchInfo({
     required this.homeTeam,
@@ -264,6 +294,7 @@ class _MatchInfo {
     required this.awayScore,
     required this.date,
     required this.played,
+    required this.round,
   });
 }
 
@@ -282,44 +313,152 @@ class _MatchesCard extends StatelessWidget {
 
   Stream<QuerySnapshot<Map<String, dynamic>>> _stream() {
     return FirebaseFirestore.instance
+        .collection('seasons')
+        .doc(kProgramSeason)
         .collection('matches')
-        .where('competitie', isEqualTo: division)
         .snapshots();
   }
 
+  String get _divisionCode => division.toLowerCase().contains(' b') ? 'B' : 'A';
+
+  bool _matchesDivision(Map<String, dynamic> data) {
+    final rawDivision = (data['division'] ??
+            data['divisie'] ??
+            data['competition'] ??
+            data['competitie'] ??
+            data['league'] ??
+            '')
+        .toString()
+        .trim();
+
+    if (rawDivision.isEmpty) {
+      return true;
+    }
+
+    return _normalizeDivision(rawDivision) == _divisionCode;
+  }
+
   List<_MatchInfo> _selectMatches(
-      List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) {
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+  ) {
     final matches = docs
+        .where((doc) {
+          if (doc.id == '_meta') return false;
+          return _matchesDivision(doc.data());
+        })
         .map((doc) {
           final data = doc.data();
-          final homeScore = _asInt(data['uitslagThuis'] ?? data['scoreThuis']);
-          final awayScore = _asInt(data['uitslagUit'] ?? data['scoreUit']);
+
+          final homeScore = _asInt(
+            data['homeScore'] ??
+                data['scoreHome'] ??
+                data['uitslagThuis'] ??
+                data['scoreThuis'] ??
+                data['goalsHome'] ??
+                data['homeGoals'] ??
+                data['thuisGoals'],
+          );
+
+          final awayScore = _asInt(
+            data['awayScore'] ??
+                data['scoreAway'] ??
+                data['uitslagUit'] ??
+                data['scoreUit'] ??
+                data['goalsAway'] ??
+                data['awayGoals'] ??
+                data['uitGoals'],
+          );
+
           final playedFlag = _asBool(
-              data['verwerkt'] ?? data['gespeeld'] ?? data['isProcessed']);
-          final played = playedFlag ?? (homeScore != null && awayScore != null);
+            data['verwerkt'] ??
+                data['gespeeld'] ??
+                data['isProcessed'] ??
+                data['processed'] ??
+                data['played'] ??
+                data['isPlayed'],
+          );
+
+          final status = (data['status'] ??
+                  data['matchStatus'] ??
+                  data['statusLabel'] ??
+                  data['state'] ??
+                  '')
+              .toString()
+              .trim()
+              .toLowerCase();
+
+          final playedByStatus = _isPlayedStatus(status);
+          final scheduledByStatus = _isScheduledStatus(status);
+
+          final played = playedFlag ??
+              playedByStatus ||
+                  (!scheduledByStatus &&
+                      homeScore != null &&
+                      awayScore != null);
 
           return _MatchInfo(
             homeTeam: _asTeamName(
-                data['thuisteam'] ?? data['homeTeam'] ?? data['thuisTeam']),
+              data['homeTeamName'] ??
+                  data['homeTeam'] ??
+                  data['thuisteam'] ??
+                  data['thuisTeam'] ??
+                  data['home'] ??
+                  data['teamHome'],
+            ),
             awayTeam: _asTeamName(
-                data['uitteam'] ?? data['awayTeam'] ?? data['uitTeam']),
+              data['awayTeamName'] ??
+                  data['awayTeam'] ??
+                  data['uitteam'] ??
+                  data['uitTeam'] ??
+                  data['away'] ??
+                  data['teamAway'],
+            ),
             homeScore: homeScore,
             awayScore: awayScore,
-            date: _asDate(data['datum'] ?? data['date'] ?? data['startTime']),
+            date: _asDate(
+  data['scheduledAt'] ??
+      data['date'] ??
+      data['datum'] ??
+      data['startTime'] ??
+      data['kickoff'] ??
+      data['matchDate'],
+),
             played: played,
+            round: _asInt(
+                  data['round'] ??
+                      data['speelronde'] ??
+                      data['matchday'] ??
+                      data['ronde'],
+                ) ??
+                999,
           );
         })
-        .where((m) => m.homeTeam.isNotEmpty || m.awayTeam.isNotEmpty)
+        .where((m) => m.homeTeam.isNotEmpty && m.awayTeam.isNotEmpty)
         .toList();
 
     if (mode == _MatchCardMode.upcoming) {
       final upcoming = matches.where((m) => !m.played).toList()
-        ..sort((a, b) => _compareNullableDates(a.date, b.date));
-      return upcoming.take(9).toList();
+        ..sort((a, b) {
+          final roundCompare = a.round.compareTo(b.round);
+          if (roundCompare != 0) return roundCompare;
+          return _compareNullableDates(a.date, b.date);
+        });
+
+      if (upcoming.isEmpty) return [];
+
+      final firstRound = upcoming.first.round;
+      final sameRound = upcoming.where((m) => m.round == firstRound).toList();
+
+      return sameRound.take(9).toList();
     }
 
     final results = matches.where((m) => m.played).toList()
-      ..sort((a, b) => _compareNullableDates(b.date, a.date));
+      ..sort((a, b) {
+        final dateCompare = _compareNullableDates(b.date, a.date);
+        if (dateCompare != 0) return dateCompare;
+        return b.round.compareTo(a.round);
+      });
+
     return results.take(9).toList();
   }
 
@@ -338,7 +477,10 @@ class _MatchesCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             subtitle,
-            style: TextStyle(color: Colors.grey.shade700, height: 1.3),
+            style: TextStyle(
+              color: Colors.grey.shade700,
+              height: 1.3,
+            ),
           ),
           const SizedBox(height: 12),
           StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
@@ -359,6 +501,7 @@ class _MatchesCard extends StatelessWidget {
               }
 
               final matches = _selectMatches(snapshot.data!.docs);
+
               if (matches.isEmpty) {
                 return _EmptyMatchState(mode: mode);
               }
@@ -372,7 +515,10 @@ class _MatchesCard extends StatelessWidget {
                       mode: mode,
                     ),
                     if (i != matches.length - 1)
-                      Divider(height: 1, color: Colors.grey.shade200),
+                      Divider(
+                        height: 1,
+                        color: Colors.grey.shade200,
+                      ),
                   ],
                 ],
               );
@@ -435,8 +581,10 @@ class _MatchTile extends StatelessWidget {
                     padding: const EdgeInsets.only(top: 2),
                     child: Text(
                       dateLabel,
-                      style:
-                          TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontSize: 12,
+                      ),
                     ),
                   ),
               ],
@@ -445,7 +593,10 @@ class _MatchTile extends StatelessWidget {
           const SizedBox(width: 10),
           Container(
             constraints: const BoxConstraints(minWidth: 54),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 10,
+              vertical: 6,
+            ),
             decoration: BoxDecoration(
               color: mode == _MatchCardMode.results && scoreKnown
                   ? const Color(0xFFE8F5E9)
@@ -489,7 +640,10 @@ class _EmptyMatchState extends StatelessWidget {
       ),
       child: Text(
         text,
-        style: TextStyle(color: Colors.grey.shade700, height: 1.35),
+        style: TextStyle(
+          color: Colors.grey.shade700,
+          height: 1.35,
+        ),
       ),
     );
   }
@@ -525,7 +679,10 @@ class _SectionTitle extends StatelessWidget {
   final IconData icon;
   final String title;
 
-  const _SectionTitle({required this.icon, required this.title});
+  const _SectionTitle({
+    required this.icon,
+    required this.title,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -538,7 +695,11 @@ class _SectionTitle extends StatelessWidget {
             color: const Color(0xFFE8F5E9),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Icon(icon, color: const Color(0xFF2F8F3B), size: 20),
+          child: Icon(
+            icon,
+            color: const Color(0xFF2F8F3B),
+            size: 20,
+          ),
         ),
         const SizedBox(width: 10),
         Expanded(
@@ -556,48 +717,141 @@ class _SectionTitle extends StatelessWidget {
   }
 }
 
+String _normalizeDivision(String value) {
+  final text = value.toLowerCase().trim();
+
+  if (text == 'b' ||
+      text == 'divisie b' ||
+      text == 'derde divisie b' ||
+      text.contains(' b')) {
+    return 'B';
+  }
+
+  return 'A';
+}
+
 int? _asInt(dynamic value) {
   if (value == null) return null;
   if (value is int) return value;
   if (value is num) return value.toInt();
-  return int.tryParse(value.toString());
+
+  final text = value.toString().trim();
+  if (text.isEmpty) return null;
+
+  return int.tryParse(text);
 }
 
 bool? _asBool(dynamic value) {
   if (value == null) return null;
   if (value is bool) return value;
   if (value is num) return value != 0;
+
   final text = value.toString().toLowerCase().trim();
-  if (text == 'true' || text == 'ja' || text == 'yes' || text == '1') {
+
+  if (text == 'true' ||
+      text == 'ja' ||
+      text == 'yes' ||
+      text == '1' ||
+      text == 'gespeeld' ||
+      text == 'verwerkt' ||
+      text == 'finished' ||
+      text == 'played' ||
+      text == 'final' ||
+      text == 'ft') {
     return true;
   }
-  if (text == 'false' || text == 'nee' || text == 'no' || text == '0') {
+
+  if (text == 'false' ||
+      text == 'nee' ||
+      text == 'no' ||
+      text == '0' ||
+      text == 'scheduled' ||
+      text == 'programma' ||
+      text == 'niet gespeeld') {
     return false;
   }
+
   return null;
+}
+
+bool _isPlayedStatus(String status) {
+  return status == 'finished' ||
+      status == 'played' ||
+      status == 'final' ||
+      status == 'fulltime' ||
+      status == 'full time' ||
+      status == 'ft' ||
+      status == 'afgelopen' ||
+      status == 'gespeeld' ||
+      status == 'verwerkt' ||
+      status == 'definitief';
+}
+
+bool _isScheduledStatus(String status) {
+  return status == 'scheduled' ||
+      status == 'programma' ||
+      status == 'fixture' ||
+      status == 'planned' ||
+      status == 'gepland' ||
+      status == 'niet gespeeld' ||
+      status == 'upcoming';
 }
 
 DateTime? _asDate(dynamic value) {
   if (value == null) return null;
-  if (value is Timestamp) return value.toDate();
-  if (value is DateTime) return value;
-  return DateTime.tryParse(value.toString());
+
+  if (value is Timestamp) {
+    return value.toDate();
+  }
+
+  if (value is DateTime) {
+    return value;
+  }
+
+  if (value is int) {
+    if (value > 1000000000000) {
+      return DateTime.fromMillisecondsSinceEpoch(value);
+    }
+
+    if (value > 1000000000) {
+      return DateTime.fromMillisecondsSinceEpoch(value * 1000);
+    }
+  }
+
+  final text = value.toString().trim();
+  if (text.isEmpty) return null;
+
+  return DateTime.tryParse(text);
 }
 
 String _asTeamName(dynamic value) {
-  final text = value?.toString().trim() ?? '';
-  return text;
+  if (value == null) return '';
+
+  if (value is Map) {
+    final name = value['name'] ??
+        value['teamName'] ??
+        value['clubName'] ??
+        value['displayName'] ??
+        value['label'] ??
+        value['shortName'];
+
+    return name?.toString().trim() ?? '';
+  }
+
+  return value.toString().trim();
 }
 
 int _compareNullableDates(DateTime? a, DateTime? b) {
   if (a == null && b == null) return 0;
   if (a == null) return 1;
   if (b == null) return -1;
+
   return a.compareTo(b);
 }
 
 String _formatMatchDate(DateTime? date) {
   if (date == null) return '';
+
   final format = DateFormat('EEE d MMM HH:mm', 'nl_NL');
   return format.format(date);
 }

@@ -5,6 +5,7 @@ import 'package:logging/logging.dart';
 import 'package:derde_divisie/data/config/season_config.dart';
 import 'package:derde_divisie/data/firestore/season_paths.dart';
 import 'periode_standen_screen.dart';
+import 'package:derde_divisie/data/config/team_logo_assets.dart';
 
 final Logger _log = Logger('StandDerdeDivisie');
 
@@ -178,7 +179,19 @@ class StandEntry {
       naam: team?.listLabel ?? naam,
       code: _normName(team?.listLabel ?? naam),
       docCode: _normName((data['teamId'] ?? data['id'] ?? doc.id).toString()),
-      logoAsset: (data['logoAsset'] ?? team?.logoPath)?.toString(),
+      logoAsset: teamLogoAssetFromValues([
+  data['logoAsset'],
+  team?.logoPath,
+  team?.listLabel,
+  naam,
+  data['teamName'],
+  data['name'],
+  data['team'],
+  data['club'],
+  data['teamId'],
+  data['id'],
+  doc.id,
+]),
       positie: _toInt(data['position'] ?? data['positie'] ?? data['rank']),
       gespeeld: _toInt(data['played'] ?? data['gespeeld']),
       gewonnen: _toInt(data['wins'] ?? data['won'] ?? data['gewonnen']),
@@ -209,7 +222,19 @@ class StandEntry {
       naam: team?.listLabel ?? naam,
       code: _normName(team?.listLabel ?? naam),
       docCode: _normName(doc.id),
-      logoAsset: (data['logoAsset'] ?? team?.logoPath)?.toString(),
+      logoAsset: teamLogoAssetFromValues([
+  data['logoAsset'],
+  team?.logoPath,
+  team?.listLabel,
+  naam,
+  data['teamName'],
+  data['name'],
+  data['team'],
+  data['club'],
+  data['teamId'],
+  data['id'],
+  doc.id,
+]),
       positie: _toInt(data['position'] ?? data['positie']),
       gespeeld: _toInt(data['played'] ?? data['gespeeld']),
       gewonnen: _toInt(data['won'] ?? data['wins'] ?? data['gewonnen']),
@@ -794,11 +819,11 @@ class StandDerdeDivisie extends StatelessWidget {
                         width: wLogo,
                         height: wLogo,
                         child: Image.asset(
-                          club.logoAsset ?? SeasonConfig.defaultTeamLogoPath,
+                          club.logoAsset ?? kDefaultTeamLogoAsset,
                           fit: BoxFit.contain,
                           errorBuilder: (_, __, ___) {
                             return Image.asset(
-                              SeasonConfig.defaultTeamLogoPath,
+                              kDefaultTeamLogoAsset,
                               fit: BoxFit.contain,
                               errorBuilder: (_, __, ___) {
                                 return const Icon(

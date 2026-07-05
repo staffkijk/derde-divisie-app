@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 import 'package:derde_divisie/data/config/season_config.dart';
-import 'package:derde_divisie/features/derde_divisie/historical_standings_screen.dart';
+import 'package:derde_divisie/features/voorspellen/archived_prediction_ranking_screen.dart';
 import 'package:derde_divisie/features/voorspellen/eindstand_voorspelling_screen.dart';
 import 'package:derde_divisie/features/voorspellen/prediction_screen.dart';
 import 'package:derde_divisie/features/voorspellen/ranking_screen.dart';
@@ -70,11 +70,11 @@ class PredictionOverviewScreen extends StatelessWidget {
                           action: _PredictionAction.tableB,
                         ),
                         _ActionCard(
-                          icon: Icons.history_rounded,
-                          title: 'Eindstand afgelopen seizoen',
-                          subtitle: 'Bekijk seizoen 2025/2026',
-                          action: _PredictionAction.lastSeason,
-                        ),
+  icon: Icons.emoji_events_rounded,
+  title: 'Voorspelranking afgelopen seizoen',
+  subtitle: 'Eindranglijst voorspellers 2025/2026',
+  action: _PredictionAction.lastSeason,
+),
                       ],
                     ),
                     SizedBox(height: 24),
@@ -183,42 +183,45 @@ class _ActionCard extends StatelessWidget {
   final _PredictionAction action;
 
   Future<void> _open(BuildContext context) async {
-    switch (action) {
-      case _PredictionAction.matchesA:
-      case _PredictionAction.matchesB:
-        final division = action == _PredictionAction.matchesA ? 'A' : 'B';
-        await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => PredictionScreen(divisie: division),
+  switch (action) {
+    case _PredictionAction.matchesA:
+    case _PredictionAction.matchesB:
+      final division = action == _PredictionAction.matchesA ? 'A' : 'B';
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => PredictionScreen(divisie: division),
+        ),
+      );
+      return;
+
+    case _PredictionAction.tableA:
+    case _PredictionAction.tableB:
+      final division = action == _PredictionAction.tableA ? 'A' : 'B';
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => EindstandVoorspellingScreen(divisie: division),
+        ),
+      );
+      return;
+
+    case _PredictionAction.team:
+      await _chooseTeam(context);
+      return;
+
+    case _PredictionAction.lastSeason:
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const ArchivedPredictionRankingScreen(
+            initialSeason: '2025-2026',
           ),
-        );
-        return;
-      case _PredictionAction.tableA:
-      case _PredictionAction.tableB:
-        final division = action == _PredictionAction.tableA ? 'A' : 'B';
-        await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => EindstandVoorspellingScreen(divisie: division),
-          ),
-        );
-        return;
-      case _PredictionAction.lastSeason:
-        await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => const HistoricalStandingsScreen(
-              initialSeason: '2025-2026',
-            ),
-          ),
-        );
-        return;
-      case _PredictionAction.team:
-        await _chooseTeam(context);
-        return;
-    }
+        ),
+      );
+      return;
   }
+}
 
   Future<void> _chooseTeam(BuildContext context) async {
     final team = await showModalBottomSheet<SeasonTeam>(

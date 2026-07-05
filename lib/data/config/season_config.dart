@@ -28,20 +28,60 @@ class SeasonTeam {
         .replaceFirst(RegExp(r'\.(png|webp|jpg|jpeg)$'), '');
   }
 
-  String get listLabel {
+   String get listLabel {
     switch (id) {
       case 'ado20':
-        return "ADO'20";
+        return "ADO '20";
       case 'blauw_geel_38':
-        return "Blauw Geel '38";
+        return "Blauw Geel'38/Jumbo";
       case 'dvs33_ermelo':
         return "DVS'33 Ermelo";
       case 'excelsior31':
-        return "Excelsior '31";
+        return "Excelsior'31";
+      case 'fc_rijnvogels':
+        return 'Rijnvogels';
+      case 'hvv_hollandia':
+        return 'Hollandia';
+      case 'rksv_groene_ster':
+        return 'Groene Ster';
       case 'sportlust46':
-        return "Sportlust '46";
+        return "Sportlust'46";
+      case 'sv_poortugaal':
+        return 'sv Poortugaal';
+      case 'sv_tec':
+        return 'TEC';
       case 'udi19':
         return "UDI'19";
+      case 'usv_hercules':
+        return 'Hercules';
+      case 'vpv_purmersteijn':
+        return 'Purmersteijn';
+      case 'vv_achilles_veen':
+        return 'Achilles Veen';
+      case 'vv_dongen':
+        return 'Dongen';
+      case 'vv_dovo':
+        return 'DOVO';
+      case 'vv_eemdijk':
+        return 'Eemdijk';
+      case 'vv_gemert':
+        return 'Gemert';
+      case 'vv_goes':
+        return 'Goes';
+      case 'vv_hoogeveen':
+        return 'Hoogeveen';
+      case 'vv_noordwijk':
+        return 'Noordwijk';
+      case 'vv_scherpenzeel':
+        return 'Scherpenzeel';
+      case 'vv_sparta_nijkerk':
+        return 'Sparta Nijkerk';
+      case 'vv_staphorst':
+        return 'Staphorst';
+      case 'vv_una':
+        return 'UNA';
+      case 'vv_zwaluwen':
+        return 'Zwaluwen';
       default:
         return label;
     }
