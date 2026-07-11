@@ -113,8 +113,20 @@ class _MainScreenState extends State<MainScreen> {
     }
   }
 
+  void _openIntrofilmFromHome() {
+    final introfilmIndex = MainNavigationConfig.introfilmIndex;
+    assert(
+      MainNavigationConfig.items[introfilmIndex].destination ==
+          MainNavigationDestination.introfilm,
+    );
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const IntroVideoScreen()),
+    );
+  }
+
   List<Widget> _screens() => [
         DashboardScreen(
+          onOpenIntrofilm: _openIntrofilmFromHome,
           onOpenDivisionA: () =>
               _selectIndex(MainNavigationConfig.divisionAIndex),
           onOpenDivisionB: () =>

@@ -10,6 +10,8 @@ import 'package:url_launcher/url_launcher_string.dart';
 
 import 'package:derde_divisie/data/config/season_config.dart';
 import 'package:derde_divisie/data/firestore/season_paths.dart';
+import 'package:derde_divisie/core/config/main_navigation_config.dart';
+import 'package:derde_divisie/core/widgets/derde_div_logo.dart';
 import 'package:derde_divisie/features/derde_divisie/historical_standings_screen.dart';
 import 'package:derde_divisie/features/dashboard/dashboard_match_center.dart';
 
@@ -294,6 +296,7 @@ class _RotatingLogoState extends State<RotatingLogo> {
 /// DashboardScreen
 /// ---------------------------
 class DashboardScreen extends StatelessWidget {
+  final VoidCallback? onOpenIntrofilm;
   final VoidCallback? onOpenDivisionA;
   final VoidCallback? onOpenDivisionB;
   final VoidCallback? onOpenPredict;
@@ -304,6 +307,7 @@ class DashboardScreen extends StatelessWidget {
 
   const DashboardScreen({
     super.key,
+    this.onOpenIntrofilm,
     this.onOpenDivisionA,
     this.onOpenDivisionB,
     this.onOpenPredict,
@@ -513,6 +517,10 @@ class DashboardScreen extends StatelessWidget {
             ],
           ),
         ),
+      );
+
+  Widget _introfilmCard() => _DashboardIntrofilmCard(
+        onTap: onOpenIntrofilm,
       );
 
   Widget _statsCard() => FutureBuilder<List<_M>>(
@@ -787,6 +795,8 @@ class DashboardScreen extends StatelessWidget {
                         onOpenProfile: onOpenProfile ?? () {},
                       ),
                       const SizedBox(height: 24),
+                      _introfilmCard(),
+                      const SizedBox(height: 24),
                       _quickLinksCard(context),
                       const SizedBox(height: 24),
                       if (isWide)
@@ -813,6 +823,210 @@ class DashboardScreen extends StatelessWidget {
           },
         ),
       );
+}
+
+class _DashboardIntrofilmCard extends StatefulWidget {
+  final VoidCallback? onTap;
+
+  const _DashboardIntrofilmCard({required this.onTap});
+
+  @override
+  State<_DashboardIntrofilmCard> createState() =>
+      _DashboardIntrofilmCardState();
+}
+
+class _DashboardIntrofilmCardState extends State<_DashboardIntrofilmCard> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = widget.onTap != null;
+
+    return Semantics(
+      button: true,
+      label: 'Open de Derde Divisie introfilm voor seizoen 2026/2027',
+      child: Tooltip(
+        message: 'Introfilm openen',
+        child: MouseRegion(
+          cursor: enabled ? SystemMouseCursors.click : MouseCursor.defer,
+          onEnter: (_) => setState(() => _hovered = true),
+          onExit: (_) => setState(() => _hovered = false),
+          child: AnimatedScale(
+            scale: _hovered && enabled ? 1.006 : 1,
+            duration: const Duration(milliseconds: 160),
+            curve: Curves.easeOut,
+            child: Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(22),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(22),
+                onTap: widget.onTap,
+                child: AspectRatio(
+                  aspectRatio: 16 / 9,
+                  child: Ink(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF050807),
+                      borderRadius: BorderRadius.circular(22),
+                      border: Border.all(
+                        color: const Color(0xFF3BAE5D).withValues(alpha: .34),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF3BAE5D).withValues(
+                            alpha: _hovered && enabled ? .22 : .12,
+                          ),
+                          blurRadius: _hovered && enabled ? 34 : 24,
+                          offset: const Offset(0, 14),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(22),
+                      child: DecoratedBox(
+                        decoration: const BoxDecoration(
+                          gradient: RadialGradient(
+                            center: Alignment.center,
+                            radius: .76,
+                            colors: [
+                              Color(0x332F8F3B),
+                              Color(0x110F2B1D),
+                              Color(0xFF050807),
+                            ],
+                            stops: [0, .48, 1],
+                          ),
+                        ),
+                        child: Stack(
+                          children: [
+                            Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(28),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const DerdeDivLogo.full(
+                                      width: 210,
+                                      height: 82,
+                                    ),
+                                    const SizedBox(height: 22),
+                                    Container(
+                                      width: 70,
+                                      height: 70,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF3BAE5D)
+                                            .withValues(alpha: .94),
+                                        shape: BoxShape.circle,
+                                        boxShadow: const [
+                                          BoxShadow(
+                                            color: Color(0x66000000),
+                                            blurRadius: 18,
+                                            offset: Offset(0, 8),
+                                          ),
+                                        ],
+                                      ),
+                                      child: const Icon(
+                                        Icons.play_arrow_rounded,
+                                        color: Colors.white,
+                                        size: 44,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              left: 22,
+                              right: 22,
+                              bottom: 20,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Derde Divisie introfilm',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 23,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  const Text(
+                                    'Seizoen 2026/2027',
+                                    style: TextStyle(
+                                      color: Color(0xFF7DDD90),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    'Bekijk de officiële introductiefilm van het nieuwe seizoen.',
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color:
+                                          Colors.white.withValues(alpha: .74),
+                                      fontSize: 14,
+                                      height: 1.35,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Positioned(
+                              top: 18,
+                              right: 18,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 11,
+                                  vertical: 7,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: .34),
+                                  borderRadius: BorderRadius.circular(999),
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: .14),
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      MainNavigationConfig
+                                          .items[MainNavigationConfig
+                                              .introfilmIndex]
+                                          .selectedIcon,
+                                      color: Colors.white,
+                                      size: 17,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      MainNavigationConfig
+                                          .items[MainNavigationConfig
+                                              .introfilmIndex]
+                                          .label,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _HomeQuickAction extends StatelessWidget {

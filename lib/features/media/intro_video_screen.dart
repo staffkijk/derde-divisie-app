@@ -19,9 +19,11 @@ class _IntroVideoScreenState extends State<IntroVideoScreen>
 
   VideoPlayerController? _controller;
   bool _isInitializing = false;
+  bool _isFullscreenActive = false;
   String? _errorMessage;
   double _volume = 0.7;
   bool _isMuted = false;
+  bool _wasPlayingBeforeFullscreen = false;
 
   @override
   void initState() {
@@ -136,6 +138,20 @@ class _IntroVideoScreenState extends State<IntroVideoScreen>
     final controller = _controller;
     if (controller == null || !controller.value.isInitialized) return;
 
+    _wasPlayingBeforeFullscreen = controller.value.isPlaying;
+    final position = controller.value.position;
+    await controller.setVolume(_isMuted ? 0 : _volume);
+    if (!mounted) return;
+
+    setState(() => _isFullscreenActive = true);
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return;
+    await controller.seekTo(position);
+    if (_wasPlayingBeforeFullscreen && !controller.value.isPlaying) {
+      await controller.play();
+    }
+    if (!mounted) return;
+
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
         fullscreenDialog: true,
@@ -152,7 +168,14 @@ class _IntroVideoScreenState extends State<IntroVideoScreen>
       ),
     );
 
-    await controller.pause();
+    if (!mounted) return;
+    final shouldResumeInline = _wasPlayingBeforeFullscreen;
+    setState(() => _isFullscreenActive = false);
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return;
+    if (shouldResumeInline && !controller.value.isPlaying) {
+      await controller.play();
+    }
     if (mounted) setState(() {});
   }
 
@@ -281,6 +304,10 @@ class _IntroVideoScreenState extends State<IntroVideoScreen>
       builder: (context, value, _) {
         final hasPlaybackError = value.hasError;
 
+        if (_isFullscreenActive && !hasPlaybackError) {
+          return IntroVideoFullscreenPlaceholder(isPlaying: value.isPlaying);
+        }
+
         return Stack(
           fit: StackFit.expand,
           alignment: Alignment.center,
@@ -354,6 +381,48 @@ class IntroVideoPlaceholder extends StatelessWidget {
                 ),
               ),
             ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class IntroVideoFullscreenPlaceholder extends StatelessWidget {
+  final bool isPlaying;
+
+  const IntroVideoFullscreenPlaceholder({
+    super.key,
+    required this.isPlaying,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        color: Color(0xFF07110D),
+        gradient: RadialGradient(
+          center: Alignment.center,
+          radius: .78,
+          colors: [Color(0x22000000), Color(0xFF07110D)],
+        ),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const DerdeDivLogo.full(width: 190, height: 76),
+            const SizedBox(height: 18),
+            Text(
+              isPlaying
+                  ? 'Schermvullende weergave actief'
+                  : 'Video staat schermvullend klaar',
+              style: const TextStyle(
+                color: Color(0xFFB9C7BE),
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ],
         ),
       ),
@@ -472,6 +541,7 @@ class _IntroVideoControls extends StatelessWidget {
   final VoidCallback onToggleMute;
   final ValueChanged<double> onVolumeChanged;
   final VoidCallback onFullscreen;
+  final bool overlay;
 
   const _IntroVideoControls({
     required this.controller,
@@ -483,6 +553,7 @@ class _IntroVideoControls extends StatelessWidget {
     required this.onToggleMute,
     required this.onVolumeChanged,
     required this.onFullscreen,
+    this.overlay = false,
   });
 
   static const _green = Color(0xFF3BAE5D);
@@ -504,7 +575,11 @@ class _IntroVideoControls extends StatelessWidget {
         final compact = MediaQuery.sizeOf(context).width < 720;
 
         return Container(
-          color: const Color(0xFF0C1B14),
+          decoration: BoxDecoration(
+            color: overlay
+                ? Colors.black.withValues(alpha: .46)
+                : const Color(0xFF0C1B14),
+          ),
           padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
           child: Column(
             children: [
@@ -699,9 +774,9 @@ class _IntroVideoFullscreenState extends State<_IntroVideoFullscreen> {
               children: [
                 Center(
                   child: AspectRatio(
-                    aspectRatio: widget.controller.value.aspectRatio == 0
-                        ? 16 / 9
-                        : widget.controller.value.aspectRatio,
+                    aspectRatio: _validAspectRatio(
+                      widget.controller.value.aspectRatio,
+                    ),
                     child: VideoPlayer(widget.controller),
                   ),
                 ),
@@ -730,6 +805,7 @@ class _IntroVideoFullscreenState extends State<_IntroVideoFullscreen> {
                     onToggleMute: widget.onToggleMute,
                     onVolumeChanged: widget.onVolumeChanged,
                     onFullscreen: () => Navigator.of(context).maybePop(),
+                    overlay: true,
                   ),
                 ),
               ],
@@ -738,5 +814,10 @@ class _IntroVideoFullscreenState extends State<_IntroVideoFullscreen> {
         ),
       ),
     );
+  }
+
+  double _validAspectRatio(double aspectRatio) {
+    if (aspectRatio.isFinite && aspectRatio > 0) return aspectRatio;
+    return 16 / 9;
   }
 }
