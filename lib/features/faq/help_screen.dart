@@ -106,7 +106,7 @@ class _HelpScreenState extends State<HelpScreen> {
                     const SizedBox(height: 24),
                     const Center(
                       child: Text(
-                        'Derde Divisie · Helpcentrum',
+                        'DerdeDiv · Helpcentrum',
                         style: TextStyle(
                           color: _muted,
                           fontSize: 13,

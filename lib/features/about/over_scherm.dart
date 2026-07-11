@@ -41,7 +41,7 @@ class OverScherm extends StatelessWidget {
                   SizedBox(height: 24),
                   Center(
                     child: Text(
-                      'Versie 1.1.0  ·  © Derde Divisie 2026',
+                      'Versie 1.1.0  ·  © DerdeDiv 2026',
                       style: TextStyle(
                         color: _muted,
                         fontSize: 13,
@@ -107,7 +107,7 @@ class _AboutHero extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Derde Divisie',
+                  'DerdeDiv',
                   style: TextStyle(
                     color: _text,
                     fontSize: 28,

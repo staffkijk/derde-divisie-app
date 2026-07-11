@@ -714,7 +714,7 @@ class DashboardScreen extends StatelessWidget {
                         child: Column(
                           children: [
                             Text(
-                              'DerdeDiv.nl · ${SeasonConfig.activeSeasonLabel}',
+                              'DerdeDiv · ${SeasonConfig.activeSeasonLabel}',
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 color: Colors.white,
@@ -731,7 +731,7 @@ class DashboardScreen extends StatelessWidget {
                             const SizedBox(height: 16),
                             OutlinedButton.icon(
                               onPressed: () => Share.share(
-                                'Doe mee met de Derde Divisie Voorspelpoule op DerdeDiv.nl!',
+                                'Doe mee met de Derde Divisie Voorspelpoule op DerdeDiv!',
                                 subject: 'Daag je vrienden uit',
                               ),
                               icon: const Icon(Icons.ios_share_outlined),

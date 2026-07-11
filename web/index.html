@@ -9,24 +9,24 @@
     <!-- Voorkomt layout-issues én refresh-loops -->
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <meta name="description" content="DerdeDiv.nl: standen, programma, uitslagen en voorspellingen voor de Derde Divisie A en B.">
-    <meta property="og:title" content="DerdeDiv.nl">
+    <meta name="description" content="DerdeDiv: standen, programma, uitslagen en voorspellingen voor de Derde Divisie A en B.">
+    <meta property="og:title" content="DerdeDiv">
     <meta property="og:description" content="Standen, programma, uitslagen en voorspellingen voor de Derde Divisie.">
     <meta property="og:type" content="website">
 
-    <title>DerdeDiv.nl</title>
+    <title>DerdeDiv</title>
     <link rel="manifest" href="manifest.json">
 
     <!-- PWA / iOS -->
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="DerdeDiv.nl">
+    <meta name="apple-mobile-web-app-title" content="DerdeDiv">
     <link rel="apple-touch-icon" href="icons/Icon-192.png">
     <meta name="theme-color" content="#153B2A">
 
     <!-- Favicon -->
-    <link rel="icon" type="image/png" href="icons/Icon-192.png">
+    <link rel="icon" type="image/png" href="favicon.png">
 
     <!-- Preload belangrijkste assets -->
     <link rel="preload" href="main.dart.js" as="script">
@@ -38,13 +38,33 @@
       html, body {
         height: 100%;
         margin: 0;
-        background-color: #ffffff;
+        background-color: #050807;
+      }
+      #splash {
+        position: fixed;
+        inset: 0;
+        background:
+          radial-gradient(circle at center, rgba(47, 143, 59, 0.20) 0, rgba(15, 43, 29, 0.08) 34%, #050807 72%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
       }
       .center {
+        width: min(210px, 44vw);
+        height: auto;
+        object-fit: contain;
+      }
+      #splash::after {
+        content: "";
         position: absolute;
-        top: 50%;
         left: 50%;
-        transform: translate(-50%, -50%);
+        top: calc(50% + 78px);
+        width: min(120px, 34vw);
+        height: 2px;
+        border-radius: 999px;
+        background: linear-gradient(90deg, transparent, #3BAE5D, transparent);
+        transform: translateX(-50%);
+        opacity: .78;
       }
     </style>
 
@@ -52,7 +72,7 @@
     <script id="splash-screen-script">
       function removeSplashFromWeb() {
         document.getElementById("splash")?.remove();
-        document.body.style.background = "transparent";
+        document.body.style.background = "#050807";
       }
       window.addEventListener('flutter-first-frame', removeSplashFromWeb);
     </script>
@@ -116,7 +136,7 @@
     <picture id="splash">
       <source srcset="splash/img/light-1x.png 1x, splash/img/light-2x.png 2x, splash/img/light-3x.png 3x, splash/img/light-4x.png 4x" media="(prefers-color-scheme: light)">
       <source srcset="splash/img/dark-1x.png 1x, splash/img/dark-2x.png 2x, splash/img/dark-3x.png 3x, splash/img/dark-4x.png 4x" media="(prefers-color-scheme: dark)">
-      <img class="center" src="splash/img/light-1x.png" alt="Derde Divisie logo">
+      <img class="center" src="splash/img/light-1x.png" alt="DerdeDiv logo">
     </picture>
 
     <!-- Flutter Web bootstrap -->

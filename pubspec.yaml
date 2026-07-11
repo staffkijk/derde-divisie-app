@@ -15,6 +15,7 @@ dependencies:
   logging: ^1.2.0
   http: ^1.2.2
   share_plus: ^10.1.4
+  video_player: ^2.10.1
 
   # Announcements
   firebase_remote_config: any
@@ -52,17 +53,18 @@ flutter:
 
   assets:
     - assets/default_avatar.webp
-    - assets/derde_divisie_logo_icon.png
+    - assets/logo_dd.png
+    - assets/logo_derdediv.png
     - assets/images/
 
 flutter_icons:
   android: true
   ios: true
-  image_path: "assets/derde_divisie_logo_icon.png"
+  image_path: "assets/logo_dd.png"
 
 flutter_native_splash:
-  color: "#ffffff"
-  image: assets/derde_divisie_logo_icon.png
+  color: "#050807"
+  image: assets/logo_derdediv.png
   android: true
   ios: true
   web: true

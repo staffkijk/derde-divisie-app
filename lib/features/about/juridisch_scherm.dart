@@ -102,11 +102,11 @@ class _JuridischSchermState extends State<JuridischScherm> {
                     date: 'Laatst bijgewerkt: juni 2026',
                     children: const [
                       _LegalParagraph(
-                        'Derde Divisie verwerkt persoonsgegevens om de webapp te laten werken, accounts te beheren, voorspellingen te verwerken, ranglijsten te tonen en de veiligheid van de dienst te bewaken.',
+                        'DerdeDiv verwerkt persoonsgegevens om de webapp te laten werken, accounts te beheren, voorspellingen te verwerken, ranglijsten te tonen en de veiligheid van de dienst te bewaken.',
                       ),
                       _LegalSubTitle('1. Wie is verantwoordelijk?'),
                       _LegalParagraph(
-                        'De webapp wordt beheerd door Derde Divisie. Voor algemene vragen kun je contact opnemen via derdediv@gmail.com. Voor privacyverzoeken kun je contact opnemen via privacy.derdediv@gmail.com.',
+                        'De webapp wordt beheerd door DerdeDiv. Voor algemene vragen kun je contact opnemen via derdediv@gmail.com. Voor privacyverzoeken kun je contact opnemen via privacy.derdediv@gmail.com.',
                       ),
                       _LegalSubTitle('2. Welke gegevens verwerken wij?'),
                       _LegalBullets([
@@ -178,7 +178,7 @@ class _JuridischSchermState extends State<JuridischScherm> {
                     date: 'Laatst bijgewerkt: juni 2026',
                     children: const [
                       _LegalParagraph(
-                        'Door de webapp van Derde Divisie te gebruiken ga je akkoord met deze gebruiksvoorwaarden.',
+                        'Door de webapp van DerdeDiv te gebruiken ga je akkoord met deze gebruiksvoorwaarden.',
                       ),
                       _LegalSubTitle('1. Doel van de app'),
                       _LegalParagraph(
@@ -209,7 +209,7 @@ class _JuridischSchermState extends State<JuridischScherm> {
                       ),
                       _LegalSubTitle('7. Beheer en wijzigingen'),
                       _LegalParagraph(
-                        'Derde Divisie mag functies wijzigen, tijdelijk uitschakelen of verwijderen als dat nodig is voor onderhoud, veiligheid, verbetering of naleving van regels.',
+                        'DerdeDiv mag functies wijzigen, tijdelijk uitschakelen of verwijderen als dat nodig is voor onderhoud, veiligheid, verbetering of naleving van regels.',
                       ),
                       _LegalSubTitle('8. Contact'),
                       _LegalParagraph(
@@ -230,7 +230,7 @@ class _JuridischSchermState extends State<JuridischScherm> {
                       ),
                       _LegalSubTitle('1. Geen officiële bron'),
                       _LegalParagraph(
-                        'Derde Divisie is geen officiële publicatie van de KNVB of van de betrokken clubs. Officiële publicaties van bonden, clubs en bevoegde instanties zijn leidend.',
+                        'DerdeDiv is geen officiële publicatie van de KNVB of van de betrokken clubs. Officiële publicaties van bonden, clubs en bevoegde instanties zijn leidend.',
                       ),
                       _LegalSubTitle('2. Geen rechten'),
                       _LegalParagraph(
@@ -238,7 +238,7 @@ class _JuridischSchermState extends State<JuridischScherm> {
                       ),
                       _LegalSubTitle('3. Aansprakelijkheid'),
                       _LegalParagraph(
-                        'Derde Divisie is niet aansprakelijk voor directe of indirecte schade door gebruik van de app, tijdelijke onbeschikbaarheid, foutieve gegevens, gemiste deadlines of wijzigingen in ranglijsten en punten.',
+                        'DerdeDiv is niet aansprakelijk voor directe of indirecte schade door gebruik van de app, tijdelijke onbeschikbaarheid, foutieve gegevens, gemiste deadlines of wijzigingen in ranglijsten en punten.',
                       ),
                       _LegalSubTitle('4. Fouten melden'),
                       _LegalParagraph(
@@ -249,7 +249,7 @@ class _JuridischSchermState extends State<JuridischScherm> {
                   const SizedBox(height: 24),
                   const Center(
                     child: Text(
-                      '© Derde Divisie 2026',
+                      '© DerdeDiv 2026',
                       style: TextStyle(
                         color: _muted,
                         fontSize: 13,
@@ -336,7 +336,7 @@ class _LegalHero extends StatelessWidget {
                 ),
                 SizedBox(height: 8),
                 Text(
-                  'Hier lees je hoe Derde Divisie omgaat met gegevens, welke regels gelden voor het gebruik van de app en welke informatie als leidend geldt.',
+                  'Hier lees je hoe DerdeDiv omgaat met gegevens, welke regels gelden voor het gebruik van de app en welke informatie als leidend geldt.',
                   style: TextStyle(
                     color: _muted,
                     fontSize: 16,

@@ -143,7 +143,7 @@ class _PouleDetailScreenState extends State<PouleDetailScreen> {
 
   Future<void> _share(String name) {
     return Share.share(
-      'Doe mee met mijn poule "$name" op DerdeDiv.nl. Poulecode: ${widget.pouleId}',
+      'Doe mee met mijn poule "$name" op DerdeDiv. Poulecode: ${widget.pouleId}',
       subject: 'Uitnodiging voor $name',
     );
   }

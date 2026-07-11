@@ -4,6 +4,7 @@ import 'register_screen.dart';
 import 'package:derde_divisie/features/about/juridisch_scherm.dart';
 import 'package:derde_divisie/main_screen.dart';
 import 'package:derde_divisie/data/services/activity_log_service.dart';
+import 'package:derde_divisie/core/widgets/derde_div_logo.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -178,13 +179,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       // Logo / Header
                       Column(
                         children: [
-                          Image.asset(
-                            'assets/derde_divisie_logo_icon.png',
-                            height: 100,
-                          ),
+                          const DerdeDivLogo.full(height: 100),
                           const SizedBox(height: 12),
                           Text(
-                            'DerdeDiv.nl',
+                            'DerdeDiv',
                             style: TextStyle(
                               fontSize: 22,
                               fontWeight: FontWeight.bold,

@@ -65,7 +65,7 @@ class DashboardMatchCenter extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'DerdeDiv.nl · ${SeasonConfig.activeSeasonLabel}',
+                      'DerdeDiv · ${SeasonConfig.activeSeasonLabel}',
                       style: AppTextStyles.pageTitle.copyWith(
                         color: Colors.white,
                       ),

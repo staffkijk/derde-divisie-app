@@ -5,17 +5,32 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:flutter/material.dart';
 
+import 'core/config/main_navigation_config.dart';
+import 'core/widgets/derde_div_logo.dart';
 import 'helpers/announcement_service.dart';
 import 'features/dashboard/dashboard_screen.dart';
 import 'features/derde_divisie/division_overview_screen.dart';
 import 'features/derde_divisie/historical_standings_screen.dart';
 import 'features/derde_divisie/unified_program_screen.dart';
+import 'features/media/intro_video_screen.dart';
 import 'package:derde_divisie/features/profiel/profile_screen.dart';
 import 'features/moderator/moderator_dashboard_screen.dart';
 import 'package:derde_divisie/features/poules/poules_overzicht_screen.dart';
 import 'package:derde_divisie/features/voorspellen/prediction_overview_screen.dart';
 import 'package:derde_divisie/features/auth/login_screen.dart';
 import 'loggboek/update_log_button.dart';
+
+const mainNavigationScreenTypes = <Type>[
+  DashboardScreen,
+  IntroVideoScreen,
+  DivisionOverviewScreen,
+  DivisionOverviewScreen,
+  UnifiedProgramScreen,
+  PredictionOverviewScreen,
+  PoulesOverzichtScreen,
+  HistoricalStandingsScreen,
+  ProfileScreen,
+];
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -33,64 +48,7 @@ class _MainScreenState extends State<MainScreen> {
 
   late final StreamSubscription<User?> _authSub;
 
-  final List<_NavItem> _navItems = const [
-    _NavItem(
-      label: 'Home',
-      shortLabel: 'Home',
-      icon: Icons.home_outlined,
-      selectedIcon: Icons.home,
-      protected: false,
-    ),
-    _NavItem(
-      label: 'Derde Divisie A',
-      shortLabel: 'A',
-      icon: Icons.leaderboard_outlined,
-      selectedIcon: Icons.leaderboard,
-      protected: false,
-    ),
-    _NavItem(
-      label: 'Derde Divisie B',
-      shortLabel: 'B',
-      icon: Icons.leaderboard_outlined,
-      selectedIcon: Icons.leaderboard,
-      protected: false,
-    ),
-    _NavItem(
-      label: 'Programma',
-      shortLabel: 'Programma',
-      icon: Icons.calendar_month_outlined,
-      selectedIcon: Icons.calendar_month,
-      protected: false,
-    ),
-    _NavItem(
-      label: 'Voorspellen',
-      shortLabel: 'Voorspellen',
-      icon: Icons.edit_calendar_outlined,
-      selectedIcon: Icons.edit_calendar,
-      protected: true,
-    ),
-    _NavItem(
-      label: 'Poules',
-      shortLabel: 'Poules',
-      icon: Icons.groups_2_outlined,
-      selectedIcon: Icons.groups_2,
-      protected: true,
-    ),
-    _NavItem(
-      label: 'Geschiedenis',
-      shortLabel: 'Historie',
-      icon: Icons.history_outlined,
-      selectedIcon: Icons.history,
-      protected: false,
-    ),
-    _NavItem(
-      label: 'Profiel',
-      shortLabel: 'Profiel',
-      icon: Icons.person_outline,
-      selectedIcon: Icons.person,
-      protected: true,
-    ),
-  ];
+  final List<MainNavigationItemConfig> _navItems = MainNavigationConfig.items;
 
   @override
   void initState() {
@@ -157,12 +115,14 @@ class _MainScreenState extends State<MainScreen> {
 
   List<Widget> _screens() => [
         DashboardScreen(
-          onOpenDivisionA: () => _selectIndex(1),
-          onOpenDivisionB: () => _selectIndex(2),
-          onOpenProgram: () => _selectIndex(3),
-          onOpenPredict: () => _selectIndex(4),
-          onOpenPoules: () => _selectIndex(5),
-          onOpenProfile: () => _selectIndex(7),
+          onOpenDivisionA: () =>
+              _selectIndex(MainNavigationConfig.divisionAIndex),
+          onOpenDivisionB: () =>
+              _selectIndex(MainNavigationConfig.divisionBIndex),
+          onOpenProgram: () => _selectIndex(MainNavigationConfig.programIndex),
+          onOpenPredict: () => _selectIndex(MainNavigationConfig.predictIndex),
+          onOpenPoules: () => _selectIndex(MainNavigationConfig.poulesIndex),
+          onOpenProfile: () => _selectIndex(MainNavigationConfig.profileIndex),
           onOpenHistoricalStandings: () {
             Navigator.of(context).push(
               MaterialPageRoute(
@@ -171,6 +131,7 @@ class _MainScreenState extends State<MainScreen> {
             );
           },
         ),
+        const IntroVideoScreen(),
         const DivisionOverviewScreen(division: 'Derde Divisie A'),
         const DivisionOverviewScreen(division: 'Derde Divisie B'),
         const UnifiedProgramScreen(),
@@ -223,7 +184,13 @@ class _MainScreenState extends State<MainScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                for (final index in [4, 5, 6, 7])
+                for (final index in [
+                  MainNavigationConfig.programIndex,
+                  MainNavigationConfig.predictIndex,
+                  MainNavigationConfig.poulesIndex,
+                  MainNavigationConfig.historyIndex,
+                  MainNavigationConfig.profileIndex,
+                ])
                   ListTile(
                     leading: Icon(
                       _selectedIndex == index
@@ -326,11 +293,7 @@ class _MainScreenState extends State<MainScreen> {
                 title: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Image.asset(
-                      'assets/derde_divisie_logo_icon.png',
-                      width: 30,
-                      height: 30,
-                    ),
+                    const DerdeDivLogo.compact(width: 30, height: 30),
                     const SizedBox(width: 10),
                     Text(
                       isTablet
@@ -379,9 +342,12 @@ class _MainScreenState extends State<MainScreen> {
               ),
               body: screens[_selectedIndex],
               bottomNavigationBar: NavigationBar(
-                selectedIndex: _selectedIndex <= 3 ? _selectedIndex : 4,
+                selectedIndex:
+                    _selectedIndex <= MainNavigationConfig.divisionBIndex
+                        ? _selectedIndex
+                        : 4,
                 onDestinationSelected: (index) {
-                  if (index < 4) {
+                  if (index <= MainNavigationConfig.divisionBIndex) {
                     _selectIndex(index);
                   } else {
                     _showMobileMenu();
@@ -410,27 +376,11 @@ class _MainScreenState extends State<MainScreen> {
   }
 }
 
-class _NavItem {
-  final String label;
-  final String shortLabel;
-  final IconData icon;
-  final IconData selectedIcon;
-  final bool protected;
-
-  const _NavItem({
-    required this.label,
-    required this.shortLabel,
-    required this.icon,
-    required this.selectedIcon,
-    required this.protected,
-  });
-}
-
 class _DesktopNavigation extends StatelessWidget {
   static const _green = Color(0xFF2F8F3B);
   static const _darkGreen = Color(0xFF153B2A);
 
-  final List<_NavItem> items;
+  final List<MainNavigationItemConfig> items;
   final int selectedIndex;
   final bool loggedIn;
   final bool isModerator;
@@ -461,40 +411,10 @@ class _DesktopNavigation extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Row(
-                children: [
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    padding: const EdgeInsets.all(6),
-                    child: Image.asset('assets/derde_divisie_logo_icon.png'),
-                  ),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'DerdeDiv.nl',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 21,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        SizedBox(height: 2),
-                        Text(
-                          'Derde Divisie',
-                          style: TextStyle(color: Colors.white70, fontSize: 12),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+              Container(
+                height: 64,
+                alignment: Alignment.centerLeft,
+                child: const DerdeDivLogo.full(width: 210, height: 56),
               ),
               const SizedBox(height: 24),
               Container(
@@ -577,7 +497,7 @@ class _DesktopNavigation extends StatelessWidget {
 }
 
 class _DesktopNavButton extends StatelessWidget {
-  final _NavItem item;
+  final MainNavigationItemConfig item;
   final bool selected;
   final bool enabled;
   final VoidCallback onTap;

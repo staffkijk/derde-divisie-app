@@ -5,6 +5,7 @@ import 'package:derde_divisie/core/utils/gemeenten.dart';
 import 'package:derde_divisie/features/about/juridisch_scherm.dart';
 import 'package:derde_divisie/data/config/season_config.dart';
 import 'package:derde_divisie/data/services/activity_log_service.dart';
+import 'package:derde_divisie/core/widgets/derde_div_logo.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -197,10 +198,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Center(
-                child: Image.asset(
-                  'assets/derde_divisie_logo_icon.png',
-                  height: 90,
-                ),
+                child: const DerdeDivLogo.full(height: 90),
               ),
               const SizedBox(height: 16),
               const Text(
