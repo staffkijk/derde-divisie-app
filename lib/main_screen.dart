@@ -13,11 +13,14 @@ import 'features/derde_divisie/division_overview_screen.dart';
 import 'features/derde_divisie/historical_standings_screen.dart';
 import 'features/derde_divisie/unified_program_screen.dart';
 import 'features/media/intro_video_screen.dart';
+import 'features/notifications/notification_center_screen.dart';
 import 'package:derde_divisie/features/profiel/profile_screen.dart';
 import 'features/moderator/moderator_dashboard_screen.dart';
 import 'package:derde_divisie/features/poules/poules_overzicht_screen.dart';
 import 'package:derde_divisie/features/voorspellen/prediction_overview_screen.dart';
 import 'package:derde_divisie/features/auth/login_screen.dart';
+import 'data/services/activity_log_service.dart';
+import 'data/services/prediction_reminder_service.dart';
 import 'loggboek/update_log_button.dart';
 
 const mainNavigationScreenTypes = <Type>[
@@ -44,8 +47,10 @@ class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
   bool isModerator = false;
   bool _hasMelding = false;
+  int? _lastTrackedIndex;
 
   late final StreamSubscription<User?> _authSub;
+  final _reminderService = PredictionReminderService();
 
   final List<MainNavigationItemConfig> _navItems = MainNavigationConfig.items;
 
@@ -59,6 +64,7 @@ class _MainScreenState extends State<MainScreen> {
       if (!mounted) return;
       final loggedIn = FirebaseAuth.instance.currentUser != null;
       AnnouncementService.maybeShow(context, isLoggedIn: loggedIn);
+      _trackScreenView(_selectedIndex);
     });
 
     _authSub = FirebaseAuth.instance.authStateChanges().listen((user) {
@@ -67,6 +73,7 @@ class _MainScreenState extends State<MainScreen> {
         AnnouncementService.maybeShow(context, isLoggedIn: true);
         _checkModeratorStatus();
         _loadRemoteConfig();
+        _syncPredictionReminders();
       } else {
         setState(() {
           isModerator = false;
@@ -160,7 +167,65 @@ class _MainScreenState extends State<MainScreen> {
     final item = _navItems[index];
     if (item.protected && !await _ensureLoggedIn()) return;
     if (!mounted) return;
+    await ActivityLogService().log(
+      eventType: ActivityEventType.navigationClick,
+      metadata: {
+        'destination': item.label,
+        'screenName': item.label,
+      },
+    );
     setState(() => _selectedIndex = index);
+    _trackScreenView(index);
+  }
+
+  void _trackScreenView(int index) {
+    if (_lastTrackedIndex == index) return;
+    _lastTrackedIndex = index;
+    final item = _navItems[index];
+    ActivityLogService().log(
+      eventType: ActivityEventType.screenView,
+      metadata: {
+        'screenName': item.label,
+        'destination': item.label,
+      },
+    );
+  }
+
+  Future<void> _selectMobileDestination(int index) async {
+    switch (index) {
+      case 0:
+        await _selectIndex(MainNavigationConfig.homeIndex);
+        return;
+      case 1:
+        if (!mounted) return;
+        setState(() {
+          if (_selectedIndex != MainNavigationConfig.divisionAIndex &&
+              _selectedIndex != MainNavigationConfig.divisionBIndex) {
+            _selectedIndex = MainNavigationConfig.divisionAIndex;
+          }
+        });
+        return;
+      case 2:
+        await _selectIndex(MainNavigationConfig.programIndex);
+        return;
+      case 3:
+        await _selectIndex(MainNavigationConfig.predictIndex);
+        return;
+      case 4:
+        await _showMobileMenu();
+        return;
+    }
+  }
+
+  int _mobileSelectedIndex() {
+    if (_selectedIndex == MainNavigationConfig.divisionAIndex ||
+        _selectedIndex == MainNavigationConfig.divisionBIndex) {
+      return 1;
+    }
+    if (_selectedIndex == MainNavigationConfig.programIndex) return 2;
+    if (_selectedIndex == MainNavigationConfig.predictIndex) return 3;
+    if (_selectedIndex == MainNavigationConfig.homeIndex) return 0;
+    return 4;
   }
 
   Future<void> _signOut() async {
@@ -190,8 +255,6 @@ class _MainScreenState extends State<MainScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 for (final index in [
-                  MainNavigationConfig.programIndex,
-                  MainNavigationConfig.predictIndex,
                   MainNavigationConfig.poulesIndex,
                   MainNavigationConfig.historyIndex,
                   MainNavigationConfig.profileIndex,
@@ -216,6 +279,11 @@ class _MainScreenState extends State<MainScreen> {
                     title: const Text('Moderator'),
                     onTap: () => Navigator.of(context).pop(99),
                   ),
+                ListTile(
+                  leading: const Icon(Icons.help_outline),
+                  title: const Text('Help en informatie'),
+                  onTap: () => Navigator.of(context).pop(98),
+                ),
               ],
             ),
           ),
@@ -225,6 +293,8 @@ class _MainScreenState extends State<MainScreen> {
     if (!mounted || selected == null) return;
     if (selected == 99) {
       _openModerator();
+    } else if (selected == 98) {
+      Navigator.pushNamed(context, '/help');
     } else {
       await _selectIndex(selected);
     }
@@ -232,6 +302,23 @@ class _MainScreenState extends State<MainScreen> {
 
   void _showAnnouncement(bool loggedIn) {
     AnnouncementService.showAgain(context, isLoggedIn: loggedIn);
+  }
+
+  Future<void> _syncPredictionReminders() async {
+    await _reminderService.syncMissingPredictionNotification(division: 'A');
+    await _reminderService.syncMissingPredictionNotification(division: 'B');
+  }
+
+  void _openNotifications() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => NotificationCenterScreen(
+          onOpenPrediction: (division, round) {
+            _selectIndex(MainNavigationConfig.predictIndex);
+          },
+        ),
+      ),
+    );
   }
 
   @override
@@ -276,6 +363,8 @@ class _MainScreenState extends State<MainScreen> {
                             onShowAnnouncement: () =>
                                 _showAnnouncement(loggedIn),
                             onModerator: _openModerator,
+                            onOpenNotifications: _openNotifications,
+                            reminderService: _reminderService,
                           ),
                           Expanded(
                             child: Container(
@@ -309,12 +398,12 @@ class _MainScreenState extends State<MainScreen> {
                 ),
                 actions: [
                   UpdateLogButton(isAdmin: isModerator),
-                  if (_hasMelding)
-                    IconButton(
-                      icon: const Icon(Icons.notifications_active_outlined),
-                      tooltip: 'Melding opnieuw tonen',
-                      onPressed: () => _showAnnouncement(loggedIn),
-                    ),
+                  _NotificationBell(
+                    service: _reminderService,
+                    hasAnnouncement: _hasMelding,
+                    onOpenNotifications: _openNotifications,
+                    onShowAnnouncement: () => _showAnnouncement(loggedIn),
+                  ),
                   IconButton(
                     icon: const Icon(Icons.help_outline),
                     tooltip: 'Help',
@@ -345,28 +434,48 @@ class _MainScreenState extends State<MainScreen> {
                     ),
                 ],
               ),
-              body: screens[_selectedIndex],
+              body: _selectedIndex == MainNavigationConfig.divisionAIndex ||
+                      _selectedIndex == MainNavigationConfig.divisionBIndex
+                  ? _MobileDivisionsView(
+                      selectedDivision:
+                          _selectedIndex == MainNavigationConfig.divisionBIndex
+                              ? 'B'
+                              : 'A',
+                      onDivisionChanged: (division) {
+                        setState(() {
+                          _selectedIndex = division == 'B'
+                              ? MainNavigationConfig.divisionBIndex
+                              : MainNavigationConfig.divisionAIndex;
+                        });
+                      },
+                    )
+                  : screens[_selectedIndex],
               bottomNavigationBar: NavigationBar(
-                selectedIndex:
-                    _selectedIndex <= MainNavigationConfig.programIndex
-                        ? _selectedIndex
-                        : 4,
-                onDestinationSelected: (index) {
-                  if (index <= MainNavigationConfig.programIndex) {
-                    _selectIndex(index);
-                  } else {
-                    _showMobileMenu();
-                  }
-                },
+                selectedIndex: _mobileSelectedIndex(),
+                onDestinationSelected: _selectMobileDestination,
                 labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-                destinations: [
-                  for (final item in _navItems.take(4))
-                    NavigationDestination(
-                      icon: Icon(item.icon),
-                      selectedIcon: Icon(item.selectedIcon),
-                      label: item.shortLabel,
-                    ),
-                  const NavigationDestination(
+                destinations: const [
+                  NavigationDestination(
+                    icon: Icon(Icons.home_outlined),
+                    selectedIcon: Icon(Icons.home),
+                    label: 'Home',
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.leaderboard_outlined),
+                    selectedIcon: Icon(Icons.leaderboard),
+                    label: 'Divisies',
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.calendar_month_outlined),
+                    selectedIcon: Icon(Icons.calendar_month),
+                    label: 'Programma',
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.edit_calendar_outlined),
+                    selectedIcon: Icon(Icons.edit_calendar),
+                    label: 'Voorspellen',
+                  ),
+                  NavigationDestination(
                     icon: Icon(Icons.more_horiz),
                     selectedIcon: Icon(Icons.more),
                     label: 'Meer',
@@ -501,6 +610,123 @@ class _DesktopNavigation extends StatelessWidget {
   }
 }
 
+class _NotificationBell extends StatelessWidget {
+  const _NotificationBell({
+    required this.service,
+    required this.hasAnnouncement,
+    required this.onOpenNotifications,
+    required this.onShowAnnouncement,
+  });
+
+  final PredictionReminderService service;
+  final bool hasAnnouncement;
+  final VoidCallback onOpenNotifications;
+  final VoidCallback onShowAnnouncement;
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: service.unreadNotificationsStream(),
+      builder: (context, snapshot) {
+        final unread = snapshot.data?.docs.length ?? 0;
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            IconButton(
+              icon: Icon(
+                unread > 0 || hasAnnouncement
+                    ? Icons.notifications_active_outlined
+                    : Icons.notifications_none_outlined,
+              ),
+              tooltip: unread > 0 ? 'Meldingen' : 'Melding opnieuw tonen',
+              onPressed: unread > 0 ? onOpenNotifications : onShowAnnouncement,
+            ),
+            if (unread > 0)
+              Positioned(
+                right: 7,
+                top: 7,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade700,
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                  child: Text(
+                    unread > 9 ? '9+' : '$unread',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _MobileDivisionsView extends StatefulWidget {
+  const _MobileDivisionsView({
+    required this.selectedDivision,
+    required this.onDivisionChanged,
+  });
+
+  final String selectedDivision;
+  final ValueChanged<String> onDivisionChanged;
+
+  @override
+  State<_MobileDivisionsView> createState() => _MobileDivisionsViewState();
+}
+
+class _MobileDivisionsViewState extends State<_MobileDivisionsView> {
+  late String _division;
+
+  @override
+  void initState() {
+    super.initState();
+    _division = widget.selectedDivision == 'B' ? 'B' : 'A';
+  }
+
+  @override
+  void didUpdateWidget(covariant _MobileDivisionsView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final next = widget.selectedDivision == 'B' ? 'B' : 'A';
+    if (next != _division) _division = next;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+          child: SegmentedButton<String>(
+            segments: const [
+              ButtonSegment(value: 'A', label: Text('Divisie A')),
+              ButtonSegment(value: 'B', label: Text('Divisie B')),
+            ],
+            selected: {_division},
+            onSelectionChanged: (selection) {
+              final value = selection.first;
+              setState(() => _division = value);
+              widget.onDivisionChanged(value);
+            },
+          ),
+        ),
+        Expanded(
+          child: _division == 'B'
+              ? const DivisionOverviewScreen(division: 'Derde Divisie B')
+              : const DivisionOverviewScreen(division: 'Derde Divisie A'),
+        ),
+      ],
+    );
+  }
+}
+
 class _DesktopNavButton extends StatelessWidget {
   final MainNavigationItemConfig item;
   final bool selected;
@@ -575,6 +801,8 @@ class _DesktopHeader extends StatelessWidget {
   final VoidCallback onLogout;
   final VoidCallback onShowAnnouncement;
   final VoidCallback onModerator;
+  final VoidCallback onOpenNotifications;
+  final PredictionReminderService reminderService;
 
   const _DesktopHeader({
     required this.title,
@@ -585,6 +813,8 @@ class _DesktopHeader extends StatelessWidget {
     required this.onLogout,
     required this.onShowAnnouncement,
     required this.onModerator,
+    required this.onOpenNotifications,
+    required this.reminderService,
   });
 
   @override
@@ -612,12 +842,12 @@ class _DesktopHeader extends StatelessWidget {
             isAdmin: isModerator,
             iconColor: const Color(0xFF153B2A),
           ),
-          if (hasMelding)
-            IconButton(
-              icon: const Icon(Icons.notifications_active_outlined),
-              tooltip: 'Melding opnieuw tonen',
-              onPressed: onShowAnnouncement,
-            ),
+          _NotificationBell(
+            service: reminderService,
+            hasAnnouncement: hasMelding,
+            onOpenNotifications: onOpenNotifications,
+            onShowAnnouncement: onShowAnnouncement,
+          ),
           IconButton(
             icon: const Icon(Icons.help_outline),
             tooltip: 'Help',

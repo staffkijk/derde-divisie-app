@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:derde_divisie/core/design/app_design.dart';
 import 'package:derde_divisie/core/widgets/team_logo.dart';
 import 'package:derde_divisie/data/config/season_config.dart';
+import 'package:derde_divisie/data/services/activity_log_service.dart';
 import 'package:derde_divisie/features/derde_divisie/wedstrijden_scherm_derde_divisie_a.dart';
 import 'package:derde_divisie/features/derde_divisie/wedstrijden_scherm_derde_divisie_b.dart';
 import 'package:derde_divisie/features/voorspellen/archived_prediction_ranking_screen.dart';
@@ -167,6 +168,10 @@ class _MatchesPredictionTabState extends State<_MatchesPredictionTab>
               selected: {_division},
               onSelectionChanged: (selection) {
                 setState(() => _division = selection.first);
+                ActivityLogService().log(
+                  eventType: ActivityEventType.divisionSelected,
+                  metadata: {'division': _division},
+                );
               },
             ),
           ),
@@ -283,36 +288,46 @@ class _PredictionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
+    final isMobile = MediaQuery.sizeOf(context).width < 600;
     return AppCard(
       child: Row(
         children: [
-          Container(
-            width: 46,
-            height: 46,
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: .12),
-              borderRadius: BorderRadius.circular(AppRadius.card),
+          if (!isMobile) ...[
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: .12),
+                borderRadius: BorderRadius.circular(AppRadius.card),
+              ),
+              child: const Icon(
+                Icons.edit_calendar_outlined,
+                color: AppColors.primary,
+              ),
             ),
-            child: const Icon(
-              Icons.edit_calendar_outlined,
-              color: AppColors.primary,
-            ),
-          ),
-          const SizedBox(width: AppSpacing.md),
-          const Expanded(
+            const SizedBox(width: AppSpacing.md),
+          ],
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Voorspellen', style: AppTextStyles.pageTitle),
-                SizedBox(height: AppSpacing.xxs),
                 Text(
-                  'Kies een competitie of team. De deadline staat compact bij iedere speelronde.',
-                  style: AppTextStyles.bodyMuted,
+                  'Voorspellen',
+                  style: isMobile
+                      ? AppTextStyles.sectionTitle
+                      : AppTextStyles.pageTitle,
                 ),
+                if (!isMobile) ...[
+                  SizedBox(height: AppSpacing.xxs),
+                  Text(
+                    'Kies een competitie of team. De deadline staat compact bij iedere speelronde.',
+                    style: AppTextStyles.bodyMuted,
+                  ),
+                ],
               ],
             ),
           ),
-          if (user != null)
+          if (user != null && !isMobile)
             FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
               future: FirebaseFirestore.instance
                   .collection('users')

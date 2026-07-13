@@ -450,6 +450,13 @@ class _WedstrijdenSchermDerdeDivisieAState
             return home == _favoriteTeamId || away == _favoriteTeamId;
           }).toList()
         : _wedstrijden;
+    final predictedCount = visibleMatches
+        .where((match) =>
+            _voorspellingThuis[match.id] != null &&
+            _voorspellingUit[match.id] != null)
+        .length;
+    final missingCount = visibleMatches.length - predictedCount;
+    final isMobile = MediaQuery.sizeOf(context).width < 600;
 
     return SafeArea(
       child: Center(
@@ -458,24 +465,29 @@ class _WedstrijdenSchermDerdeDivisieAState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 8),
+              SizedBox(height: isMobile ? 2 : 8),
               _buildRondeSelector(),
               Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: isMobile ? 4 : 8,
+                ),
                 child: Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(12),
+                  padding: EdgeInsets.all(isMobile ? 9 : 12),
                   decoration: BoxDecoration(
                     color: AppColors.surface,
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(color: AppColors.border),
                   ),
                   child: Text(
-                    'Deadline voorspellen: $deadlineTekst',
-                    style: const TextStyle(
+                    '$predictedCount van ${visibleMatches.length} voorspeld'
+                    '${missingCount > 0 ? ' - $missingCount ontbreekt' : ' - volledig'}'
+                    '\nDeadline: $deadlineTekst',
+                    style: TextStyle(
                       fontWeight: FontWeight.bold,
                       color: Colors.black87,
+                      fontSize: isMobile ? 12 : 14,
                     ),
                   ),
                 ),
@@ -522,8 +534,10 @@ class _WedstrijdenSchermDerdeDivisieAState
 
                           return Container(
                             margin: const EdgeInsets.symmetric(
-                                horizontal: 4, vertical: 6),
-                            padding: const EdgeInsets.all(12),
+                              horizontal: 4,
+                              vertical: 6,
+                            ),
+                            padding: EdgeInsets.all(isMobile ? 9 : 12),
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(14),
@@ -623,6 +637,13 @@ class _WedstrijdenSchermDerdeDivisieAState
         _listenMatchesFirestore(round);
       });
       await _laadVoorspellingen();
+      await ActivityLogService().log(
+        eventType: ActivityEventType.roundSelected,
+        metadata: {
+          'division': widget.divisie,
+          'round': round,
+        },
+      );
       if (mounted) setState(() {});
     }
 
@@ -630,6 +651,8 @@ class _WedstrijdenSchermDerdeDivisieAState
     final selectedRound =
         rounds.contains(_huidigeSpeelronde) ? _huidigeSpeelronde : rounds.first;
     final selectedIndex = rounds.indexOf(selectedRound);
+
+    final isMobile = MediaQuery.sizeOf(context).width < 600;
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -647,7 +670,7 @@ class _WedstrijdenSchermDerdeDivisieAState
             for (final round in rounds)
               DropdownMenuItem(
                 value: round,
-                child: Text('Speelronde $round'),
+                child: Text(isMobile ? 'Ronde $round' : 'Speelronde $round'),
               ),
           ],
           onChanged: (round) {
@@ -666,6 +689,7 @@ class _WedstrijdenSchermDerdeDivisieAState
   }
 
   Widget _buildTeamWithLogo(String team, {required bool alignRight}) {
+    final isMobile = MediaQuery.sizeOf(context).width < 600;
     return Expanded(
       child: Row(
         mainAxisAlignment:
@@ -675,21 +699,23 @@ class _WedstrijdenSchermDerdeDivisieAState
           if (!alignRight)
             Padding(
               padding: const EdgeInsets.only(right: 8),
-              child: TeamLogo(teamName: team, size: 38),
+              child: TeamLogo(teamName: team, size: isMobile ? 30 : 38),
             ),
           Flexible(
             child: Text(
               team,
               textAlign: alignRight ? TextAlign.right : TextAlign.left,
               overflow: TextOverflow.ellipsis,
-              style:
-                  const TextStyle(fontWeight: FontWeight.w600, fontSize: 17.0),
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: isMobile ? 13.5 : 17.0,
+              ),
             ),
           ),
           if (alignRight)
             Padding(
               padding: const EdgeInsets.only(left: 8),
-              child: TeamLogo(teamName: team, size: 38),
+              child: TeamLogo(teamName: team, size: isMobile ? 30 : 38),
             ),
         ],
       ),
