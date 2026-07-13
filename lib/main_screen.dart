@@ -526,11 +526,15 @@ class _DesktopNavigation extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Container(
-                height: 64,
-                alignment: Alignment.centerLeft,
-                child: const DerdeDivLogo.full(width: 210, height: 56),
+                height: 96,
+                alignment: Alignment.center,
+                child: const DerdeDivLogo.full(
+                  width: 88,
+                  height: 88,
+                  responsive: false,
+                ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 18),
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
@@ -542,8 +546,8 @@ class _DesktopNavigation extends StatelessWidget {
                 ),
                 child: Text(
                   loggedIn
-                      ? 'Welkom terug. Je voorspellingen, poules en profiel zijn direct beschikbaar.'
-                      : 'Volg standen en programma zonder account. Log in om te voorspellen of een poule te beheren.',
+                      ? 'Je voorspellingen, poules en profiel staan klaar.'
+                      : 'Bekijk standen en programma. Log in voor voorspellingen en poules.',
                   style: const TextStyle(
                     color: Colors.white70,
                     height: 1.35,
