@@ -10,6 +10,7 @@ import 'package:derde_divisie/loggboek/update_log_screen.dart';
 import 'package:derde_divisie/loggboek/update_service.dart';
 import 'package:derde_divisie/features/moderator/activity_log_screen.dart';
 import 'package:derde_divisie/features/moderator/moderator_export_screen.dart';
+import 'package:derde_divisie/features/moderator/social_media_card_screen.dart';
 
 class ModeratorDashboardScreen extends StatelessWidget {
   const ModeratorDashboardScreen({super.key});
@@ -28,6 +29,12 @@ class ModeratorDashboardScreen extends StatelessWidget {
         title: 'Uitslagen invoeren',
         description: 'Voer wedstrijduitslagen in en verwerk standen.',
         screen: const ModeratorMenuScreen(),
+      ),
+      _ModeratorTool(
+        icon: Icons.image_outlined,
+        title: 'Sociale media',
+        description: 'Maak programma- en uitslagenkaarten voor X.',
+        screen: const SocialMediaCardScreen(),
       ),
       _ModeratorTool(
         icon: Icons.event_note_outlined,
