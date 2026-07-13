@@ -67,6 +67,7 @@ MatchStatus parseMatchStatus(dynamic value) {
     case 'uitgesteld':
       return MatchStatus.postponed;
     case 'cancelled':
+    case 'canceled':
     case 'afgelast':
       return MatchStatus.cancelled;
     case 'abandoned':

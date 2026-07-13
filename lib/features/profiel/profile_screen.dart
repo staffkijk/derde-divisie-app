@@ -5,6 +5,7 @@ import 'package:logging/logging.dart';
 
 import 'package:derde_divisie/data/config/season_config.dart';
 import 'package:derde_divisie/core/utils/gemeenten.dart';
+import 'package:derde_divisie/core/widgets/team_logo.dart';
 import 'package:derde_divisie/data/services/activity_log_service.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -40,6 +41,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _usernameChanged = false;
   bool isLoading = true;
   bool isSaving = false;
+  bool _isEditing = false;
 
   static const Color _darkGreen = Color(0xFF0F3D2A);
   static const Color _green = Color(0xFF49B653);
@@ -241,9 +243,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         }
 
         woonplaats = woonplaatsToSave;
+        profileDescription = _descController.text.trim();
         favorieteCompetitie = _selectedCompetitie;
         favorieteClub = _selectedClub;
         isSaving = false;
+        _isEditing = false;
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -264,6 +268,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       );
     }
+  }
+
+  void _cancelEditing() {
+    setState(() {
+      _descController.text = profileDescription ?? '';
+      _woonplaatsController.text = woonplaats ?? '';
+      _selectedCompetitie = _validCompetitieValue(favorieteCompetitie);
+      _selectedClub = _validClubValue(favorieteClub);
+      _isEditing = false;
+    });
+  }
+
+  Future<void> _updatePredictionVisibility(bool value) async {
+    if (value == voorspellingenZichtbaar) return;
+    setState(() => voorspellingenZichtbaar = value);
+    await userDocRef.set({
+      'voorspellingenZichtbaar': value,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> _updateEmailSharingConsent(bool value) async {
+    if (value == allowEmailSharingWithPouleOwner) return;
+    setState(() => allowEmailSharingWithPouleOwner = value);
+    await userDocRef.set({
+      'allowEmailSharingWithPouleOwner': value,
+      'emailSharingConsentAt':
+          value ? FieldValue.serverTimestamp() : FieldValue.delete(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
   }
 
   void _showAvatarSelection() {
@@ -472,44 +506,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Future<void> _signOut() async {
-    await FirebaseAuth.instance.signOut();
-
-    if (!mounted) return;
-
-    Navigator.of(context).popUntil((route) => route.isFirst);
-  }
-
-  Future<void> _confirmSignOut() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) {
-        return AlertDialog(
-          title: const Text('Afmelden'),
-          content: const Text('Weet je zeker dat je wilt afmelden?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Annuleren'),
-            ),
-            FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
-              ),
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Afmelden'),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (confirmed == true) {
-      await _signOut();
-    }
-  }
-
   static InputDecoration _inputDecoration(
     String label, {
     String? helperText,
@@ -584,8 +580,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 child: Column(
                                   children: [
                                     _buildProfileSummaryCard(),
-                                    const SizedBox(height: 18),
-                                    _buildProfileFormCard(),
+                                    if (_isEditing) ...[
+                                      const SizedBox(height: 18),
+                                      _buildProfileFormCard(),
+                                    ],
                                   ],
                                 ),
                               ),
@@ -602,8 +600,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               _buildProfileSummaryCard(),
                               const SizedBox(height: 16),
                               _buildSettingsCard(),
-                              const SizedBox(height: 16),
-                              _buildProfileFormCard(),
+                              if (_isEditing) ...[
+                                const SizedBox(height: 16),
+                                _buildProfileFormCard(),
+                              ],
                             ],
                           ),
                       ],
@@ -646,20 +646,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
           ),
         ),
-        if (isWide)
-          OutlinedButton.icon(
-            onPressed: _confirmSignOut,
-            icon: const Icon(Icons.logout_rounded, size: 18),
-            label: const Text('Uitloggen'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: _darkGreen,
-              side: const BorderSide(color: _borderGreen),
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(999),
-              ),
-            ),
-          ),
       ],
     );
   }
@@ -673,7 +659,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             children: [
               InkWell(
                 borderRadius: BorderRadius.circular(999),
-                onTap: _showAvatarSelection,
+                onTap: _isEditing ? _showAvatarSelection : null,
                 child: Stack(
                   children: [
                     Container(
@@ -688,24 +674,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         backgroundImage: _avatarImageProvider(),
                       ),
                     ),
-                    Positioned(
-                      right: 0,
-                      bottom: 2,
-                      child: Container(
-                        width: 30,
-                        height: 30,
-                        decoration: BoxDecoration(
-                          color: _green,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
-                        ),
-                        child: const Icon(
-                          Icons.camera_alt_rounded,
-                          color: Colors.white,
-                          size: 16,
+                    if (_isEditing)
+                      Positioned(
+                        right: 0,
+                        bottom: 2,
+                        child: Container(
+                          width: 30,
+                          height: 30,
+                          decoration: BoxDecoration(
+                            color: _green,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2),
+                          ),
+                          child: const Icon(
+                            Icons.camera_alt_rounded,
+                            color: Colors.white,
+                            size: 16,
+                          ),
                         ),
                       ),
-                    ),
                   ],
                 ),
               ),
@@ -744,6 +731,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
           ),
           const SizedBox(height: 24),
+          _buildFavoriteClubSummary(),
+          const SizedBox(height: 16),
           Wrap(
             spacing: 10,
             runSpacing: 10,
@@ -765,17 +754,76 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
           ),
           const SizedBox(height: 22),
-          OutlinedButton.icon(
-            onPressed: _showAvatarSelection,
-            icon: const Icon(Icons.photo_camera_outlined, size: 18),
-            label: const Text('Profielfoto wijzigen'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: _darkGreen,
-              side: const BorderSide(color: _borderGreen),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
+          FilledButton.icon(
+            onPressed: () => setState(() => _isEditing = true),
+            icon: const Icon(Icons.edit_outlined, size: 18),
+            label: const Text('Wijzigen'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFavoriteClubSummary() {
+    final team = _selectedClub == null || _selectedClub == 'Geen voorkeur'
+        ? null
+        : SeasonConfig.teamByName(_selectedClub!);
+
+    if (team == null) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: _softGreen,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: _borderGreen),
+        ),
+        child: const Text(
+          'Geen favoriete club gekozen.',
+          style: TextStyle(color: _textMuted, fontWeight: FontWeight.w600),
+        ),
+      );
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: _softGreen,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _borderGreen),
+      ),
+      child: Row(
+        children: [
+          TeamLogo(
+            teamName: team.label,
+            teamSlug: team.id,
+            assetPath: team.logoPath,
+            size: 48,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  team.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: _textDark,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 16,
+                  ),
+                ),
+                Text(
+                  SeasonConfig.divisionName(team.division),
+                  style: const TextStyle(
+                    color: _textMuted,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -879,31 +927,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
             },
           ),
           const SizedBox(height: 22),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: isSaving ? null : _saveProfileData,
-              icon: isSaving
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.save_outlined, size: 18),
-              label: Text(isSaving ? 'Opslaan...' : 'Opslaan'),
-              style: FilledButton.styleFrom(
-                backgroundColor: _green,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 17),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                textStyle: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: isSaving ? null : _cancelEditing,
+                  child: const Text('Annuleren'),
                 ),
               ),
-            ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: isSaving ? null : _saveProfileData,
+                  icon: isSaving
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.save_outlined, size: 18),
+                  label: Text(isSaving ? 'Opslaan...' : 'Opslaan'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: _green,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 17),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -1046,11 +1104,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Switch(
                   value: voorspellingenZichtbaar,
                   activeColor: _green,
-                  onChanged: (val) {
-                    setState(() {
-                      voorspellingenZichtbaar = val;
-                    });
-                  },
+                  onChanged: _updatePredictionVisibility,
                 ),
               ],
             ),
@@ -1096,11 +1150,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Switch(
                   value: allowEmailSharingWithPouleOwner,
                   activeColor: _green,
-                  onChanged: (value) {
-                    setState(() {
-                      allowEmailSharingWithPouleOwner = value;
-                    });
-                  },
+                  onChanged: _updateEmailSharingConsent,
                 ),
               ],
             ),
@@ -1115,27 +1165,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               style: OutlinedButton.styleFrom(
                 foregroundColor: _darkGreen,
                 side: const BorderSide(color: _borderGreen),
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                textStyle: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: _confirmSignOut,
-              icon: const Icon(Icons.logout_rounded, size: 18),
-              label: const Text('Afmelden'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.red,
-                side: BorderSide(color: Colors.red.withValues(alpha: 0.35)),
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),

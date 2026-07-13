@@ -2,6 +2,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
+import 'package:derde_divisie/core/widgets/team_logo.dart';
 import 'package:derde_divisie/data/config/season_config.dart';
 import 'package:derde_divisie/data/firestore/season_paths.dart';
 import 'package:derde_divisie/data/services/division_data_service.dart';
@@ -839,26 +840,11 @@ class StandDerdeDivisie extends StatelessWidget {
                       child: Text('$positie.'),
                     ),
                     if (showLogos)
-                      SizedBox(
-                        width: wLogo,
-                        height: wLogo,
-                        child: Image.asset(
-                          club.logoAsset ?? kDefaultTeamLogoAsset,
-                          fit: BoxFit.contain,
-                          errorBuilder: (_, __, ___) {
-                            return Image.asset(
-                              kDefaultTeamLogoAsset,
-                              fit: BoxFit.contain,
-                              errorBuilder: (_, __, ___) {
-                                return const Icon(
-                                  Icons.shield_outlined,
-                                  size: 22,
-                                  color: Color(0xFF2E7D32),
-                                );
-                              },
-                            );
-                          },
-                        ),
+                      TeamLogo(
+                        teamName: club.naam,
+                        assetPath: club.logoAsset ?? kDefaultTeamLogoAsset,
+                        size: wLogo,
+                        padding: 0,
                       ),
                     if (showLogos) SizedBox(width: wGap),
                     if (isDesktop)

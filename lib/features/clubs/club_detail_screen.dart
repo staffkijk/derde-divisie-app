@@ -6,6 +6,7 @@ import 'package:derde_divisie/core/design/app_design.dart';
 import 'package:derde_divisie/core/utils/match_formatters.dart';
 import 'package:derde_divisie/core/widgets/match_rows.dart';
 import 'package:derde_divisie/core/widgets/match_status_badge.dart';
+import 'package:derde_divisie/core/widgets/team_logo.dart';
 import 'package:derde_divisie/data/config/season_config.dart';
 import 'package:derde_divisie/data/services/activity_log_service.dart';
 import 'package:derde_divisie/data/services/division_data_service.dart';
@@ -181,15 +182,10 @@ class ClubDetailScreen extends StatelessWidget {
                   AppCard(
                     child: Row(
                       children: [
-                        Image.asset(
-                          club.logoPath,
-                          width: 76,
-                          height: 76,
-                          errorBuilder: (_, __, ___) => const Icon(
-                            Icons.shield_outlined,
-                            size: 68,
-                            color: AppColors.primary,
-                          ),
+                        TeamLogo(
+                          teamName: club.name,
+                          assetPath: club.logoPath,
+                          size: 76,
                         ),
                         const SizedBox(width: AppSpacing.lg),
                         Expanded(

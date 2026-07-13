@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 
+import 'package:derde_divisie/core/widgets/team_logo.dart';
 import 'package:derde_divisie/data/config/season_config.dart';
 
 final Logger _log = Logger('PeriodeStanden');
@@ -644,20 +645,12 @@ class _TeamCell extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(6),
-          child: Image.asset(
-            team.logoPath,
-            width: 26,
-            height: 26,
-            fit: BoxFit.contain,
-            errorBuilder: (_, __, ___) => Image.asset(
-              'assets/images/default_logo.png',
-              width: 26,
-              height: 26,
-              fit: BoxFit.contain,
-            ),
-          ),
+        TeamLogo(
+          teamName: team.label,
+          teamSlug: team.id,
+          assetPath: team.logoPath,
+          size: 26,
+          padding: 0,
         ),
         const SizedBox(width: 9),
         ConstrainedBox(

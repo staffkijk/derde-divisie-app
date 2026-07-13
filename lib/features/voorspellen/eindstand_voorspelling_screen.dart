@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import 'package:derde_divisie/data/config/season_config.dart';
+import 'package:derde_divisie/core/widgets/team_logo.dart';
 import 'package:derde_divisie/data/firestore/season_paths.dart';
 
 class EindstandVoorspellingScreen extends StatefulWidget {
@@ -238,12 +239,10 @@ class _ClubRow extends StatelessWidget {
               style: const TextStyle(fontWeight: FontWeight.w800),
             ),
           ),
-          Image.asset(
-            SeasonConfig.logoPathForTeam(club),
-            width: 34,
-            height: 34,
-            errorBuilder: (_, __, ___) =>
-                const Icon(Icons.shield_outlined, size: 34),
+          TeamLogo(
+            teamName: club,
+            assetPath: SeasonConfig.logoPathForTeam(club),
+            size: 34,
           ),
           const SizedBox(width: 12),
           Expanded(

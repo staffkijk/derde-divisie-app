@@ -1,0 +1,19 @@
+[
+  {
+    "origin": [
+      "https://derdediv.nl",
+      "https://www.derdediv.nl",
+      "https://derde-divisie-app.web.app",
+      "https://derde-divisie-app.firebaseapp.com",
+      "http://localhost:*"
+    ],
+    "method": ["GET", "HEAD"],
+    "responseHeader": [
+      "Content-Type",
+      "Content-Length",
+      "Content-Range",
+      "Accept-Ranges"
+    ],
+    "maxAgeSeconds": 3600
+  }
+]

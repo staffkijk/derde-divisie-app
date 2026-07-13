@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:derde_divisie/core/design/app_design.dart';
 import 'package:derde_divisie/core/utils/match_formatters.dart';
 import 'package:derde_divisie/core/widgets/match_status_badge.dart';
+import 'package:derde_divisie/core/widgets/team_logo.dart';
 import 'package:derde_divisie/data/services/division_data_service.dart';
 import 'package:derde_divisie/features/clubs/club_detail_screen.dart';
 
@@ -154,12 +155,12 @@ class _RowHeader extends StatelessWidget {
         height: 42,
         child: Row(
           children: [
-            Image.asset(
-              team.logoPath,
-              width: 26,
-              height: 26,
-              errorBuilder: (_, __, ___) =>
-                  const Icon(Icons.shield_outlined, size: 24),
+            TeamLogo(
+              teamName: team.label,
+              teamSlug: team.id,
+              assetPath: team.logoPath,
+              size: 26,
+              padding: 0,
             ),
             const SizedBox(width: AppSpacing.xs),
             Expanded(
@@ -229,7 +230,7 @@ class _MatrixCell extends StatelessWidget {
   }
 
   String _label(Map<String, dynamic>? data) {
-    if (data == null) return '–';
+    if (data == null) return '-';
     final status = parseMatchStatus(data['status']);
     final homeScore = _int(data['homeScore'] ?? data['uitslagThuis']);
     final awayScore = _int(data['awayScore'] ?? data['uitslagUit']);
@@ -240,7 +241,7 @@ class _MatrixCell extends StatelessWidget {
     }
     if (status != MatchStatus.scheduled) return status.label;
     final date = MatchDateTimeFormatter.dateTimeFromData(data);
-    return date == null ? '–' : '${date.day} ${_month(date.month)}';
+    return date == null ? '-' : '${date.day} ${_month(date.month)}';
   }
 
   int? _int(dynamic value) {

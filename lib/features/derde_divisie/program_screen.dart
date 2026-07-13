@@ -8,6 +8,7 @@ import '../../data/config/season_config.dart';
 import '../../data/firestore/season_paths.dart';
 import '../../data/services/division_data_service.dart';
 import '../../core/utils/match_formatters.dart';
+import '../../core/widgets/team_logo.dart';
 import '../moderator/result_processing_service.dart';
 import '../clubs/club_detail_screen.dart';
 
@@ -739,39 +740,10 @@ class _TeamLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final mappedAsset = teamLogoAssetFromValues(values);
-    final asset = mappedAsset ?? kDefaultTeamLogoAsset;
-
-    return SizedBox(
-      width: 32,
-      height: 32,
-      child: Image.asset(
-        asset,
-        fit: BoxFit.contain,
-        errorBuilder: (_, __, ___) {
-          final letter =
-              fallbackText.trim().characters.firstOrNull?.toUpperCase();
-
-          return Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: const Color(0xFF2F8F3B).withValues(alpha: .12),
-              shape: BoxShape.circle,
-              border: Border.all(color: const Color(0xFFE3EADF)),
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              letter ?? '?',
-              style: const TextStyle(
-                color: Color(0xFF153B2A),
-                fontWeight: FontWeight.w900,
-                fontSize: 13,
-              ),
-            ),
-          );
-        },
-      ),
+    return TeamLogo(
+      teamName: fallbackText,
+      assetPath: teamLogoAssetFromValues(values),
+      size: 32,
     );
   }
 }

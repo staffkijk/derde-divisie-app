@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:derde_divisie/core/design/app_design.dart';
 import 'package:derde_divisie/core/widgets/match_status_badge.dart';
-import 'package:derde_divisie/data/config/team_logo_assets.dart';
+import 'package:derde_divisie/core/widgets/team_logo.dart';
 
 class MatchRowData {
   const MatchRowData({
@@ -95,20 +95,11 @@ class BaseMatchRow extends StatelessWidget {
   }
 
   Widget _team(String name, String slug, bool end) {
-    final asset =
-        teamLogoAssetFromValues([slug, name]) ?? kDefaultTeamLogoAsset;
     final content = [
-      SizedBox(
-        width: 30,
-        height: 30,
-        child: Image.asset(
-          asset,
-          fit: BoxFit.contain,
-          errorBuilder: (_, __, ___) => const Icon(
-            Icons.shield_outlined,
-            color: AppColors.primary,
-          ),
-        ),
+      TeamLogo(
+        teamName: name,
+        teamSlug: slug,
+        size: dense ? 32 : 36,
       ),
       const SizedBox(width: AppSpacing.xs),
       Expanded(
@@ -133,11 +124,10 @@ class BaseMatchRow extends StatelessWidget {
   Widget _center() {
     return Container(
       constraints: const BoxConstraints(minWidth: 68),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
-        color: AppColors.background,
+        color: Colors.transparent,
         borderRadius: BorderRadius.circular(AppRadius.small),
-        border: Border.all(color: AppColors.border),
       ),
       alignment: Alignment.center,
       child: Text(

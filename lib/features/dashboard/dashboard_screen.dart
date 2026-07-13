@@ -10,8 +10,8 @@ import 'package:url_launcher/url_launcher_string.dart';
 
 import 'package:derde_divisie/data/config/season_config.dart';
 import 'package:derde_divisie/data/firestore/season_paths.dart';
-import 'package:derde_divisie/core/config/main_navigation_config.dart';
 import 'package:derde_divisie/core/widgets/derde_div_logo.dart';
+import 'package:derde_divisie/core/widgets/team_logo.dart';
 import 'package:derde_divisie/features/derde_divisie/historical_standings_screen.dart';
 import 'package:derde_divisie/features/dashboard/dashboard_match_center.dart';
 
@@ -267,15 +267,12 @@ class _RotatingLogoState extends State<RotatingLogo> {
         SizedBox(
           width: 120,
           height: 120,
-          child: Image.asset(
-            team.logoPath,
-            fit: BoxFit.contain,
-            errorBuilder: (_, __, ___) => Image.asset(
-              SeasonConfig.defaultTeamLogoPath,
-              fit: BoxFit.contain,
-              errorBuilder: (_, __, ___) =>
-                  const Icon(Icons.shield_outlined, size: 64),
-            ),
+          child: TeamLogo(
+            teamName: team.listLabel,
+            teamSlug: team.id,
+            assetPath: team.logoPath,
+            size: 120,
+            padding: 0,
           ),
         ),
         const SizedBox(height: 8),
@@ -481,18 +478,12 @@ class DashboardScreen extends StatelessWidget {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Expanded(
-                              child: Image.asset(
-                                team.logoPath,
-                                fit: BoxFit.contain,
-                                errorBuilder: (_, __, ___) => Image.asset(
-                                  SeasonConfig.defaultTeamLogoPath,
-                                  fit: BoxFit.contain,
-                                  errorBuilder: (_, __, ___) => const Icon(
-                                    Icons.shield_outlined,
-                                    size: 42,
-                                    color: Color(0xFF2E7D32),
-                                  ),
-                                ),
+                              child: TeamLogo(
+                                teamName: team.listLabel,
+                                teamSlug: team.id,
+                                assetPath: team.logoPath,
+                                size: 72,
+                                padding: 0,
                               ),
                             ),
                             const SizedBox(height: 8),
@@ -712,7 +703,10 @@ class DashboardScreen extends StatelessWidget {
                     children: [
                       Container(
                         width: double.infinity,
-                        padding: const EdgeInsets.all(24),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 16,
+                        ),
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
                             colors: [Color(0xFF153B2A), Color(0xFF2F8F3B)],
@@ -726,17 +720,17 @@ class DashboardScreen extends StatelessWidget {
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 color: Colors.white,
-                                fontSize: 28,
+                                fontSize: 24,
                                 fontWeight: FontWeight.w900,
                               ),
                             ),
-                            const SizedBox(height: 8),
+                            const SizedBox(height: 4),
                             const Text(
                               'Standen, programma, uitslagen en voorspellingen voor de Derde Divisie.',
                               textAlign: TextAlign.center,
                               style: TextStyle(color: Colors.white70),
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 10),
                             OutlinedButton.icon(
                               onPressed: () => Share.share(
                                 'Doe mee met de Derde Divisie Voorspelpoule op DerdeDiv!',
@@ -991,20 +985,14 @@ class _DashboardIntrofilmCardState extends State<_DashboardIntrofilmCard> {
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Icon(
-                                      MainNavigationConfig
-                                          .items[MainNavigationConfig
-                                              .introfilmIndex]
-                                          .selectedIcon,
+                                      Icons.ondemand_video_rounded,
                                       color: Colors.white,
                                       size: 17,
                                     ),
                                     const SizedBox(width: 6),
-                                    Text(
-                                      MainNavigationConfig
-                                          .items[MainNavigationConfig
-                                              .introfilmIndex]
-                                          .label,
-                                      style: const TextStyle(
+                                    const Text(
+                                      'Introfilm',
+                                      style: TextStyle(
                                         color: Colors.white,
                                         fontWeight: FontWeight.w800,
                                         fontSize: 12,

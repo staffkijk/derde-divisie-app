@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:derde_divisie/data/services/activity_log_service.dart';
 
 import 'package:derde_divisie/data/config/season_config.dart';
+import 'package:derde_divisie/core/widgets/team_logo.dart';
 import 'package:derde_divisie/data/firestore/season_paths.dart';
 import 'package:derde_divisie/core/utils/match_formatters.dart';
 
@@ -340,12 +341,10 @@ class _Team extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Image.asset(
-          SeasonConfig.logoPathForTeam(team),
-          width: 40,
-          height: 40,
-          errorBuilder: (_, __, ___) =>
-              const Icon(Icons.shield_outlined, size: 40),
+        TeamLogo(
+          teamName: team,
+          assetPath: SeasonConfig.logoPathForTeam(team),
+          size: 40,
         ),
         const SizedBox(height: 5),
         Text(

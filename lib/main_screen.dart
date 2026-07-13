@@ -22,7 +22,6 @@ import 'loggboek/update_log_button.dart';
 
 const mainNavigationScreenTypes = <Type>[
   DashboardScreen,
-  IntroVideoScreen,
   DivisionOverviewScreen,
   DivisionOverviewScreen,
   UnifiedProgramScreen,
@@ -114,11 +113,6 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   void _openIntrofilmFromHome() {
-    final introfilmIndex = MainNavigationConfig.introfilmIndex;
-    assert(
-      MainNavigationConfig.items[introfilmIndex].destination ==
-          MainNavigationDestination.introfilm,
-    );
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const IntroVideoScreen()),
     );
@@ -143,7 +137,6 @@ class _MainScreenState extends State<MainScreen> {
             );
           },
         ),
-        const IntroVideoScreen(),
         const DivisionOverviewScreen(division: 'Derde Divisie A'),
         const DivisionOverviewScreen(division: 'Derde Divisie B'),
         const UnifiedProgramScreen(),
@@ -355,11 +348,11 @@ class _MainScreenState extends State<MainScreen> {
               body: screens[_selectedIndex],
               bottomNavigationBar: NavigationBar(
                 selectedIndex:
-                    _selectedIndex <= MainNavigationConfig.divisionBIndex
+                    _selectedIndex <= MainNavigationConfig.programIndex
                         ? _selectedIndex
                         : 4,
                 onDestinationSelected: (index) {
-                  if (index <= MainNavigationConfig.divisionBIndex) {
+                  if (index <= MainNavigationConfig.programIndex) {
                     _selectIndex(index);
                   } else {
                     _showMobileMenu();

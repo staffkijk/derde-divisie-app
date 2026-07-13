@@ -3,117 +3,276 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import 'package:derde_divisie/core/design/app_design.dart';
+import 'package:derde_divisie/core/widgets/team_logo.dart';
 import 'package:derde_divisie/data/config/season_config.dart';
+import 'package:derde_divisie/features/derde_divisie/wedstrijden_scherm_derde_divisie_a.dart';
+import 'package:derde_divisie/features/derde_divisie/wedstrijden_scherm_derde_divisie_b.dart';
 import 'package:derde_divisie/features/voorspellen/archived_prediction_ranking_screen.dart';
 import 'package:derde_divisie/features/voorspellen/eindstand_voorspelling_screen.dart';
-import 'package:derde_divisie/features/voorspellen/prediction_screen.dart';
 import 'package:derde_divisie/features/voorspellen/ranking_screen.dart';
 import 'package:derde_divisie/features/voorspellen/voorspel_een_team_screen.dart';
 
-class PredictionOverviewScreen extends StatelessWidget {
+class PredictionOverviewScreen extends StatefulWidget {
   const PredictionOverviewScreen({super.key});
 
   @override
+  State<PredictionOverviewScreen> createState() =>
+      _PredictionOverviewScreenState();
+}
+
+class _PredictionOverviewScreenState extends State<PredictionOverviewScreen> {
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF3F6F1),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          return SingleChildScrollView(
-            padding: EdgeInsets.symmetric(
-              horizontal: constraints.maxWidth >= 900 ? 28 : 14,
-              vertical: 20,
-            ),
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1180),
-                child: const Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _PredictionHeader(),
-                    SizedBox(height: AppSpacing.md),
-                    _SectionTitle(
-                      icon: Icons.emoji_events_rounded,
-                      title: 'Algemene ranking',
+    return DefaultTabController(
+      length: 4,
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF3F6F1),
+        body: SafeArea(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final horizontal = constraints.maxWidth >= 900 ? 28.0 : 14.0;
+              return Column(
+                children: [
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(horizontal, 16, horizontal, 8),
+                    child: const _PredictionHeader(),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: horizontal),
+                    child: AppCard(
+                      padding: EdgeInsets.zero,
+                      child: const TabBar(
+                        isScrollable: true,
+                        tabs: [
+                          Tab(text: 'Wedstrijden'),
+                          Tab(text: 'Eindstand'),
+                          Tab(text: 'Team'),
+                          Tab(text: 'Ranglijsten'),
+                        ],
+                      ),
                     ),
-                    SizedBox(height: AppSpacing.xs),
-                    _GlobalTopThree(),
-                    SizedBox(height: AppSpacing.xs),
-                    _RankingLinks(),
-                    SizedBox(height: AppSpacing.lg),
-                    _SectionTitle(
-                      icon: Icons.sports_soccer_rounded,
-                      title: 'Wedstrijden voorspellen',
-                    ),
-                    SizedBox(height: 10),
-                    _ActionGrid(
-                      actions: [
-                        _ActionCard(
-                          icon: Icons.looks_one_rounded,
-                          title: 'Divisie A',
-                          subtitle: 'Voorspel de wedstrijduitslagen',
-                          action: _PredictionAction.matchesA,
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Expanded(
+                    child: TabBarView(
+                      children: [
+                        const _MatchesPredictionTab(),
+                        _ScrollableTab(
+                          horizontalPadding: horizontal,
+                          child: const _FinalRankingTab(),
                         ),
-                        _ActionCard(
-                          icon: Icons.looks_two_rounded,
-                          title: 'Divisie B',
-                          subtitle: 'Voorspel de wedstrijduitslagen',
-                          action: _PredictionAction.matchesB,
+                        _ScrollableTab(
+                          horizontalPadding: horizontal,
+                          child: const _TeamPredictionTab(),
                         ),
-                      ],
-                    ),
-                    SizedBox(height: 24),
-                    _SectionTitle(
-                      icon: Icons.format_list_numbered_rounded,
-                      title: 'Eindstand voorspellen',
-                    ),
-                    SizedBox(height: 10),
-                    _ActionGrid(
-                      actions: [
-                        _ActionCard(
-                          icon: Icons.leaderboard_rounded,
-                          title: 'Eindstand Divisie A',
-                          subtitle: 'Rangschik de clubs',
-                          action: _PredictionAction.tableA,
-                        ),
-                        _ActionCard(
-                          icon: Icons.leaderboard_rounded,
-                          title: 'Eindstand Divisie B',
-                          subtitle: 'Rangschik de clubs',
-                          action: _PredictionAction.tableB,
-                        ),
-                        _ActionCard(
-                          icon: Icons.emoji_events_rounded,
-                          title: 'Voorspelranking afgelopen seizoen',
-                          subtitle: 'Eindranglijst voorspellers 2025/2026',
-                          action: _PredictionAction.lastSeason,
+                        _ScrollableTab(
+                          horizontalPadding: horizontal,
+                          child: const _RankingsTab(),
                         ),
                       ],
                     ),
-                    SizedBox(height: 24),
-                    _SectionTitle(
-                      icon: Icons.shield_outlined,
-                      title: 'Team voorspellen',
-                    ),
-                    SizedBox(height: 10),
-                    _ActionGrid(
-                      actions: [
-                        _ActionCard(
-                          icon: Icons.groups_rounded,
-                          title: 'Kies een team',
-                          subtitle: 'Voorspel alleen wedstrijden van jouw team',
-                          action: _PredictionAction.team,
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 24),
-                  ],
-                ),
-              ),
-            ),
-          );
-        },
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
       ),
+    );
+  }
+}
+
+class _ScrollableTab extends StatelessWidget {
+  const _ScrollableTab({
+    required this.horizontalPadding,
+    required this.child,
+  });
+
+  final double horizontalPadding;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: EdgeInsets.fromLTRB(horizontalPadding, 0, horizontalPadding, 24),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1180),
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+class _MatchesPredictionTab extends StatefulWidget {
+  const _MatchesPredictionTab();
+
+  @override
+  State<_MatchesPredictionTab> createState() => _MatchesPredictionTabState();
+}
+
+class _MatchesPredictionTabState extends State<_MatchesPredictionTab>
+    with AutomaticKeepAliveClientMixin {
+  String _division = 'A';
+  bool _loadedFavorite = false;
+
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFavoriteDivision();
+  }
+
+  Future<void> _loadFavoriteDivision() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      _loadedFavorite = true;
+      return;
+    }
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
+    final data = doc.data();
+    final team = SeasonConfig.teamById(
+          (data?['favoriteTeamSlug'] ?? '').toString(),
+        ) ??
+        SeasonConfig.teamByName(
+          (data?['favoriteTeamName'] ?? data?['favorieteClub'] ?? '')
+              .toString(),
+        );
+    if (!mounted) return;
+    setState(() {
+      _division = team?.division == SeasonConfig.divisionB ? 'B' : 'A';
+      _loadedFavorite = true;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
+          child: Center(
+            child: SegmentedButton<String>(
+              segments: const [
+                ButtonSegment(value: 'A', label: Text('Divisie A')),
+                ButtonSegment(value: 'B', label: Text('Divisie B')),
+              ],
+              selected: {_division},
+              onSelectionChanged: (selection) {
+                setState(() => _division = selection.first);
+              },
+            ),
+          ),
+        ),
+        Expanded(
+          child: !_loadedFavorite
+              ? const Center(child: CircularProgressIndicator())
+              : _division == 'A'
+                  ? const WedstrijdenSchermDerdeDivisieA(divisie: 'A')
+                  : const WedstrijdenSchermDerdeDivisieB(divisie: 'B'),
+        ),
+      ],
+    );
+  }
+}
+
+class _FinalRankingTab extends StatelessWidget {
+  const _FinalRankingTab();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _SectionTitle(
+          icon: Icons.format_list_numbered_rounded,
+          title: 'Eindstand voorspellen',
+        ),
+        SizedBox(height: 10),
+        _ActionGrid(
+          actions: [
+            _ActionCard(
+              icon: Icons.leaderboard_rounded,
+              title: 'Eindstand Divisie A',
+              subtitle: 'Rangschik de clubs',
+              action: _PredictionAction.tableA,
+            ),
+            _ActionCard(
+              icon: Icons.leaderboard_rounded,
+              title: 'Eindstand Divisie B',
+              subtitle: 'Rangschik de clubs',
+              action: _PredictionAction.tableB,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _TeamPredictionTab extends StatelessWidget {
+  const _TeamPredictionTab();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _SectionTitle(
+          icon: Icons.shield_outlined,
+          title: 'Team voorspellen',
+        ),
+        SizedBox(height: 10),
+        _ActionGrid(
+          actions: [
+            _ActionCard(
+              icon: Icons.groups_rounded,
+              title: 'Kies een team',
+              subtitle: 'Voorspel alleen wedstrijden van jouw team',
+              action: _PredictionAction.team,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _RankingsTab extends StatelessWidget {
+  const _RankingsTab();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _SectionTitle(
+          icon: Icons.emoji_events_rounded,
+          title: 'Ranglijsten',
+        ),
+        SizedBox(height: AppSpacing.xs),
+        _GlobalTopThree(),
+        SizedBox(height: AppSpacing.xs),
+        _RankingLinks(),
+        SizedBox(height: AppSpacing.lg),
+        _ActionGrid(
+          actions: [
+            _ActionCard(
+              icon: Icons.emoji_events_rounded,
+              title: 'Voorspelranking afgelopen seizoen',
+              subtitle: 'Eindranglijst voorspellers 2025/2026',
+              action: _PredictionAction.lastSeason,
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
@@ -172,12 +331,12 @@ class _PredictionHeader extends StatelessWidget {
                     );
                 if (team == null) return const SizedBox.shrink();
                 return Chip(
-                  avatar: Image.asset(
-                    team.logoPath,
-                    width: 22,
-                    height: 22,
-                    errorBuilder: (_, __, ___) =>
-                        const Icon(Icons.shield_outlined, size: 20),
+                  avatar: TeamLogo(
+                    teamName: team.label,
+                    teamSlug: team.id,
+                    assetPath: team.logoPath,
+                    size: 22,
+                    padding: 0,
                   ),
                   label: Text(team.listLabel),
                 );
@@ -242,7 +401,7 @@ class _ActionGrid extends StatelessWidget {
   }
 }
 
-enum _PredictionAction { matchesA, matchesB, tableA, tableB, team, lastSeason }
+enum _PredictionAction { tableA, tableB, team, lastSeason }
 
 class _ActionCard extends StatelessWidget {
   const _ActionCard({
@@ -259,17 +418,6 @@ class _ActionCard extends StatelessWidget {
 
   Future<void> _open(BuildContext context) async {
     switch (action) {
-      case _PredictionAction.matchesA:
-      case _PredictionAction.matchesB:
-        final division = action == _PredictionAction.matchesA ? 'A' : 'B';
-        await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => PredictionScreen(divisie: division),
-          ),
-        );
-        return;
-
       case _PredictionAction.tableA:
       case _PredictionAction.tableB:
         final division = action == _PredictionAction.tableA ? 'A' : 'B';
@@ -320,12 +468,11 @@ class _ActionCard extends StatelessWidget {
                   itemBuilder: (context, index) {
                     final item = SeasonConfig.teamsInListOrder[index];
                     return ListTile(
-                      leading: Image.asset(
-                        item.logoPath,
-                        width: 32,
-                        height: 32,
-                        errorBuilder: (_, __, ___) =>
-                            const Icon(Icons.shield_outlined),
+                      leading: TeamLogo(
+                        teamName: item.label,
+                        teamSlug: item.id,
+                        assetPath: item.logoPath,
+                        size: 32,
                       ),
                       title: Text(item.listLabel),
                       onTap: () => Navigator.pop(context, item),

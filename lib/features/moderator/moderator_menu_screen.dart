@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'package:derde_divisie/core/widgets/team_logo.dart';
 import 'package:derde_divisie/data/config/team_logo_assets.dart';
 import 'package:derde_divisie/data/firestore/season_paths.dart';
 import 'package:derde_divisie/features/moderator/result_processing_service.dart';
@@ -813,17 +814,12 @@ class _TeamBlock extends StatelessWidget {
     final logo = teamLogoAssetFromValues([slug, name]) ?? kDefaultTeamLogoAsset;
 
     final children = [
-      SizedBox(
-        width: 32,
-        height: 32,
-        child: Image.asset(
-          logo,
-          fit: BoxFit.contain,
-          errorBuilder: (_, __, ___) => const Icon(
-            Icons.shield_outlined,
-            color: Color(0xFF2F8F3B),
-          ),
-        ),
+      TeamLogo(
+        teamName: name,
+        teamSlug: slug,
+        assetPath: logo,
+        size: 32,
+        padding: 0,
       ),
       const SizedBox(width: 10),
       Expanded(

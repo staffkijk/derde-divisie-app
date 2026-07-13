@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:derde_divisie/core/widgets/team_logo.dart';
+
 class VoorspelWedstrijdCard extends StatelessWidget {
   final String thuisteam;
   final String uitteam;
@@ -42,17 +44,8 @@ class VoorspelWedstrijdCard extends StatelessWidget {
     this.onUitScoreChanged,
   });
 
-  String getLogoAssetPath(String clubnaam) {
-    String clean =
-        clubnaam.replaceAll(RegExp(r'[^\w]'), '').replaceAll(' ', '');
-    return 'assets/images/logo_$clean.png';
-  }
-
   @override
   Widget build(BuildContext context) {
-    final thuisLogo = getLogoAssetPath(thuisteam);
-    final uitLogo = getLogoAssetPath(uitteam);
-
     final bool uitslagIngevuld =
         werkelijkeThuis != null && werkelijkeUit != null;
 
@@ -80,9 +73,9 @@ class VoorspelWedstrijdCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _buildTeamColumn(thuisLogo, thuisteam),
+                _buildTeamColumn(thuisteam),
                 isDisabled ? _buildLockCenter() : _buildScoreFields(),
-                _buildTeamColumn(uitLogo, uitteam),
+                _buildTeamColumn(uitteam),
               ],
             ),
 
@@ -130,19 +123,16 @@ class VoorspelWedstrijdCard extends StatelessWidget {
     );
   }
 
-  Widget _buildTeamColumn(String logoPath, String teamName) {
+  Widget _buildTeamColumn(String teamName) {
     return SizedBox(
       width: 100,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Image.asset(
-            logoPath,
-            width: 48,
-            height: 48,
-            errorBuilder: (context, error, stackTrace) {
-              return const Icon(Icons.shield, size: 40);
-            },
+          TeamLogo(
+            teamName: teamName,
+            size: 48,
+            padding: 0,
           ),
           const SizedBox(height: 6),
           Text(

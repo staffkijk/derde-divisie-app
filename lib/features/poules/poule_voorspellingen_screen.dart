@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:derde_divisie/core/widgets/team_logo.dart';
 
 /// ===============================================================
 /// Helpers voor logo-pad op basis van teamnamen
@@ -15,13 +16,6 @@ String _sanitizeForAsset(String s) => s
     .replaceAll('-', '')
     .replaceAll(' ', '');
 
-String _logoPathFromTeamName(dynamic rawName) {
-  final name = (rawName?.toString() ?? '').trim();
-  if (name.isEmpty) return 'assets/images/default_logo.png';
-  final cleaned = _sanitizeForAsset(name);
-  return 'assets/images/logo_$cleaned.png';
-}
-
 /// ===============================================================
 /// Kleine UI widgets (logo + center kolom)
 /// ===============================================================
@@ -33,19 +27,14 @@ class _TeamLogoColumn extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final label = (teamDisplayName?.toString() ?? '').trim();
-    final assetPath = _logoPathFromTeamName(label);
-
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Image.asset(
-          assetPath,
-          width: 36,
-          height: 36,
-          errorBuilder: (_, __, ___) => Image.asset(
-              'assets/images/default_logo.png',
-              width: 36,
-              height: 36),
+        TeamLogo(
+          teamName: label,
+          teamSlug: _sanitizeForAsset(label),
+          size: 36,
+          padding: 0,
         ),
         const SizedBox(height: 6),
         Text(

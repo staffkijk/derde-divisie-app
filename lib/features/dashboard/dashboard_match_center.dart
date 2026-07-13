@@ -6,6 +6,7 @@ import 'package:derde_divisie/core/design/app_design.dart';
 import 'package:derde_divisie/core/utils/match_formatters.dart';
 import 'package:derde_divisie/core/widgets/match_rows.dart';
 import 'package:derde_divisie/core/widgets/match_status_badge.dart';
+import 'package:derde_divisie/core/widgets/team_logo.dart';
 import 'package:derde_divisie/data/config/season_config.dart';
 import 'package:derde_divisie/data/firestore/season_paths.dart';
 import 'package:derde_divisie/data/services/division_data_service.dart';
@@ -320,15 +321,11 @@ class _FavoriteAndActions extends StatelessWidget {
                       return Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Image.asset(
-                            team.logoPath,
-                            width: 54,
-                            height: 54,
-                            errorBuilder: (_, __, ___) => const Icon(
-                              Icons.shield_outlined,
-                              size: 48,
-                              color: AppColors.primary,
-                            ),
+                          TeamLogo(
+                            teamName: team.label,
+                            teamSlug: team.id,
+                            assetPath: team.logoPath,
+                            size: 56,
                           ),
                           const SizedBox(width: AppSpacing.sm),
                           Expanded(
@@ -394,25 +391,6 @@ class _FavoriteAndActions extends StatelessWidget {
                       );
                     },
                   ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Wrap(
-            spacing: AppSpacing.xs,
-            runSpacing: AppSpacing.xs,
-            children: [
-              OutlinedButton(
-                onPressed: onOpenProfile,
-                child: const Text('Profiel'),
-              ),
-              OutlinedButton(
-                onPressed: onOpenProgram,
-                child: const Text('Programma'),
-              ),
-              FilledButton(
-                onPressed: onOpenPredict,
-                child: const Text('Voorspellen'),
-              ),
-            ],
           ),
         ],
       ),

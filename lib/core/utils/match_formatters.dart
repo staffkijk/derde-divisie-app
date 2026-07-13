@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 
+import 'package:derde_divisie/data/config/season_config.dart';
+
 abstract class MatchDateTimeFormatter {
   static DateTime? dateTimeFromData(Map<String, dynamic> data) {
     final direct = _asDateTime(
@@ -32,7 +34,14 @@ abstract class MatchDateTimeFormatter {
   }
 
   static String? timeFromData(Map<String, dynamic> data) {
+    final resolved = MatchKickoffTimeResolver.resolve(data);
+    if (resolved != null) return resolved;
+
     final raw = data['kickoffTime'] ?? data['time'] ?? data['kickoff'];
+    return normalizeTime(raw);
+  }
+
+  static String? normalizeTime(dynamic raw) {
     if (raw == null) return null;
     final value = raw.toString().trim();
     if (!RegExp(r'^\d{1,2}:\d{2}$').hasMatch(value)) return null;
@@ -114,4 +123,61 @@ abstract class MatchDateTimeFormatter {
 
   static String _text(dynamic value) =>
       value?.toString().trim().toLowerCase() ?? '';
+}
+
+abstract class MatchKickoffTimeResolver {
+  static const scherpenzeelHomeKickoff = '15:00';
+  static const scherpenzeelSource = 'club_default_scherpenzeel_1500';
+
+  static String? resolve(Map<String, dynamic> data) {
+    final explicit = MatchDateTimeFormatter.normalizeTime(
+      data['kickoffTime'] ?? data['time'] ?? data['kickoff'],
+    );
+
+    if (_isConfirmed(data['kickoffTimeConfirmed'])) return explicit;
+
+    if (_isScherpenzeelHome(data) && _isActiveSeason(data)) {
+      return scherpenzeelHomeKickoff;
+    }
+
+    return explicit;
+  }
+
+  static bool shouldCorrectScherpenzeelHome(Map<String, dynamic> data) {
+    if (_isConfirmed(data['kickoffTimeConfirmed'])) return false;
+    return _isScherpenzeelHome(data) &&
+        _isActiveSeason(data) &&
+        resolve(data) == scherpenzeelHomeKickoff;
+  }
+
+  static bool _isConfirmed(dynamic value) {
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    final text = value?.toString().trim().toLowerCase();
+    return text == 'true' || text == '1' || text == 'yes' || text == 'ja';
+  }
+
+  static bool _isActiveSeason(Map<String, dynamic> data) {
+    final value = (data['season'] ?? data['seasonId'] ?? data['seizoen'])
+        ?.toString()
+        .trim();
+    return value == null ||
+        value.isEmpty ||
+        value == SeasonConfig.activeSeasonId ||
+        value == SeasonConfig.activeSeasonLabel;
+  }
+
+  static bool _isScherpenzeelHome(Map<String, dynamic> data) {
+    final slug =
+        (data['homeTeamSlug'] ?? data['homeTeamCode'] ?? '').toString();
+    final name =
+        (data['homeTeamName'] ?? data['homeTeam'] ?? data['thuisteam'] ?? '')
+            .toString();
+    final team = SeasonConfig.teamById(slug) ?? SeasonConfig.teamByName(name);
+    return team?.id == 'vv_scherpenzeel' ||
+        SeasonConfig.normalizeTeamKey(slug) ==
+            SeasonConfig.normalizeTeamKey('vv_scherpenzeel') ||
+        SeasonConfig.normalizeTeamKey(name) ==
+            SeasonConfig.normalizeTeamKey('Scherpenzeel');
+  }
 }

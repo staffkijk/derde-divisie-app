@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
+import 'package:derde_divisie/core/widgets/team_logo.dart';
+
 class BekijkVoorspellingenScreen extends StatefulWidget {
   final String userId;
 
@@ -196,25 +198,14 @@ class _BekijkVoorspellingenScreenState
     return isCorrectContext && (voorspellingenZichtbaar || deadlineVerstreken);
   }
 
-  String getLogoPath(String team) {
-    final cleanName = team
-        .replaceAll(" ", "")
-        .replaceAll("'", "")
-        .replaceAll("/", "")
-        .replaceAll(".", "")
-        .replaceAll("-", "");
-    return 'assets/images/logo_$cleanName.png';
-  }
-
   Widget _teamColumn(String naam) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Image.asset(
-          getLogoPath(naam),
-          width: 36,
-          height: 36,
-          errorBuilder: (_, __, ___) => const Icon(Icons.shield),
+        TeamLogo(
+          teamName: naam,
+          size: 36,
+          padding: 0,
         ),
         const SizedBox(height: 6),
         Text(
@@ -322,11 +313,11 @@ class _BekijkVoorspellingenScreenState
                       style: const TextStyle(fontWeight: FontWeight.bold)),
                 ),
                 const SizedBox(width: 12),
-                Image.asset(getLogoPath(team),
-                    width: 28,
-                    height: 28,
-                    errorBuilder: (_, __, ___) =>
-                        const Icon(Icons.shield, size: 20)),
+                TeamLogo(
+                  teamName: team,
+                  size: 28,
+                  padding: 0,
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                     child: Text(team, style: const TextStyle(fontSize: 16))),

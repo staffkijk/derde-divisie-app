@@ -1,12 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
-import '../../data/config/team_logo_assets.dart';
 import '../../data/config/season_config.dart';
 import '../../data/firestore/season_paths.dart';
 import '../../data/services/division_data_service.dart';
 import '../../core/utils/match_formatters.dart';
+import '../../core/widgets/team_logo.dart';
 import 'periode_standen_screen.dart';
 import 'historical_standings_screen.dart';
 import 'stand_derde_divisie_screen.dart';
@@ -131,10 +130,10 @@ class _DivisionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFE4E9E2)),
         boxShadow: [
           BoxShadow(
@@ -155,11 +154,11 @@ class _DivisionHeader extends StatelessWidget {
                 title,
                 style: const TextStyle(
                   color: Color(0xFF153B2A),
-                  fontSize: 26,
+                  fontSize: 22,
                   fontWeight: FontWeight.w900,
                 ),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 3),
               Text(
                 'Stand, programma en uitslagen overzichtelijk per divisie.',
                 style: TextStyle(
@@ -295,6 +294,7 @@ class _MatchInfo {
   final String status;
   final String homeTeamSlug;
   final String awayTeamSlug;
+  final String centerLabel;
 
   const _MatchInfo({
     required this.homeTeam,
@@ -307,6 +307,7 @@ class _MatchInfo {
     required this.status,
     required this.homeTeamSlug,
     required this.awayTeamSlug,
+    required this.centerLabel,
   });
 }
 
@@ -431,6 +432,7 @@ class _MatchesCard extends StatelessWidget {
                 (data['homeTeamSlug'] ?? data['homeTeamCode'] ?? '').toString(),
             awayTeamSlug:
                 (data['awayTeamSlug'] ?? data['awayTeamCode'] ?? '').toString(),
+            centerLabel: _centerLabel(data, status, homeScore, awayScore),
           );
         })
         .where((m) => m.homeTeam.isNotEmpty && m.awayTeam.isNotEmpty)
@@ -521,7 +523,6 @@ class _MatchesCard extends StatelessWidget {
                     _MatchTile(
                       match: matches[i],
                       index: i + 1,
-                      mode: mode,
                     ),
                     if (i != matches.length - 1)
                       Divider(
@@ -542,128 +543,131 @@ class _MatchesCard extends StatelessWidget {
 class _MatchTile extends StatelessWidget {
   final _MatchInfo match;
   final int index;
-  final _MatchCardMode mode;
 
   const _MatchTile({
     required this.match,
     required this.index,
-    required this.mode,
   });
 
   @override
   Widget build(BuildContext context) {
-    final scoreKnown = match.homeScore != null && match.awayScore != null;
-    final dateLabel = _formatMatchDate(match.date);
+    final compact = MediaQuery.sizeOf(context).width < 520;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 9),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          SizedBox(
-            width: 24,
-            child: Text(
-              '$index.',
-              style: TextStyle(
-                color: Colors.grey.shade600,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: compact
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Row(
                   children: [
-                    _MiniLogo(team: match.homeTeam, slug: match.homeTeamSlug),
-                    const SizedBox(width: 6),
                     Expanded(
-                      child: Text(
-                        '${match.homeTeam} - ${match.awayTeam}',
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Color(0xFF1D1D1D),
-                          fontWeight: FontWeight.w700,
-                          height: 1.25,
-                        ),
+                      child: _TeamCell(
+                        name: match.homeTeam,
+                        slug: match.homeTeamSlug,
+                        alignEnd: false,
                       ),
                     ),
-                    const SizedBox(width: 6),
-                    _MiniLogo(team: match.awayTeam, slug: match.awayTeamSlug),
+                    _CenterCell(label: match.centerLabel),
+                    Expanded(
+                      child: _TeamCell(
+                        name: match.awayTeam,
+                        slug: match.awayTeamSlug,
+                        alignEnd: true,
+                      ),
+                    ),
                   ],
                 ),
-                if (dateLabel.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 2),
-                    child: Text(
-                      dateLabel,
-                      style: TextStyle(
-                        color: Colors.grey.shade600,
-                        fontSize: 12,
-                      ),
+              ],
+            )
+          : Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width: 28,
+                  child: Text(
+                    '$index.',
+                    style: TextStyle(
+                      color: Colors.grey.shade600,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
+                ),
+                Expanded(
+                  child: _TeamCell(
+                    name: match.homeTeam,
+                    slug: match.homeTeamSlug,
+                    alignEnd: false,
+                  ),
+                ),
+                _CenterCell(label: match.centerLabel),
+                Expanded(
+                  child: _TeamCell(
+                    name: match.awayTeam,
+                    slug: match.awayTeamSlug,
+                    alignEnd: true,
+                  ),
+                ),
               ],
             ),
-          ),
-          const SizedBox(width: 10),
-          Container(
-            constraints: const BoxConstraints(minWidth: 54),
-            padding: const EdgeInsets.symmetric(
-              horizontal: 10,
-              vertical: 6,
-            ),
-            decoration: BoxDecoration(
-              color: mode == _MatchCardMode.results && scoreKnown
-                  ? const Color(0xFFE8F5E9)
-                  : const Color(0xFFF4F6F3),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFE1E7DE)),
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              match.status == 'postponed'
-                  ? 'In te halen'
-                  : match.status == 'cancelled'
-                      ? 'Afgelast'
-                      : match.status == 'abandoned'
-                          ? 'Gestaakt'
-                          : scoreKnown
-                              ? '${match.homeScore}-${match.awayScore}'
-                              : 'vs',
-              style: const TextStyle(
-                color: Color(0xFF153B2A),
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
 
-class _MiniLogo extends StatelessWidget {
-  const _MiniLogo({required this.team, required this.slug});
+class _TeamCell extends StatelessWidget {
+  const _TeamCell({
+    required this.name,
+    required this.slug,
+    required this.alignEnd,
+  });
 
-  final String team;
+  final String name;
   final String slug;
+  final bool alignEnd;
 
   @override
   Widget build(BuildContext context) {
-    final asset =
-        teamLogoAssetFromValues([slug, team]) ?? kDefaultTeamLogoAsset;
-    return Image.asset(
-      asset,
-      width: 22,
-      height: 22,
-      errorBuilder: (_, __, ___) => const Icon(
-        Icons.shield_outlined,
-        size: 20,
-        color: Color(0xFF2F8F3B),
+    return Row(
+      textDirection: alignEnd ? TextDirection.rtl : TextDirection.ltr,
+      children: [
+        TeamLogo(teamName: name, teamSlug: slug, size: 34),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            name,
+            textAlign: alignEnd ? TextAlign.right : TextAlign.left,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Color(0xFF1D1D1D),
+              fontWeight: FontWeight.w700,
+              height: 1.15,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CenterCell extends StatelessWidget {
+  const _CenterCell({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 76,
+      child: Text(
+        label,
+        textAlign: TextAlign.center,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
+          color: Color(0xFF153B2A),
+          fontWeight: FontWeight.w900,
+        ),
       ),
     );
   }
@@ -916,9 +920,15 @@ bool _sameDay(DateTime? a, DateTime? b) {
   return a.year == b.year && a.month == b.month && a.day == b.day;
 }
 
-String _formatMatchDate(DateTime? date) {
-  if (date == null) return '';
-
-  final format = DateFormat('EEE d MMM HH:mm', 'nl_NL');
-  return format.format(date);
+String _centerLabel(
+  Map<String, dynamic> data,
+  String status,
+  int? homeScore,
+  int? awayScore,
+) {
+  if (status == 'postponed') return 'Uitgesteld';
+  if (status == 'cancelled' || status == 'canceled') return 'Afgelast';
+  if (status == 'abandoned') return 'Gestaakt';
+  if (homeScore != null && awayScore != null) return '$homeScore - $awayScore';
+  return MatchDateTimeFormatter.publicTime(data);
 }
