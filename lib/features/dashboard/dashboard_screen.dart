@@ -3,13 +3,16 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
+import 'package:derde_divisie/core/design/app_design.dart';
 import 'package:derde_divisie/data/config/season_config.dart';
 import 'package:derde_divisie/data/firestore/season_paths.dart';
+import 'package:derde_divisie/data/services/prediction_reminder_service.dart';
 import 'package:derde_divisie/core/widgets/derde_div_logo.dart';
 import 'package:derde_divisie/core/widgets/team_logo.dart';
 import 'package:derde_divisie/features/derde_divisie/historical_standings_screen.dart';
@@ -161,6 +164,54 @@ class _Stats {
     required this.biggestWins,
     required this.mostGoalsMatches,
   });
+}
+
+class _HomePredictionReminder extends StatelessWidget {
+  const _HomePredictionReminder({required this.onOpenPredict});
+
+  final VoidCallback? onOpenPredict;
+
+  Future<PredictionReminderStatus?> _load() async {
+    if (FirebaseAuth.instance.currentUser == null) return null;
+    final service = PredictionReminderService();
+    final a = await service.syncMissingPredictionNotification(division: 'A');
+    if (a != null && !a.complete && !a.expired && a.missing > 0) return a;
+    final b = await service.syncMissingPredictionNotification(division: 'B');
+    if (b != null && !b.complete && !b.expired && b.missing > 0) return b;
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<PredictionReminderStatus?>(
+      future: _load(),
+      builder: (context, snapshot) {
+        final status = snapshot.data;
+        if (status == null) return const SizedBox(height: 24);
+        return Padding(
+          padding: const EdgeInsets.only(top: 16),
+          child: AppCard(
+            child: ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(
+                Icons.edit_notifications_outlined,
+                color: AppColors.primary,
+              ),
+              title: Text(
+                'Je hebt nog ${status.missing} wedstrijden niet voorspeld voor speelronde ${status.round}.',
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+              subtitle: Text(
+                'Divisie ${status.division} - ${status.predicted} van ${status.totalRequired} ingevuld.',
+              ),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: onOpenPredict,
+            ),
+          ),
+        );
+      },
+    );
+  }
 }
 
 _Stats _computeStats(List<_M> ms) {
@@ -746,6 +797,7 @@ class DashboardScreen extends StatelessWidget {
                           ],
                         ),
                       ),
+                      _HomePredictionReminder(onOpenPredict: onOpenPredict),
                       const SizedBox.shrink(),
                       const SizedBox.shrink(),
                       const SizedBox.shrink(),
