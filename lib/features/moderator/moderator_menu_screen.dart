@@ -852,6 +852,7 @@ class _StatusPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final label = _statusLabel(status);
     final color = _statusColor(status);
+    if (label.isEmpty) return const SizedBox.shrink();
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
@@ -874,16 +875,16 @@ class _StatusPill extends StatelessWidget {
   String _statusLabel(String value) {
     switch (value) {
       case 'finished':
-        return 'Afgelopen';
+        return '';
       case 'postponed':
-        return 'In te halen';
+        return 'Uitgesteld';
       case 'cancelled':
         return 'Afgelast';
       case 'abandoned':
         return 'Gestaakt';
       case 'scheduled':
       default:
-        return 'Gepland';
+        return '';
     }
   }
 

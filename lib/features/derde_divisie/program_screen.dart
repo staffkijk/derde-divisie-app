@@ -802,6 +802,7 @@ class _StatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final config = _statusConfig(status);
+    if (config.label.isEmpty) return const SizedBox.shrink();
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
@@ -824,16 +825,16 @@ class _StatusBadge extends StatelessWidget {
   static _StatusConfig _statusConfig(String status) {
     switch (status) {
       case 'finished':
-        return _StatusConfig('Afgelopen', const Color(0xFF2F8F3B));
+        return _StatusConfig('', const Color(0xFF2F8F3B));
       case 'postponed':
-        return _StatusConfig('In te halen', Colors.blueGrey.shade700);
+        return _StatusConfig('Uitgesteld', Colors.blueGrey.shade700);
       case 'cancelled':
         return _StatusConfig('Afgelast', Colors.red.shade700);
       case 'abandoned':
         return _StatusConfig('Gestaakt', Colors.red.shade700);
       case 'scheduled':
       default:
-        return _StatusConfig('Gepland', const Color(0xFF153B2A));
+        return _StatusConfig('', const Color(0xFF153B2A));
     }
   }
 }

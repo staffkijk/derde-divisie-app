@@ -3,13 +3,23 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
 import 'package:derde_divisie/data/config/season_config.dart';
+import 'package:derde_divisie/data/services/activity_event_utils.dart';
 
 abstract class ActivityEventType {
-  static const login = 'login';
-  static const register = 'register';
-  static const predictionSaved = 'prediction_saved';
+  static const login = ActivityEventKeys.login;
+  static const register = ActivityEventKeys.register;
+  static const predictionSaved = ActivityEventKeys.predictionSaved;
+  static const predictionCompleted = ActivityEventKeys.predictionCompleted;
+  static const predictionScreenOpened =
+      ActivityEventKeys.predictionScreenOpened;
   static const finalStandingPredictionSaved = 'final_standing_prediction_saved';
-  static const favoriteTeamChanged = 'favorite_team_changed';
+  static const favoriteTeamChanged = ActivityEventKeys.favoriteTeamChanged;
+  static const screenView = ActivityEventKeys.screenView;
+  static const navigationClick = ActivityEventKeys.navigationClick;
+  static const roundSelected = ActivityEventKeys.roundSelected;
+  static const divisionSelected = ActivityEventKeys.divisionSelected;
+  static const notificationOpened = ActivityEventKeys.notificationOpened;
+  static const socialCardGenerated = ActivityEventKeys.socialCardGenerated;
   static const pouleCreated = 'poule_created';
   static const pouleJoined = 'poule_joined';
   static const pouleSettingsUpdated = 'poule_settings_updated';
@@ -43,9 +53,10 @@ class ActivityLogService {
         'uid': user.uid,
         if ((user.displayName ?? '').trim().isNotEmpty)
           'displayName': user.displayName!.trim(),
-        'eventType': eventType,
+        'eventType': ActivityEventUtils.canonicalKey(eventType),
         'createdAt': FieldValue.serverTimestamp(),
         'seasonId': SeasonConfig.activeSeasonId,
+        'platform': kIsWeb ? 'web' : 'app',
         if (entityType != null) 'entityType': entityType,
         if (entityId != null) 'entityId': entityId,
         if (metadata.isNotEmpty) 'metadata': _safeMetadata(metadata),

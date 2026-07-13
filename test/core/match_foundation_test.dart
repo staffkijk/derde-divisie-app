@@ -120,5 +120,13 @@ void main() {
       expect(parseMatchStatus('uitgesteld'), MatchStatus.postponed);
       expect(parseMatchStatus('onbekend'), MatchStatus.scheduled);
     });
+
+    test('toont geen badge-label voor geplande of afgelopen wedstrijden', () {
+      expect(MatchStatus.scheduled.label, isEmpty);
+      expect(MatchStatus.finished.label, isEmpty);
+      expect(MatchStatus.postponed.label, 'Uitgesteld');
+      expect(MatchStatus.cancelled.label, 'Afgelast');
+      expect(MatchStatus.abandoned.label, 'Gestaakt');
+    });
   });
 }
