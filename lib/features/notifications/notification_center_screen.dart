@@ -1,0 +1,89 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
+
+import 'package:derde_divisie/core/design/app_design.dart';
+import 'package:derde_divisie/data/services/activity_log_service.dart';
+import 'package:derde_divisie/data/services/prediction_reminder_service.dart';
+
+class NotificationCenterScreen extends StatefulWidget {
+  const NotificationCenterScreen({
+    super.key,
+    required this.onOpenPrediction,
+  });
+
+  final void Function(String division, int round) onOpenPrediction;
+
+  @override
+  State<NotificationCenterScreen> createState() =>
+      _NotificationCenterScreenState();
+}
+
+class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
+  final _service = PredictionReminderService();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(title: const Text('Meldingen')),
+      body: FutureBuilder<List<QueryDocumentSnapshot<Map<String, dynamic>>>>(
+        future: _service.loadNotifications(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final docs = snapshot.data!;
+          if (docs.isEmpty) {
+            return const Center(child: Text('Je hebt geen meldingen.'));
+          }
+          return ListView.separated(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            itemCount: docs.length,
+            separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+            itemBuilder: (context, index) {
+              final doc = docs[index];
+              final data = doc.data();
+              final read = data['read'] == true;
+              return AppCard(
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(
+                    read
+                        ? Icons.notifications_none_outlined
+                        : Icons.notifications_active_outlined,
+                    color: read ? AppColors.textMuted : AppColors.primary,
+                  ),
+                  title: Text(
+                    (data['title'] ?? 'Melding').toString(),
+                    style: TextStyle(
+                      fontWeight: read ? FontWeight.w600 : FontWeight.w900,
+                    ),
+                  ),
+                  subtitle: Text((data['body'] ?? '').toString()),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () async {
+                    await _service.markRead(doc.id);
+                    await ActivityLogService().log(
+                      eventType: ActivityEventType.notificationOpened,
+                      metadata: {
+                        'type': data['type']?.toString() ?? 'unknown',
+                        'division': data['division']?.toString() ?? '',
+                        'round': data['round']?.toString() ?? '',
+                      },
+                    );
+                    if (!context.mounted) return;
+                    Navigator.pop(context);
+                    final division = (data['division'] ?? 'A').toString();
+                    final round =
+                        int.tryParse(data['round']?.toString() ?? '') ?? 1;
+                    widget.onOpenPrediction(division, round);
+                  },
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+}

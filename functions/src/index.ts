@@ -213,3 +213,59 @@ export const xSyncHourly = functions
       console.error("Hourly sync error:", e);
     }
   });
+
+export const sendPredictionReminderPushes = functions
+  .region(region)
+  .pubsub.schedule("every 60 minutes")
+  .timeZone("Europe/Amsterdam")
+  .onRun(async (): Promise<void> => {
+    const users = await db.collection("users").get();
+    const now = admin.firestore.Timestamp.now();
+
+    for (const user of users.docs) {
+      const notifications = await user.ref
+        .collection("notifications")
+        .where("type", "==", "missing_predictions")
+        .where("read", "==", false)
+        .limit(10)
+        .get();
+      if (notifications.empty) continue;
+
+      const tokens = await user.ref.collection("fcmTokens").get();
+      const tokenValues = tokens.docs
+        .map((doc) => String(doc.data().token || doc.id || ""))
+        .filter((token) => token.length > 20);
+      if (!tokenValues.length) continue;
+
+      for (const notification of notifications.docs) {
+        const data = notification.data();
+        if (data.pushSentAt) continue;
+        await admin.messaging().sendEachForMulticast({
+          tokens: tokenValues,
+          notification: {
+            title: String(data.title || "Voorspellingen ontbreken"),
+            body: String(data.body || "Je hebt nog voorspellingen openstaan."),
+          },
+          webpush: {
+            notification: {
+              data: {
+                url: "/",
+              },
+            },
+          },
+          data: {
+            type: String(data.type || "missing_predictions"),
+            division: String(data.division || ""),
+            round: String(data.round || ""),
+          },
+        });
+        await notification.ref.set(
+          {
+            pushSentAt: now,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          },
+          { merge: true }
+        );
+      }
+    }
+  });

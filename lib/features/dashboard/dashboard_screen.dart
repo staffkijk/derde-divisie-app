@@ -3,15 +3,18 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
+import 'package:derde_divisie/core/design/app_design.dart';
 import 'package:derde_divisie/data/config/season_config.dart';
 import 'package:derde_divisie/data/firestore/season_paths.dart';
-import 'package:derde_divisie/core/config/main_navigation_config.dart';
+import 'package:derde_divisie/data/services/prediction_reminder_service.dart';
 import 'package:derde_divisie/core/widgets/derde_div_logo.dart';
+import 'package:derde_divisie/core/widgets/team_logo.dart';
 import 'package:derde_divisie/features/derde_divisie/historical_standings_screen.dart';
 import 'package:derde_divisie/features/dashboard/dashboard_match_center.dart';
 
@@ -163,6 +166,54 @@ class _Stats {
   });
 }
 
+class _HomePredictionReminder extends StatelessWidget {
+  const _HomePredictionReminder({required this.onOpenPredict});
+
+  final VoidCallback? onOpenPredict;
+
+  Future<PredictionReminderStatus?> _load() async {
+    if (FirebaseAuth.instance.currentUser == null) return null;
+    final service = PredictionReminderService();
+    final a = await service.syncMissingPredictionNotification(division: 'A');
+    if (a != null && !a.complete && !a.expired && a.missing > 0) return a;
+    final b = await service.syncMissingPredictionNotification(division: 'B');
+    if (b != null && !b.complete && !b.expired && b.missing > 0) return b;
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<PredictionReminderStatus?>(
+      future: _load(),
+      builder: (context, snapshot) {
+        final status = snapshot.data;
+        if (status == null) return const SizedBox(height: 24);
+        return Padding(
+          padding: const EdgeInsets.only(top: 16),
+          child: AppCard(
+            child: ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(
+                Icons.edit_notifications_outlined,
+                color: AppColors.primary,
+              ),
+              title: Text(
+                'Je hebt nog ${status.missing} wedstrijden niet voorspeld voor speelronde ${status.round}.',
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+              subtitle: Text(
+                'Divisie ${status.division} - ${status.predicted} van ${status.totalRequired} ingevuld.',
+              ),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: onOpenPredict,
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
 _Stats _computeStats(List<_M> ms) {
   final played =
       ms.where((m) => m.played && m.sh != null && m.sa != null).toList();
@@ -267,15 +318,12 @@ class _RotatingLogoState extends State<RotatingLogo> {
         SizedBox(
           width: 120,
           height: 120,
-          child: Image.asset(
-            team.logoPath,
-            fit: BoxFit.contain,
-            errorBuilder: (_, __, ___) => Image.asset(
-              SeasonConfig.defaultTeamLogoPath,
-              fit: BoxFit.contain,
-              errorBuilder: (_, __, ___) =>
-                  const Icon(Icons.shield_outlined, size: 64),
-            ),
+          child: TeamLogo(
+            teamName: team.listLabel,
+            teamSlug: team.id,
+            assetPath: team.logoPath,
+            size: 120,
+            padding: 0,
           ),
         ),
         const SizedBox(height: 8),
@@ -481,18 +529,12 @@ class DashboardScreen extends StatelessWidget {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Expanded(
-                              child: Image.asset(
-                                team.logoPath,
-                                fit: BoxFit.contain,
-                                errorBuilder: (_, __, ___) => Image.asset(
-                                  SeasonConfig.defaultTeamLogoPath,
-                                  fit: BoxFit.contain,
-                                  errorBuilder: (_, __, ___) => const Icon(
-                                    Icons.shield_outlined,
-                                    size: 42,
-                                    color: Color(0xFF2E7D32),
-                                  ),
-                                ),
+                              child: TeamLogo(
+                                teamName: team.listLabel,
+                                teamSlug: team.id,
+                                assetPath: team.logoPath,
+                                size: 72,
+                                padding: 0,
                               ),
                             ),
                             const SizedBox(height: 8),
@@ -712,7 +754,10 @@ class DashboardScreen extends StatelessWidget {
                     children: [
                       Container(
                         width: double.infinity,
-                        padding: const EdgeInsets.all(24),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 16,
+                        ),
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
                             colors: [Color(0xFF153B2A), Color(0xFF2F8F3B)],
@@ -726,17 +771,17 @@ class DashboardScreen extends StatelessWidget {
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 color: Colors.white,
-                                fontSize: 28,
+                                fontSize: 24,
                                 fontWeight: FontWeight.w900,
                               ),
                             ),
-                            const SizedBox(height: 8),
+                            const SizedBox(height: 4),
                             const Text(
                               'Standen, programma, uitslagen en voorspellingen voor de Derde Divisie.',
                               textAlign: TextAlign.center,
                               style: TextStyle(color: Colors.white70),
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 10),
                             OutlinedButton.icon(
                               onPressed: () => Share.share(
                                 'Doe mee met de Derde Divisie Voorspelpoule op DerdeDiv!',
@@ -752,6 +797,7 @@ class DashboardScreen extends StatelessWidget {
                           ],
                         ),
                       ),
+                      _HomePredictionReminder(onOpenPredict: onOpenPredict),
                       const SizedBox.shrink(),
                       const SizedBox.shrink(),
                       const SizedBox.shrink(),
@@ -991,20 +1037,14 @@ class _DashboardIntrofilmCardState extends State<_DashboardIntrofilmCard> {
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Icon(
-                                      MainNavigationConfig
-                                          .items[MainNavigationConfig
-                                              .introfilmIndex]
-                                          .selectedIcon,
+                                      Icons.ondemand_video_rounded,
                                       color: Colors.white,
                                       size: 17,
                                     ),
                                     const SizedBox(width: 6),
-                                    Text(
-                                      MainNavigationConfig
-                                          .items[MainNavigationConfig
-                                              .introfilmIndex]
-                                          .label,
-                                      style: const TextStyle(
+                                    const Text(
+                                      'Introfilm',
+                                      style: TextStyle(
                                         color: Colors.white,
                                         fontWeight: FontWeight.w800,
                                         fontSize: 12,
