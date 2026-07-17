@@ -7,6 +7,7 @@ import 'package:derde_divisie/core/design/app_design.dart';
 import 'package:derde_divisie/data/config/season_config.dart';
 import 'package:derde_divisie/data/models/poule_prediction_scope.dart';
 import 'package:derde_divisie/data/firestore/season_paths.dart';
+import 'package:derde_divisie/data/services/analytics_service.dart';
 import 'package:derde_divisie/features/voorspellen/prediction_overview_screen.dart';
 import 'package:derde_divisie/features/voorspellen/voorspel_een_team_screen.dart';
 import 'edit_poule_screen.dart';
@@ -133,6 +134,10 @@ class _PouleDetailScreenState extends State<PouleDetailScreen> {
       SetOptions(merge: true),
     );
     await batch.commit();
+    await AnalyticsService.instance.trackPouleJoined(
+      source: 'poule_detail',
+      public: true,
+    );
     if (mounted) {
       setState(() => _reloadKey = Object());
       ScaffoldMessenger.of(context).showSnackBar(
@@ -141,8 +146,9 @@ class _PouleDetailScreenState extends State<PouleDetailScreen> {
     }
   }
 
-  Future<void> _share(String name) {
-    return Share.share(
+  Future<void> _share(String name) async {
+    await AnalyticsService.instance.trackShareClicked(source: 'poule_invite');
+    await Share.share(
       'Doe mee met mijn poule "$name" op DerdeDiv. Poulecode: ${widget.pouleId}',
       subject: 'Uitnodiging voor $name',
     );

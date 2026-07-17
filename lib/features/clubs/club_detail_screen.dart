@@ -8,6 +8,7 @@ import 'package:derde_divisie/core/widgets/match_rows.dart';
 import 'package:derde_divisie/core/widgets/match_status_badge.dart';
 import 'package:derde_divisie/data/config/season_config.dart';
 import 'package:derde_divisie/data/services/activity_log_service.dart';
+import 'package:derde_divisie/data/services/analytics_service.dart';
 import 'package:derde_divisie/data/services/division_data_service.dart';
 import 'package:derde_divisie/features/voorspellen/voorspel_een_team_screen.dart';
 
@@ -146,6 +147,11 @@ class ClubDetailScreen extends StatelessWidget {
       eventType: ActivityEventType.favoriteTeamChanged,
       entityType: 'team',
       entityId: SeasonConfig.teamByName(club.name)?.id ?? teamSlug,
+    );
+    await AnalyticsService.instance.trackFavoriteClubSelected(
+      team: SeasonConfig.teamByName(club.name)?.id ?? teamSlug,
+      division: club.division,
+      source: 'club_detail',
     );
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(

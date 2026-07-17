@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 
 import 'package:derde_divisie/data/config/season_config.dart';
 import 'package:derde_divisie/core/design/app_design.dart';
+import 'package:derde_divisie/data/services/analytics_service.dart';
 import 'package:derde_divisie/data/models/poule_prediction_scope.dart';
 import 'poule_detail_screen.dart';
 
@@ -93,6 +94,12 @@ class _CreatePouleScreenState extends State<CreatePouleScreen> {
         SetOptions(merge: true),
       );
       await batch.commit();
+      await AnalyticsService.instance.trackPouleCreated(
+        pouleType: _type,
+        isPublic: _isPublic,
+        predictionScope: _predictionScope.firestoreValue,
+        division: _team?.division,
+      );
 
       if (!mounted) return;
       Navigator.of(context).pushReplacement(

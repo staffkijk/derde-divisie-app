@@ -11,6 +11,29 @@ enum MainNavigationDestination {
   profile,
 }
 
+extension MainNavigationDestinationAnalytics on MainNavigationDestination {
+  String get analyticsName {
+    switch (this) {
+      case MainNavigationDestination.home:
+        return 'home';
+      case MainNavigationDestination.divisionA:
+        return 'division_a';
+      case MainNavigationDestination.divisionB:
+        return 'division_b';
+      case MainNavigationDestination.program:
+        return 'program';
+      case MainNavigationDestination.predict:
+        return 'predictions';
+      case MainNavigationDestination.poules:
+        return 'pools';
+      case MainNavigationDestination.history:
+        return 'history';
+      case MainNavigationDestination.profile:
+        return 'profile';
+    }
+  }
+}
+
 class MainNavigationItemConfig {
   final MainNavigationDestination destination;
   final String label;
@@ -27,6 +50,8 @@ class MainNavigationItemConfig {
     required this.selectedIcon,
     required this.protected,
   });
+
+  String get analyticsScreenName => destination.analyticsName;
 }
 
 class MainNavigationConfig {

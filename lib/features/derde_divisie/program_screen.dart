@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import '../../data/config/team_logo_assets.dart';
 import '../../data/config/season_config.dart';
 import '../../data/firestore/season_paths.dart';
+import '../../data/services/analytics_service.dart';
 import '../../data/services/division_data_service.dart';
 import '../../core/utils/match_formatters.dart';
 import '../moderator/result_processing_service.dart';
@@ -525,15 +526,52 @@ class _MatchRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final compact = MediaQuery.sizeOf(context).width < 720;
 
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: compact ? 12 : 18,
-        vertical: compact ? 12 : 7,
+    return InkWell(
+      onTap: () => _openMatch(context),
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: compact ? 12 : 18,
+          vertical: compact ? 12 : 7,
+        ),
+        decoration: const BoxDecoration(
+          border: Border(bottom: BorderSide(color: _border)),
+        ),
+        child: compact ? _buildCompact(context) : _buildWide(context),
       ),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: _border)),
+    );
+  }
+
+  Future<void> _openMatch(BuildContext context) async {
+    await AnalyticsService.instance.trackMatchOpened(
+      matchId: match.id,
+      division: match.division,
+      round: match.round,
+      source: 'program',
+    );
+    if (!context.mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('${match.homeTeam} - ${match.awayTeam}'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Speelronde ${match.round}'),
+            if (match.date.isNotEmpty) Text('Datum: ${match.date}'),
+            if (match.kickoffTime.isNotEmpty)
+              Text('Tijd: ${match.kickoffTime}'),
+            Text(
+                'Status: ${_StatusBadge._statusConfig(match.status).label.isEmpty ? 'Gepland' : _StatusBadge._statusConfig(match.status).label}'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Sluiten'),
+          ),
+        ],
       ),
-      child: compact ? _buildCompact(context) : _buildWide(context),
     );
   }
 

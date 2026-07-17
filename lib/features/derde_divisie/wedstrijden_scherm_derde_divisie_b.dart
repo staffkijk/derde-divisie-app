@@ -8,6 +8,7 @@ import 'package:derde_divisie/data/models/wedstrijd.dart';
 import 'package:derde_divisie/data/services/wedstrijden_ddb.dart';
 import 'package:derde_divisie/helpers/sync_service.dart';
 import 'package:derde_divisie/data/services/activity_log_service.dart';
+import 'package:derde_divisie/data/services/analytics_service.dart';
 import 'package:derde_divisie/data/services/division_data_service.dart';
 import 'package:derde_divisie/core/design/app_design.dart';
 import 'package:derde_divisie/core/widgets/team_logo.dart';
@@ -380,6 +381,12 @@ class _WedstrijdenSchermDerdeDivisieBState
           'division': widget.divisie,
           'round': wedstrijd.speelronde,
         },
+      );
+      await AnalyticsService.instance.trackPredictionSaved(
+        division: 'B',
+        round: wedstrijd.speelronde,
+        matchId: wedstrijd.id,
+        source: 'division_predictions',
       );
     } finally {
       _savingPredictionIds.remove(wedstrijd.id);

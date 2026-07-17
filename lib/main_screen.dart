@@ -19,6 +19,7 @@ import 'package:derde_divisie/features/poules/poules_overzicht_screen.dart';
 import 'package:derde_divisie/features/voorspellen/prediction_overview_screen.dart';
 import 'package:derde_divisie/features/auth/login_screen.dart';
 import 'data/services/activity_log_service.dart';
+import 'data/services/analytics_service.dart';
 import 'data/services/prediction_reminder_service.dart';
 import 'loggboek/update_log_button.dart';
 
@@ -64,6 +65,7 @@ class _MainScreenState extends State<MainScreen> {
       final loggedIn = FirebaseAuth.instance.currentUser != null;
       AnnouncementService.maybeShow(context, isLoggedIn: loggedIn);
       _trackScreenView(_selectedIndex);
+      _maybeShowAnalyticsConsent();
     });
 
     _authSub = FirebaseAuth.instance.authStateChanges().listen((user) {
@@ -188,6 +190,52 @@ class _MainScreenState extends State<MainScreen> {
         'destination': item.label,
       },
     );
+    AnalyticsService.instance.trackScreenView(
+      item.analyticsScreenName,
+      loggedIn: FirebaseAuth.instance.currentUser != null,
+    );
+  }
+
+  void _trackAnalyticsScreenOnly(int index) {
+    final item = _navItems[index];
+    AnalyticsService.instance.trackScreenView(
+      item.analyticsScreenName,
+      loggedIn: FirebaseAuth.instance.currentUser != null,
+    );
+  }
+
+  Future<void> _maybeShowAnalyticsConsent() async {
+    final service = AnalyticsService.instance;
+    await service.initialize();
+    if (!mounted || !service.shouldAskConsent) return;
+
+    final accepted = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Analytics toestaan?'),
+        content: const Text(
+          'DerdeDiv wil Google Analytics gebruiken om te zien welke onderdelen worden gebruikt. We sturen geen e-mailadres, naam, gebruikersnaam of vrije tekst mee.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Niet toestaan'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Toestaan'),
+          ),
+        ],
+      ),
+    );
+
+    if (accepted == null) return;
+    await service.setConsent(accepted);
+    if (accepted && mounted) {
+      service.resetScreenTracking();
+      _trackAnalyticsScreenOnly(_selectedIndex);
+    }
   }
 
   Future<void> _selectMobileDestination(int index) async {
@@ -197,12 +245,15 @@ class _MainScreenState extends State<MainScreen> {
         return;
       case 1:
         if (!mounted) return;
+        var nextIndex = _selectedIndex;
         setState(() {
           if (_selectedIndex != MainNavigationConfig.divisionAIndex &&
               _selectedIndex != MainNavigationConfig.divisionBIndex) {
             _selectedIndex = MainNavigationConfig.divisionAIndex;
           }
+          nextIndex = _selectedIndex;
         });
+        _trackScreenView(nextIndex);
         return;
       case 2:
         await _selectIndex(MainNavigationConfig.programIndex);
@@ -441,11 +492,13 @@ class _MainScreenState extends State<MainScreen> {
                               ? 'B'
                               : 'A',
                       onDivisionChanged: (division) {
+                        final nextIndex = division == 'B'
+                            ? MainNavigationConfig.divisionBIndex
+                            : MainNavigationConfig.divisionAIndex;
                         setState(() {
-                          _selectedIndex = division == 'B'
-                              ? MainNavigationConfig.divisionBIndex
-                              : MainNavigationConfig.divisionAIndex;
+                          _selectedIndex = nextIndex;
                         });
+                        _trackScreenView(nextIndex);
                       },
                     )
                   : screens[_selectedIndex],

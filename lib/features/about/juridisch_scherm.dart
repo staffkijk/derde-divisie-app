@@ -98,8 +98,8 @@ class _JuridischSchermState extends State<JuridischScherm> {
                     sectionKey: _privacyKey,
                     icon: Icons.lock_outline_rounded,
                     title: 'Privacyverklaring',
-                    version: 'Versie 1.1.0',
-                    date: 'Laatst bijgewerkt: juni 2026',
+                    version: 'Versie 1.2.0',
+                    date: 'Laatst bijgewerkt: juli 2026',
                     children: const [
                       _LegalParagraph(
                         'DerdeDiv verwerkt persoonsgegevens om de webapp te laten werken, accounts te beheren, voorspellingen te verwerken, ranglijsten te tonen en de veiligheid van de dienst te bewaken.',
@@ -114,6 +114,7 @@ class _JuridischSchermState extends State<JuridischScherm> {
                         'Profielgegevens, zoals favoriete club, favoriete competitie, woonplaats als je die invult en profielfoto of avatar.',
                         'Voorspellingen, pouledeelname, scores, rankingposities en historische resultaten.',
                         'Technische gegevens, zoals apparaat, browser, foutmeldingen, beveiligingslogs en datum en tijd van gebruik.',
+                        'Analyticsgegevens over schermen en functies, alleen wanneer analytics technisch is ingeschakeld volgens de gekozen toestemming.',
                         'Berichten, feedback of supportvragen die je zelf aan ons stuurt.',
                       ]),
                       _LegalSubTitle(
@@ -123,6 +124,7 @@ class _JuridischSchermState extends State<JuridischScherm> {
                         'Om voorspellingen, poules, punten, standen en ranglijsten te verwerken.',
                         'Om misbruik, technische fouten en beveiligingsproblemen te voorkomen of te onderzoeken.',
                         'Om de webapp te onderhouden en te verbeteren.',
+                        'Om met Google Analytics 4 / Firebase Analytics te meten welke hoofdschermen en functies worden gebruikt, zonder e-mailadres, naam, gebruikersnaam of vrije tekst naar analytics te sturen.',
                         'Om te voldoen aan wettelijke verplichtingen als die van toepassing zijn.',
                       ]),
                       _LegalSubTitle('4. Grondslagen'),
@@ -135,7 +137,7 @@ class _JuridischSchermState extends State<JuridischScherm> {
                       ),
                       _LegalSubTitle('6. Delen met derden'),
                       _LegalParagraph(
-                        'Wij verkopen geen persoonsgegevens. Voor hosting, database, authenticatie, beveiliging en automatische verwerking kunnen diensten van Firebase en Google Cloud worden gebruikt. Deze partijen verwerken gegevens alleen voor de technische werking van de app.',
+                        'Wij verkopen geen persoonsgegevens. Voor hosting, database, authenticatie, beveiliging, automatische verwerking en analytics kunnen diensten van Firebase, Google Cloud en Google Analytics 4 worden gebruikt. Analytics wordt gebruikt als aanvullende meting naast de interne activiteitsregistratie.',
                       ),
                       _LegalSubTitle('7. Bewaartermijnen'),
                       _LegalBullets([
@@ -150,7 +152,7 @@ class _JuridischSchermState extends State<JuridischScherm> {
                       ),
                       _LegalSubTitle('9. Cookies en vergelijkbare technieken'),
                       _LegalParagraph(
-                        'De webapp kan functionele cookies of vergelijkbare technieken gebruiken die nodig zijn voor inloggen, sessiebeheer, beveiliging en basisfunctionaliteit. Als er in de toekomst analytische of trackingtechnieken worden toegevoegd, wordt deze verklaring aangepast en wordt toestemming gevraagd waar dat nodig is.',
+                        'De webapp kan functionele cookies of vergelijkbare technieken gebruiken die nodig zijn voor inloggen, sessiebeheer, beveiliging en basisfunctionaliteit. Voor Google Analytics 4 / Firebase Analytics wordt op web een lokale toestemming opgeslagen. Nieuwe webbezoekers starten zonder analyticscollectie totdat zij een keuze maken. Bij toestemming wordt analyticscollectie ingeschakeld. Bij weigeren of intrekken wordt analyticscollectie uitgeschakeld. De keuze kan in het profiel worden aangepast.',
                       ),
                       _LegalSubTitle('10. Jouw rechten'),
                       _LegalBullets([

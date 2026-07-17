@@ -4,6 +4,7 @@ import 'package:video_player/video_player.dart';
 
 import 'package:derde_divisie/core/config/media_config.dart';
 import 'package:derde_divisie/core/widgets/derde_div_logo.dart';
+import 'package:derde_divisie/data/services/analytics_service.dart';
 
 class IntroVideoScreen extends StatefulWidget {
   const IntroVideoScreen({super.key});
@@ -24,6 +25,8 @@ class _IntroVideoScreenState extends State<IntroVideoScreen>
   double _volume = 0.7;
   bool _isMuted = false;
   bool _wasPlayingBeforeFullscreen = false;
+  bool _startedTracked = false;
+  bool _completedTracked = false;
 
   @override
   void initState() {
@@ -58,6 +61,7 @@ class _IntroVideoScreenState extends State<IntroVideoScreen>
       await controller.initialize();
       await controller.setLooping(false);
       await controller.setVolume(_isMuted ? 0 : _volume);
+      controller.addListener(_trackCompletion);
 
       if (!mounted) {
         await controller.dispose();
@@ -97,6 +101,7 @@ class _IntroVideoScreenState extends State<IntroVideoScreen>
     } else {
       await controller.setVolume(_isMuted ? 0 : _volume);
       await controller.play();
+      _trackStarted();
     }
 
     if (mounted) setState(() {});
@@ -109,7 +114,31 @@ class _IntroVideoScreenState extends State<IntroVideoScreen>
     await controller.seekTo(Duration.zero);
     await controller.setVolume(_isMuted ? 0 : _volume);
     await controller.play();
+    _trackStarted();
     if (mounted) setState(() {});
+  }
+
+  void _trackStarted() {
+    if (_startedTracked) return;
+    _startedTracked = true;
+    AnalyticsService.instance.trackIntroVideoStarted();
+  }
+
+  void _trackCompletion() {
+    final controller = _controller;
+    if (controller == null ||
+        !controller.value.isInitialized ||
+        _completedTracked) {
+      return;
+    }
+
+    final duration = controller.value.duration;
+    final position = controller.value.position;
+    if (duration.inMilliseconds <= 0) return;
+    if (position >= duration - const Duration(milliseconds: 500)) {
+      _completedTracked = true;
+      AnalyticsService.instance.trackIntroVideoCompleted();
+    }
   }
 
   Future<void> _seekTo(Duration position) async {
@@ -184,6 +213,7 @@ class _IntroVideoScreenState extends State<IntroVideoScreen>
     WidgetsBinding.instance.removeObserver(this);
     final controller = _controller;
     _controller = null;
+    controller?.removeListener(_trackCompletion);
     controller?.pause();
     controller?.dispose();
     super.dispose();

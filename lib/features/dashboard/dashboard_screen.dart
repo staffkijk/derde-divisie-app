@@ -12,6 +12,7 @@ import 'package:url_launcher/url_launcher_string.dart';
 import 'package:derde_divisie/core/design/app_design.dart';
 import 'package:derde_divisie/data/config/season_config.dart';
 import 'package:derde_divisie/data/firestore/season_paths.dart';
+import 'package:derde_divisie/data/services/analytics_service.dart';
 import 'package:derde_divisie/data/services/prediction_reminder_service.dart';
 import 'package:derde_divisie/core/widgets/derde_div_logo.dart';
 import 'package:derde_divisie/core/widgets/team_logo.dart';
@@ -783,10 +784,15 @@ class DashboardScreen extends StatelessWidget {
                             ),
                             const SizedBox(height: 10),
                             OutlinedButton.icon(
-                              onPressed: () => Share.share(
-                                'Doe mee met de Derde Divisie Voorspelpoule op DerdeDiv!',
-                                subject: 'Daag je vrienden uit',
-                              ),
+                              onPressed: () async {
+                                await AnalyticsService.instance
+                                    .trackShareClicked(
+                                        source: 'home_challenge');
+                                await Share.share(
+                                  'Doe mee met de Derde Divisie Voorspelpoule op DerdeDiv!',
+                                  subject: 'Daag je vrienden uit',
+                                );
+                              },
                               icon: const Icon(Icons.ios_share_outlined),
                               label: const Text('Daag je vrienden uit'),
                               style: OutlinedButton.styleFrom(
@@ -810,6 +816,8 @@ class DashboardScreen extends StatelessWidget {
                                 'Voorspel uitslagen, daag je vrienden uit en klim in de ranglijst.\n'
                                 '👉 Download de app of volg @Derde_Div op X!';
 
+                            await AnalyticsService.instance
+                                .trackShareClicked(source: 'home_hidden');
                             await Share.share(
                               message,
                               subject: 'Daag je vrienden uit!',

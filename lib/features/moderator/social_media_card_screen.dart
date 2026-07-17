@@ -16,6 +16,7 @@ import 'package:derde_divisie/core/widgets/team_logo.dart';
 import 'package:derde_divisie/data/config/season_config.dart';
 import 'package:derde_divisie/data/firestore/season_paths.dart';
 import 'package:derde_divisie/data/services/activity_log_service.dart';
+import 'package:derde_divisie/data/services/analytics_service.dart';
 
 enum SocialCardMode { program, results }
 
@@ -72,6 +73,9 @@ class _SocialMediaCardScreenState extends State<SocialMediaCardScreen> {
           'mode': _mode.name,
         },
       );
+      await AnalyticsService.instance.trackShareClicked(
+        source: 'social_card_png',
+      );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -95,6 +99,9 @@ class _SocialMediaCardScreenState extends State<SocialMediaCardScreen> {
 
   Future<void> _copyText() async {
     await Clipboard.setData(ClipboardData(text: _tweetText));
+    await AnalyticsService.instance.trackShareClicked(
+      source: 'social_card_text',
+    );
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('X-tekst gekopieerd.')),
@@ -104,7 +111,12 @@ class _SocialMediaCardScreenState extends State<SocialMediaCardScreen> {
   Future<void> _openComposer() async {
     final url =
         'https://twitter.com/intent/tweet?text=${Uri.encodeComponent(_tweetText)}';
-    await launchUrlString(url, webOnlyWindowName: '_blank');
+    final opened = await launchUrlString(url, webOnlyWindowName: '_blank');
+    if (opened) {
+      await AnalyticsService.instance.trackShareClicked(
+        source: 'social_card_composer',
+      );
+    }
   }
 
   @override

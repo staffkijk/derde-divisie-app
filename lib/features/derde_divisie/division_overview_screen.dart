@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../data/config/team_logo_assets.dart';
 import '../../data/config/season_config.dart';
 import '../../data/firestore/season_paths.dart';
+import '../../data/services/analytics_service.dart';
 import '../../data/services/division_data_service.dart';
 import '../../core/utils/match_formatters.dart';
 import 'periode_standen_screen.dart';
@@ -241,7 +242,7 @@ class _DivisionHeader extends StatelessWidget {
   }
 }
 
-class _StandCard extends StatelessWidget {
+class _StandCard extends StatefulWidget {
   final String title;
   final String division;
 
@@ -251,6 +252,22 @@ class _StandCard extends StatelessWidget {
   });
 
   @override
+  State<_StandCard> createState() => _StandCardState();
+}
+
+class _StandCardState extends State<_StandCard> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      AnalyticsService.instance.trackStandingsViewed(
+        division: widget.division.toLowerCase().contains(' b') ? 'B' : 'A',
+        source: 'division_overview',
+      );
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return _ShellCard(
       child: Column(
@@ -258,7 +275,7 @@ class _StandCard extends StatelessWidget {
         children: [
           _SectionTitle(
             icon: Icons.leaderboard_rounded,
-            title: title,
+            title: widget.title,
           ),
           const SizedBox(height: 4),
           Text(
@@ -270,7 +287,7 @@ class _StandCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           StandDerdeDivisie(
-            divisie: division,
+            divisie: widget.division,
             seizoen: kActueelSeizoenWaarde,
           ),
         ],
