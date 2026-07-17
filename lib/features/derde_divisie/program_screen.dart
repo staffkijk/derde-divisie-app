@@ -1159,22 +1159,11 @@ class _EditMatchDialogState extends State<_EditMatchDialog> {
           homeTeamSlug: widget.match.homeTeamSlug,
           awayTeamSlug: widget.match.awayTeamSlug,
         );
-      } else if (_status == 'postponed' ||
-          _status == 'cancelled' ||
-          _status == 'abandoned') {
-        await processor.saveWithoutScore(
+      } else {
+        await processor.clearResultAndSetStatus(
           matchRef: widget.match.ref,
           status: _status,
         );
-      } else {
-        await widget.match.ref.set({
-          'status': 'scheduled',
-          'homeScore': FieldValue.delete(),
-          'awayScore': FieldValue.delete(),
-          'resultConfirmed': false,
-          'processed': false,
-          'verwerkt': false,
-        }, SetOptions(merge: true));
       }
 
       if (mounted) Navigator.of(context).pop(true);

@@ -100,6 +100,43 @@ void main() {
       expect(_team(changed, 'ado20')['played'], 1);
       expect(_team(changed, 'ado20')['points'], 3);
     });
+
+    for (final status in [
+      'scheduled',
+      'postponed',
+      'cancelled',
+      'abandoned',
+    ]) {
+      test('finished wedstrijd wordt $status en telt niet meer mee', () {
+        final standings = StandingsCalculator.calculateDivisionStandings(
+          division: 'A',
+          matches: [
+            _match('A', 'acv', 'ado20', 2, 1, status: status),
+          ],
+        );
+
+        expect(_team(standings, 'acv')['played'], 0);
+        expect(_team(standings, 'acv')['points'], 0);
+        expect(_team(standings, 'ado20')['played'], 0);
+        expect(_team(standings, 'ado20')['points'], 0);
+      });
+    }
+
+    test('periodestand wordt opnieuw opgebouwd zonder ongeldige uitslag', () {
+      final periodOne = StandingsCalculator.calculatePeriodStandings(
+        division: 'A',
+        period: 1,
+        matches: [
+          _match('A', 'acv', 'ado20', 2, 1, round: 1, status: 'scheduled'),
+          _match('A', 'dvs33_ermelo', 'acv', 1, 1, round: 2),
+        ],
+      );
+
+      expect(_team(periodOne, 'acv')['played'], 1);
+      expect(_team(periodOne, 'acv')['points'], 1);
+      expect(_team(periodOne, 'ado20')['played'], 0);
+      expect(_team(periodOne, 'ado20')['points'], 0);
+    });
   });
 }
 
@@ -110,6 +147,7 @@ Map<String, dynamic> _match(
   int homeScore,
   int awayScore, {
   int round = 1,
+  String status = 'finished',
 }) =>
     {
       'division': division,
@@ -118,7 +156,7 @@ Map<String, dynamic> _match(
       'awayTeamSlug': away,
       'homeScore': homeScore,
       'awayScore': awayScore,
-      'status': 'finished',
+      'status': status,
     };
 
 Map<String, dynamic> _team(List<Map<String, dynamic>> standings, String id) {

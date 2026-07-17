@@ -6,6 +6,7 @@ import 'package:derde_divisie/data/services/poule_service.dart';
 import 'package:derde_divisie/data/firestore/season_paths.dart';
 import 'package:derde_divisie/features/moderator/periodestand_service.dart';
 import 'package:derde_divisie/features/moderator/standen_service.dart';
+import 'package:derde_divisie/Puntensysteem/punten_rollback.dart';
 // Alleen de puntentelling binnenhalen, niet de gelijknamige corrigeer/verwerk-helpers
 import 'package:derde_divisie/Puntensysteem/puntenlogica.dart'
     show berekenPunten;
@@ -122,18 +123,65 @@ Future<List<QueryDocumentSnapshot<Map<String, dynamic>>>>
   String collectie,
   String wedstrijdId,
 ) async {
-  // Probeer eerst matchId (poule-collecties), dan wedstrijdId (soms gebruikt)
-  var snap = await firestore
+  final docsByPath = <String, QueryDocumentSnapshot<Map<String, dynamic>>>{};
+
+  final matchIdSnap = await firestore
       .collection(collectie)
       .where('matchId', isEqualTo: wedstrijdId)
       .get();
-  if (snap.docs.isNotEmpty) return snap.docs;
+  for (final doc in matchIdSnap.docs) {
+    docsByPath[doc.reference.path] = doc;
+  }
 
-  snap = await firestore
+  final wedstrijdIdSnap = await firestore
       .collection(collectie)
       .where('wedstrijdId', isEqualTo: wedstrijdId)
       .get();
-  return snap.docs;
+  for (final doc in wedstrijdIdSnap.docs) {
+    docsByPath[doc.reference.path] = doc;
+  }
+
+  return docsByPath.values.toList();
+}
+
+Future<List<QueryDocumentSnapshot<Map<String, dynamic>>>>
+    _findPredictionDocsForMatch(
+  String wedstrijdId,
+) async {
+  final docsByPath = <String, QueryDocumentSnapshot<Map<String, dynamic>>>{};
+
+  Future<void> addDocs(
+    QuerySnapshot<Map<String, dynamic>> snap,
+  ) async {
+    for (final doc in snap.docs) {
+      docsByPath[doc.reference.path] = doc;
+    }
+  }
+
+  await addDocs(
+    await SeasonPaths.currentSeasonPredictions
+        .where('wedstrijdId', isEqualTo: wedstrijdId)
+        .get(),
+  );
+  await addDocs(
+    await SeasonPaths.currentSeasonPredictions
+        .where('matchId', isEqualTo: wedstrijdId)
+        .get(),
+  );
+  await addDocs(
+    await firestore
+        .collection('voorspellingen')
+        .where('wedstrijdId', isEqualTo: wedstrijdId)
+        .get(),
+  );
+  await addDocs(
+    await firestore
+        .collection('voorspellingen')
+        .where('matchId', isEqualTo: wedstrijdId)
+        .get(),
+  );
+
+  return docsByPath.values.toList();
 }
 
 /// Fallback-verwerking voor een poule-collectie (met dedupe + deadline)
@@ -324,6 +372,88 @@ Future<void> _verwerkAllePouleCollectiesVoorWedstrijd({
       developer.log('❌ Fout in poule-collectie "$c": $e', stackTrace: st);
     }
   }
+}
+
+Future<void> draaiVoorspellingenVoorWedstrijdTerug(
+  String wedstrijdId,
+  String veldnaam,
+) async {
+  developer
+      .log('[Rollback] Start voorspellingen terugdraaien voor $wedstrijdId');
+
+  final voorspellingen = await _findPredictionDocsForMatch(wedstrijdId);
+  int predictionUpdates = 0;
+  int userUpdates = 0;
+
+  for (final doc in voorspellingen) {
+    final data = doc.data();
+    final rollback = rollbackProcessedPrediction(data);
+    final gebruikerId = (data['gebruikerId'] ?? data['userId'] ?? data['uid'])
+        ?.toString()
+        .trim();
+
+    if (rollback.pointsDelta != 0 &&
+        gebruikerId != null &&
+        gebruikerId.isNotEmpty) {
+      final userRef = firestore.collection('users').doc(gebruikerId);
+      await userRef.set(
+        {veldnaam: FieldValue.increment(rollback.pointsDelta)},
+        SetOptions(merge: true),
+      );
+      await _updateTotalenVoorUserRef(userRef);
+      userUpdates++;
+    }
+
+    await doc.reference.set({
+      'punten': rollback.nextPoints,
+      'verwerkt': rollback.nextProcessed,
+      'verwerktVoorUitslag': FieldValue.delete(),
+    }, SetOptions(merge: true));
+    predictionUpdates++;
+  }
+
+  const pouleCollecties = [
+    'poule_voorspellingen',
+    'poule_predictions',
+    'predictions',
+  ];
+  int poulePredictionUpdates = 0;
+  int pouleParticipantUpdates = 0;
+
+  for (final collectie in pouleCollecties) {
+    final docs = await _findPouleDocsForMatch(collectie, wedstrijdId);
+    for (final doc in docs) {
+      final data = doc.data();
+      final rollback = rollbackProcessedPrediction(data);
+      final pouleId =
+          (data['pouleId'] ?? data['poule'] ?? '').toString().trim();
+      final uid = (data['gebruikerId'] ?? data['userId'] ?? data['uid'] ?? '')
+          .toString()
+          .trim();
+
+      if (rollback.pointsDelta != 0 && pouleId.isNotEmpty && uid.isNotEmpty) {
+        await _incrementPouleDeelnemerPuntenSafe(
+          pouleId: pouleId,
+          uid: uid,
+          delta: rollback.pointsDelta,
+        );
+        pouleParticipantUpdates++;
+      }
+
+      await doc.reference.set({
+        'punten': rollback.nextPoints,
+        'verwerkt': rollback.nextProcessed,
+        'verwerktVoorUitslag': FieldValue.delete(),
+      }, SetOptions(merge: true));
+      poulePredictionUpdates++;
+    }
+  }
+
+  developer.log(
+    '[Rollback] Klaar voor $wedstrijdId: AB=$predictionUpdates, '
+    'users=$userUpdates, poule=$poulePredictionUpdates, '
+    'deelnemers=$pouleParticipantUpdates',
+  );
 }
 
 /// ===== Hoofdverwerker =====

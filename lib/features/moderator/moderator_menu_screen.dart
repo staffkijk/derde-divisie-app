@@ -191,7 +191,10 @@ class _ModeratorMenuScreenState extends State<ModeratorMenuScreen> {
 
   Future<void> _setStatus(_MatchDoc match, String status) async {
     try {
-      await _processor.saveWithoutScore(matchRef: match.ref, status: status);
+      await _processor.clearResultAndSetStatus(
+        matchRef: match.ref,
+        status: status,
+      );
       _homeControllerFor(match).clear();
       _awayControllerFor(match).clear();
       if (mounted) {
@@ -239,16 +242,10 @@ class _ModeratorMenuScreenState extends State<ModeratorMenuScreen> {
     if (confirmed != true) return;
 
     try {
-      await match.ref.set({
-        'homeScore': FieldValue.delete(),
-        'awayScore': FieldValue.delete(),
-        'uitslagThuis': FieldValue.delete(),
-        'uitslagUit': FieldValue.delete(),
-        'status': 'scheduled',
-        'resultConfirmed': false,
-        'verwerkt': false,
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+      await _processor.clearResultAndSetStatus(
+        matchRef: match.ref,
+        status: 'scheduled',
+      );
 
       _homeControllers[match.id]?.text = '';
       _awayControllers[match.id]?.text = '';

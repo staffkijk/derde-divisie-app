@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:derde_divisie/Puntensysteem/puntenlogica.dart';
+import 'package:derde_divisie/Puntensysteem/punten_rollback.dart';
 
 void main() {
   group('berekenPunten', () {
@@ -113,6 +114,34 @@ void main() {
       expect(exact.currentPoints, 10);
       expect(changed.currentPoints, 7);
       expect(changed.userTotal, 7);
+    });
+
+    test('eerder toegekende punten worden teruggedraaid', () {
+      final rollback = rollbackProcessedPrediction({
+        'punten': 10,
+        'verwerkt': true,
+        'verwerktVoorUitslag': '2-1',
+      });
+
+      expect(rollback.pointsDelta, -10);
+      expect(rollback.nextPoints, 0);
+      expect(rollback.nextProcessed, isFalse);
+      expect(rollback.clearProcessedResult, isTrue);
+    });
+
+    test('dezelfde rollback twee keer veroorzaakt geen dubbele aftrek', () {
+      final first = rollbackProcessedPrediction({
+        'punten': 10,
+        'verwerkt': true,
+        'verwerktVoorUitslag': '2-1',
+      });
+      final second = rollbackProcessedPrediction({
+        'punten': first.nextPoints,
+        'verwerkt': first.nextProcessed,
+      });
+
+      expect(first.pointsDelta, -10);
+      expect(second.pointsDelta, 0);
     });
   });
 }
