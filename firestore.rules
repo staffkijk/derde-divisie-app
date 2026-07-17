@@ -14,6 +14,29 @@ service cloud.firestore {
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.ismoderator == true;
     }
 
+    function isPouleOwner(pouleId) {
+      return signedIn() &&
+        get(/databases/$(database)/documents/poules/$(pouleId)).data.ownerId == request.auth.uid;
+    }
+
+    function isNewPredictionOwner() {
+      return signedIn() &&
+        (
+          request.resource.data.gebruikerId == request.auth.uid ||
+          request.resource.data.userId == request.auth.uid ||
+          request.resource.data.uid == request.auth.uid
+        );
+    }
+
+    function isExistingPredictionOwner() {
+      return signedIn() &&
+        (
+          resource.data.gebruikerId == request.auth.uid ||
+          resource.data.userId == request.auth.uid ||
+          resource.data.uid == request.auth.uid
+        );
+    }
+
     function activityLogIsSafe() {
       return !('metadata' in request.resource.data) ||
         (
@@ -24,10 +47,20 @@ service cloud.firestore {
         );
     }
 
+    function hasNoModeratorClaims() {
+      return !request.resource.data.keys().hasAny(['ismoderator', 'isModerator']);
+    }
+
+    function keepsModeratorClaimsUnchanged() {
+      return !request.resource.data.diff(resource.data)
+        .affectedKeys()
+        .hasAny(['ismoderator', 'isModerator']);
+    }
+
     match /users/{uid} {
       allow read: if true;
-      allow create: if isOwner(uid) || isModerator();
-      allow update: if isOwner(uid) || isModerator();
+      allow create: if isModerator() || (isOwner(uid) && hasNoModeratorClaims());
+      allow update: if isModerator() || (isOwner(uid) && keepsModeratorClaimsUnchanged());
       allow delete: if isModerator();
 
       match /notifications/{notificationId} {
@@ -41,7 +74,7 @@ service cloud.firestore {
         allow create, update, delete: if isOwner(uid);
       }
 
-      match /{document=**} {
+      match /{collection}/{document=**} {
         allow read, write: if isOwner(uid) || isModerator();
       }
     }
@@ -56,9 +89,134 @@ service cloud.firestore {
 
     match /voorspellingen/{predictionId} {
       allow read: if signedIn();
-      allow create, update: if signedIn() &&
-        request.resource.data.gebruikerId == request.auth.uid;
+      allow create: if isModerator() ||
+        (
+          signedIn() &&
+          request.resource.data.gebruikerId == request.auth.uid
+        );
+      allow update: if isModerator() ||
+        (
+          signedIn() &&
+          resource.data.gebruikerId == request.auth.uid &&
+          request.resource.data.gebruikerId == request.auth.uid
+        );
       allow delete: if isModerator();
+    }
+
+    match /poules/{pouleId} {
+      allow read: if true;
+      allow create: if signedIn() &&
+        request.resource.data.ownerId == request.auth.uid;
+      allow update, delete: if isModerator() || isPouleOwner(pouleId);
+
+      match /deelnemers/{uid} {
+        allow read: if signedIn();
+        allow create, update: if isModerator() ||
+          isPouleOwner(pouleId) ||
+          (signedIn() &&
+            (
+              request.auth.uid == uid ||
+              request.resource.data.userId == request.auth.uid
+            ));
+        allow delete: if isModerator() ||
+          isPouleOwner(pouleId) ||
+          (signedIn() && request.auth.uid == uid);
+      }
+
+      match /{document=**} {
+        allow read: if signedIn();
+        allow write: if isModerator() || isPouleOwner(pouleId);
+      }
+    }
+
+    match /poule_predictions/{predictionId} {
+      allow read: if signedIn();
+      allow create: if isModerator() || isNewPredictionOwner();
+      allow update: if isModerator() ||
+        (isExistingPredictionOwner() && isNewPredictionOwner());
+      allow delete: if isModerator();
+    }
+
+    match /poule_voorspellingen/{predictionId} {
+      allow read: if signedIn();
+      allow create: if isModerator() || isNewPredictionOwner();
+      allow update: if isModerator() ||
+        (isExistingPredictionOwner() && isNewPredictionOwner());
+      allow delete: if isModerator();
+    }
+
+    match /predictions/{predictionId} {
+      allow read: if signedIn();
+      allow create: if isModerator() || isNewPredictionOwner();
+      allow update: if isModerator() ||
+        (isExistingPredictionOwner() && isNewPredictionOwner());
+      allow delete: if isModerator();
+    }
+
+    match /matches/{matchId} {
+      allow read: if true;
+      allow write: if isModerator();
+    }
+
+    match /standen/{standingId} {
+      allow read: if true;
+      allow write: if isModerator();
+    }
+
+    match /periodestanden/{document=**} {
+      allow read: if true;
+      allow write: if isModerator();
+    }
+
+    match /teams/{teamId} {
+      allow read: if true;
+      allow write: if isModerator();
+    }
+
+    match /round_overrides/{overrideId} {
+      allow read: if true;
+      allow write: if isModerator();
+    }
+
+    match /app_updates/{updateId} {
+      allow read: if true;
+      allow write: if isModerator();
+    }
+
+    match /x_posts/{postId} {
+      allow read: if true;
+      allow write: if isModerator();
+    }
+
+    match /standings_archive/{document=**} {
+      allow read: if true;
+      allow write: if isModerator();
+    }
+
+    match /season_archives/{document=**} {
+      allow read: if true;
+      allow write: if isModerator();
+    }
+
+    match /maintenance/{document=**} {
+      allow read, write: if isModerator();
+    }
+
+    match /sync_logs/{logId} {
+      allow read, write: if isModerator();
+    }
+
+    match /eindstand_voorspellingen/{predictionId} {
+      allow read: if signedIn();
+      allow create: if isModerator() || isNewPredictionOwner();
+      allow update: if isModerator() ||
+        (isExistingPredictionOwner() && isNewPredictionOwner());
+      allow delete: if isModerator();
+    }
+
+    match /voorspel_punten/{uid} {
+      allow read: if isOwner(uid) || isModerator();
+      allow write: if isModerator();
     }
 
     match /seasons/{seasonId}/{document=**} {
@@ -72,8 +230,8 @@ service cloud.firestore {
     }
 
     match /{document=**} {
-      allow read: if true;
-      allow write: if signedIn();
+      allow read: if false;
+      allow write: if false;
     }
   }
 }

@@ -108,6 +108,8 @@ class _ActivityLogScreenState extends State<ActivityLogScreen> {
 
                       return ListView(
                         children: [
+                          const _WebsiteVisitPanel(),
+                          const SizedBox(height: AppSpacing.md),
                           _AnalyticsOverview(summary: analytics),
                           const SizedBox(height: AppSpacing.md),
                           if (filtered.isEmpty)
@@ -198,9 +200,9 @@ class _AnalyticsOverview extends StatelessWidget {
           spacing: AppSpacing.sm,
           runSpacing: AppSpacing.sm,
           children: [
-            _StatCard('Vandaag', summary.eventsToday),
-            _StatCard('7 dagen', summary.eventsSevenDays),
-            _StatCard('Actieve gebruikers', summary.uniqueUsers),
+            _StatCard('Events vandaag', summary.eventsToday),
+            _StatCard('Events 7 dagen', summary.eventsSevenDays),
+            _StatCard('Ingelogde gebruikers', summary.uniqueUsers),
             _StatCard('Voorspellingen', summary.predictionsSaved),
             _StatCard('Logins', summary.logins),
             _StatCard('Schermen', summary.screenViews),
@@ -220,7 +222,7 @@ class _AnalyticsOverview extends StatelessWidget {
                 SizedBox(
                   width: width,
                   child: _BarChartCard(
-                    title: 'Activiteit per dag',
+                    title: 'Functionele events per dag',
                     values: summary.activityPerDay,
                   ),
                 ),
@@ -259,8 +261,168 @@ class _AnalyticsOverview extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.sm),
         const Text(
-          'Cijfers zijn gebaseerd op maximaal 200 geladen events.',
+          'Deze cijfers zijn functionele app-events van ingelogde gebruikers, gebaseerd op maximaal 200 geladen events. Dit is geen bezoekersteller voor derdediv.nl.',
           style: AppTextStyles.bodyMuted,
+        ),
+      ],
+    );
+  }
+}
+
+class _WebsiteVisitPanel extends StatelessWidget {
+  const _WebsiteVisitPanel();
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.public_outlined, color: AppColors.primary),
+              SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  'Websitebezoek',
+                  style: AppTextStyles.sectionTitle,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          const Text(
+            'Nog niet gekoppeld aan GA4 of Google Search Console. Daarom worden hier geen bezoekersaantallen getoond.',
+            style: AppTextStyles.bodyMuted,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final wide = constraints.maxWidth >= 760;
+              final itemWidth = wide
+                  ? (constraints.maxWidth - AppSpacing.sm * 3) / 4
+                  : (constraints.maxWidth - AppSpacing.sm) / 2;
+              return Wrap(
+                spacing: AppSpacing.sm,
+                runSpacing: AppSpacing.sm,
+                children: const [
+                  _UnavailableMetric('Bezoekers vandaag'),
+                  _UnavailableMetric('Bezoekers 7 dagen'),
+                  _UnavailableMetric('Bezoekers 30 dagen'),
+                  _UnavailableMetric('Actieve bezoekers nu'),
+                ]
+                    .map((child) => SizedBox(width: itemWidth, child: child))
+                    .toList(),
+              );
+            },
+          ),
+          const SizedBox(height: AppSpacing.md),
+          const _AnalyticsSourceChecklist(),
+        ],
+      ),
+    );
+  }
+}
+
+class _UnavailableMetric extends StatelessWidget {
+  const _UnavailableMetric(this.label);
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(AppRadius.small),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              '-',
+              style: TextStyle(
+                color: AppColors.textMuted,
+                fontSize: 24,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            Text(label, style: AppTextStyles.bodyMuted),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AnalyticsSourceChecklist extends StatelessWidget {
+  const _AnalyticsSourceChecklist();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: const [
+        _AnalyticsSourceRow(
+          icon: Icons.analytics_outlined,
+          title: 'GA4',
+          text:
+              'Nodig voor unieke bezoekers, sessies, actieve bezoekers, apparaten, pagina\'s en verkeersbronnen.',
+        ),
+        SizedBox(height: AppSpacing.xs),
+        _AnalyticsSourceRow(
+          icon: Icons.search_outlined,
+          title: 'Search Console',
+          text:
+              'Nodig voor zoekprestaties zoals klikken, vertoningen, zoekopdrachten en landingspagina\'s.',
+        ),
+        SizedBox(height: AppSpacing.xs),
+        _AnalyticsSourceRow(
+          icon: Icons.bolt_outlined,
+          title: 'Firebase activityLogs',
+          text:
+              'Beschikbaar voor ingelogde functionele events zoals login, navigatie, schermweergaven en voorspellingen.',
+        ),
+      ],
+    );
+  }
+}
+
+class _AnalyticsSourceRow extends StatelessWidget {
+  const _AnalyticsSourceRow({
+    required this.icon,
+    required this.title,
+    required this.text,
+  });
+
+  final IconData icon;
+  final String title;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 20, color: AppColors.primary),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: RichText(
+            text: TextSpan(
+              style: const TextStyle(color: AppColors.text),
+              children: [
+                TextSpan(
+                  text: '$title: ',
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+                TextSpan(
+                  text: text,
+                  style: AppTextStyles.bodyMuted,
+                ),
+              ],
+            ),
+          ),
         ),
       ],
     );
