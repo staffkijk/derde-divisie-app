@@ -5,6 +5,7 @@ import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher_string.dart';
@@ -373,6 +374,126 @@ class DashboardScreen extends StatelessWidget {
         const SnackBar(content: Text('Kon link niet openen')),
       );
     }
+  }
+
+  Future<void> _showShareMenu(BuildContext context) async {
+    const url = 'https://derdediv.nl/';
+    const text =
+        'Volg de Derde Divisie, bekijk het programma en voorspel de uitslagen op DerdeDiv.';
+    const fullText = '$text $url';
+
+    Future<void> track(String source) =>
+        AnalyticsService.instance.trackShareClicked(source: source);
+
+    Future<void> openEncoded(String source, String target) async {
+      await track(source);
+      await _openUrl(context, target);
+    }
+
+    final pageContext = context;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+          child: Wrap(
+            runSpacing: 6,
+            children: [
+              const ListTile(
+                title: Text(
+                  'Delen',
+                  style: TextStyle(fontWeight: FontWeight.w900),
+                ),
+                subtitle: Text(fullText),
+              ),
+              ListTile(
+                leading: const Icon(Icons.chat_outlined),
+                title: const Text('WhatsApp'),
+                onTap: () {
+                  Navigator.pop(context);
+                  openEncoded(
+                    'whatsapp',
+                    'https://wa.me/?text=${Uri.encodeComponent(fullText)}',
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.facebook_outlined),
+                title: const Text('Facebook'),
+                onTap: () {
+                  Navigator.pop(context);
+                  openEncoded(
+                    'facebook',
+                    'https://www.facebook.com/sharer/sharer.php?u=${Uri.encodeComponent(url)}',
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.alternate_email_rounded),
+                title: const Text('X / Twitter'),
+                onTap: () {
+                  Navigator.pop(context);
+                  openEncoded(
+                    'x',
+                    'https://twitter.com/intent/tweet?text=${Uri.encodeComponent(text)}&url=${Uri.encodeComponent(url)}',
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.email_outlined),
+                title: const Text('E-mail'),
+                onTap: () {
+                  Navigator.pop(context);
+                  openEncoded(
+                    'email',
+                    'mailto:?subject=${Uri.encodeComponent('DerdeDiv')}&body=${Uri.encodeComponent(fullText)}',
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.link_rounded),
+                title: const Text('Kopieer link'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  await track('copy_link');
+                  await Clipboard.setData(const ClipboardData(text: url));
+                  if (!pageContext.mounted) return;
+                  ScaffoldMessenger.of(pageContext).showSnackBar(
+                    const SnackBar(content: Text('Link gekopieerd')),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_camera_outlined),
+                title: const Text('Kopieer voor Instagram'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  await track('instagram_copy');
+                  await Clipboard.setData(const ClipboardData(text: fullText));
+                  if (!pageContext.mounted) return;
+                  ScaffoldMessenger.of(pageContext).showSnackBar(
+                    const SnackBar(
+                      content: Text('Tekst gekopieerd voor Instagram'),
+                    ),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.ios_share_outlined),
+                title: const Text('Meer delen'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  await track('native_share');
+                  await Share.share(fullText, subject: 'DerdeDiv');
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   String _fmtDate(Timestamp ts) =>
@@ -784,15 +905,7 @@ class DashboardScreen extends StatelessWidget {
                             ),
                             const SizedBox(height: 10),
                             OutlinedButton.icon(
-                              onPressed: () async {
-                                await AnalyticsService.instance
-                                    .trackShareClicked(
-                                        source: 'home_challenge');
-                                await Share.share(
-                                  'Doe mee met de Derde Divisie Voorspelpoule op DerdeDiv!',
-                                  subject: 'Daag je vrienden uit',
-                                );
-                              },
+                              onPressed: () => _showShareMenu(context),
                               icon: const Icon(Icons.ios_share_outlined),
                               label: const Text('Daag je vrienden uit'),
                               style: OutlinedButton.styleFrom(

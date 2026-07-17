@@ -25,8 +25,10 @@ class _EindstandVoorspellingScreenState
 
   List<String> _clubs = [];
   bool _loading = true;
+  bool _saving = false;
   int _points = 0;
   late DateTime _deadline;
+  _SaveStatus _saveStatus = _SaveStatus.idle;
 
   bool get _locked => DateTime.now().isAfter(_deadline);
 
@@ -101,16 +103,34 @@ class _EindstandVoorspellingScreenState
     final user = _auth.currentUser;
     if (user == null || _locked) return;
 
-    await _db
-        .collection('eindstand_voorspellingen')
-        .doc('${user.uid}_${widget.divisie}')
-        .set({
-      'gebruikerId': user.uid,
-      'divisie': widget.divisie,
-      'seasonId': SeasonConfig.activeSeasonId,
-      'voorspelling': _clubs,
-      'timestamp': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
+    setState(() {
+      _saving = true;
+      _saveStatus = _SaveStatus.saving;
+    });
+
+    try {
+      await _db
+          .collection('eindstand_voorspellingen')
+          .doc('${user.uid}_${widget.divisie}')
+          .set({
+        'gebruikerId': user.uid,
+        'divisie': widget.divisie,
+        'seasonId': SeasonConfig.activeSeasonId,
+        'voorspelling': _clubs,
+        'timestamp': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _saveStatus = _SaveStatus.saved;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _saveStatus = _SaveStatus.failed;
+      });
+    }
   }
 
   @override
@@ -133,6 +153,9 @@ class _EindstandVoorspellingScreenState
                             _StatusBar(
                               locked: _locked,
                               points: _points,
+                              saveStatus: _saveStatus,
+                              saving: _saving,
+                              onRetry: _save,
                             ),
                             Expanded(
                               child: ReorderableListView.builder(
@@ -142,7 +165,7 @@ class _EindstandVoorspellingScreenState
                                 buildDefaultDragHandles: false,
                                 itemCount: _clubs.length,
                                 onReorder: (oldIndex, newIndex) async {
-                                  if (_locked) return;
+                                  if (_locked || _saving) return;
                                   setState(() {
                                     if (newIndex > oldIndex) newIndex--;
                                     final club = _clubs.removeAt(oldIndex);
@@ -171,11 +194,22 @@ class _EindstandVoorspellingScreenState
   }
 }
 
+enum _SaveStatus { idle, saving, saved, failed }
+
 class _StatusBar extends StatelessWidget {
-  const _StatusBar({required this.locked, required this.points});
+  const _StatusBar({
+    required this.locked,
+    required this.points,
+    required this.saveStatus,
+    required this.saving,
+    required this.onRetry,
+  });
 
   final bool locked;
   final int points;
+  final _SaveStatus saveStatus;
+  final bool saving;
+  final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
@@ -201,9 +235,71 @@ class _StatusBar extends StatelessWidget {
             ),
           ),
           if (points > 0) Text('$points punten'),
+          if (!locked) ...[
+            const SizedBox(width: 12),
+            _SaveStatusIndicator(
+              status: saveStatus,
+              saving: saving,
+              onRetry: onRetry,
+            ),
+          ],
         ],
       ),
     );
+  }
+}
+
+class _SaveStatusIndicator extends StatelessWidget {
+  const _SaveStatusIndicator({
+    required this.status,
+    required this.saving,
+    required this.onRetry,
+  });
+
+  final _SaveStatus status;
+  final bool saving;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    switch (status) {
+      case _SaveStatus.saving:
+        return const Text(
+          'Opslaan...',
+          style: TextStyle(fontWeight: FontWeight.w800),
+        );
+      case _SaveStatus.saved:
+        return const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.check_circle_outline, size: 18, color: Colors.green),
+            SizedBox(width: 4),
+            Text('Opgeslagen', style: TextStyle(fontWeight: FontWeight.w800)),
+          ],
+        );
+      case _SaveStatus.failed:
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Niet opgeslagen',
+              style: TextStyle(
+                color: Colors.red,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            TextButton(
+              onPressed: saving ? null : onRetry,
+              child: const Text('Opnieuw proberen'),
+            ),
+          ],
+        );
+      case _SaveStatus.idle:
+        return const Text(
+          'Sleep clubs om je voorspelling op te slaan',
+          style: TextStyle(color: Colors.black54),
+        );
+    }
   }
 }
 

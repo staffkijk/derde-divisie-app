@@ -24,8 +24,8 @@ Flutter-client te plaatsen.
 5. Gebruik een service account voor de Cloud Function.
 6. Geef het service-account e-mailadres in GA4 Property Access Management
    minimaal Viewer-toegang.
-7. Sla `GA4_PROPERTY_ID` op als Firebase/Cloud Functions secret of environment
-   variable.
+7. Configureer `GA4_PROPERTY_ID` als Firebase Functions parameterized
+   configuration value.
 
 ## Cloud Function endpoints
 

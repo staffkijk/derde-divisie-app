@@ -5,6 +5,7 @@ import 'package:logging/logging.dart';
 
 import 'package:derde_divisie/data/config/season_config.dart';
 import 'package:derde_divisie/core/utils/gemeenten.dart';
+import 'package:derde_divisie/data/models/notification_preferences.dart';
 import 'package:derde_divisie/data/services/activity_log_service.dart';
 import 'package:derde_divisie/data/services/analytics_service.dart';
 
@@ -39,6 +40,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool voorspellingenZichtbaar = true;
   bool allowEmailSharingWithPouleOwner = false;
   bool analyticsEnabled = false;
+  NotificationPreferences notificationPreferences =
+      const NotificationPreferences();
   bool _usernameChanged = false;
   bool isLoading = true;
   bool isSaving = false;
@@ -109,6 +112,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             data?['voorspellingenZichtbaar'] as bool? ?? true;
         allowEmailSharingWithPouleOwner =
             data?['allowEmailSharingWithPouleOwner'] as bool? ?? false;
+        notificationPreferences = NotificationPreferences.fromMap(
+          data?['notificationPreferences'] as Map<String, dynamic>?,
+        );
         analyticsEnabled = AnalyticsService.instance.collectionEnabled;
         _usernameChanged = data?['usernameChanged'] as bool? ?? false;
 
@@ -222,6 +228,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         'favoriteDivision': selectedTeam?.division ?? FieldValue.delete(),
         'voorspellingenZichtbaar': voorspellingenZichtbaar,
         'allowEmailSharingWithPouleOwner': allowEmailSharingWithPouleOwner,
+        'notificationPreferences': notificationPreferences.toMap(),
         'emailSharingConsentAt': allowEmailSharingWithPouleOwner
             ? FieldValue.serverTimestamp()
             : FieldValue.delete(),
@@ -273,6 +280,140 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       );
     }
+  }
+
+  Widget _notificationPreferencesSection() {
+    final selectedIds = notificationPreferences.selectedTeamIds.toSet();
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _softGreen,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: _borderGreen),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.notifications_active_outlined,
+                  color: _darkGreen),
+              const SizedBox(width: 14),
+              const Expanded(
+                child: Text(
+                  'Notificaties en herinneringen',
+                  style: TextStyle(
+                    color: _textDark,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              Switch(
+                value: notificationPreferences.predictionRemindersEnabled,
+                activeColor: _green,
+                onChanged: (value) {
+                  setState(() {
+                    notificationPreferences = notificationPreferences.copyWith(
+                      predictionRemindersEnabled: value,
+                    );
+                  });
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Voorspelherinneringen worden toegepast op in-app meldingen en voorbereide pushmeldingen.',
+            style: TextStyle(color: _textMuted, fontSize: 13),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              FilterChip(
+                selected: notificationPreferences.divisionA,
+                label: const Text('Derde Divisie A'),
+                onSelected: (value) {
+                  setState(() {
+                    notificationPreferences = notificationPreferences.copyWith(
+                      divisionA: value,
+                    );
+                  });
+                },
+              ),
+              FilterChip(
+                selected: notificationPreferences.divisionB,
+                label: const Text('Derde Divisie B'),
+                onSelected: (value) {
+                  setState(() {
+                    notificationPreferences = notificationPreferences.copyWith(
+                      divisionB: value,
+                    );
+                  });
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<NotificationTeamScope>(
+            value: notificationPreferences.teamScope,
+            decoration: const InputDecoration(labelText: 'Teamvoorkeur'),
+            items: const [
+              DropdownMenuItem(
+                value: NotificationTeamScope.all,
+                child: Text('Alle teams / alle wedstrijden'),
+              ),
+              DropdownMenuItem(
+                value: NotificationTeamScope.favorite,
+                child: Text('Alleen favoriete club'),
+              ),
+              DropdownMenuItem(
+                value: NotificationTeamScope.selected,
+                child: Text('Specifieke geselecteerde teams'),
+              ),
+            ],
+            onChanged: (value) {
+              if (value == null) return;
+              setState(() {
+                notificationPreferences =
+                    notificationPreferences.copyWith(teamScope: value);
+              });
+            },
+          ),
+          if (notificationPreferences.teamScope ==
+              NotificationTeamScope.selected) ...[
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final team in SeasonConfig.teamsInListOrder)
+                  FilterChip(
+                    selected: selectedIds.contains(team.id),
+                    label: Text(team.listLabel),
+                    onSelected: (value) {
+                      setState(() {
+                        final next = selectedIds.toSet();
+                        if (value) {
+                          next.add(team.id);
+                        } else {
+                          next.remove(team.id);
+                        }
+                        notificationPreferences =
+                            notificationPreferences.copyWith(
+                          selectedTeamIds: next.toList()..sort(),
+                        );
+                      });
+                    },
+                  ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
   }
 
   void _showAvatarSelection() {
@@ -1064,6 +1205,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ],
             ),
           ),
+          const SizedBox(height: 14),
+          _notificationPreferencesSection(),
           const SizedBox(height: 14),
           Container(
             padding: const EdgeInsets.all(16),

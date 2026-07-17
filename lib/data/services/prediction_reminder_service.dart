@@ -5,6 +5,7 @@ import 'package:derde_divisie/core/utils/match_formatters.dart';
 import 'package:derde_divisie/core/widgets/match_status_badge.dart';
 import 'package:derde_divisie/data/config/season_config.dart';
 import 'package:derde_divisie/data/firestore/season_paths.dart';
+import 'package:derde_divisie/data/models/notification_preferences.dart';
 
 class PredictionReminderStatus {
   const PredictionReminderStatus({
@@ -79,13 +80,28 @@ class PredictionReminderService {
     final uid = _auth.currentUser?.uid;
     if (uid == null) return null;
 
+    final userDoc = await _firestore.collection('users').doc(uid).get();
+    final userData = userDoc.data();
+    final preferences = NotificationPreferences.fromMap(
+      userData?['notificationPreferences'] as Map<String, dynamic>?,
+    );
+    final normalizedDivision = SeasonConfig.normalizeDivisionCode(division);
+    if (!preferences.allowsDivision(normalizedDivision)) return null;
+    final favoriteTeamId = (userData?['favoriteTeamSlug'] ?? '').toString();
+
     final matchesSnap = await SeasonPaths.currentSeasonMatches.get();
     final matches = matchesSnap.docs
         .where((doc) => doc.id != '_meta')
         .map((doc) => _ReminderMatch.fromDoc(doc))
-        .where((match) =>
-            match.division == SeasonConfig.normalizeDivisionCode(division))
+        .where((match) => match.division == normalizedDivision)
         .where((match) => match.isRequiredForPrediction)
+        .where(
+          (match) => preferences.allowsMatchTeams(
+            division: normalizedDivision,
+            matchTeamIds: match.teamIds,
+            favoriteTeamId: favoriteTeamId.isEmpty ? null : favoriteTeamId,
+          ),
+        )
         .toList()
       ..sort(_ReminderMatch.compare);
 
@@ -193,6 +209,17 @@ class _ReminderMatch {
   final Map<String, dynamic> data;
   final DateTime? dateTime;
 
+  Iterable<String> get teamIds sync* {
+    final home =
+        _string(data['homeTeam'] ?? data['thuisTeam'] ?? data['thuisteam']);
+    final away =
+        _string(data['awayTeam'] ?? data['uitTeam'] ?? data['uitteam']);
+    final homeTeam = SeasonConfig.teamByName(home);
+    final awayTeam = SeasonConfig.teamByName(away);
+    if (homeTeam != null) yield homeTeam.id;
+    if (awayTeam != null) yield awayTeam.id;
+  }
+
   bool get isRequiredForPrediction {
     return status == MatchStatus.scheduled ||
         status == MatchStatus.postponed ||
@@ -228,4 +255,6 @@ class _ReminderMatch {
     if (value is num) return value.toInt();
     return int.tryParse(value?.toString() ?? '') ?? 0;
   }
+
+  static String _string(dynamic value) => value?.toString() ?? '';
 }

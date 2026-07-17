@@ -121,5 +121,152 @@ void main() {
         4,
       );
     });
+
+    test('ronde 1 gespeeld, ronde 2 toekomst selecteert ronde 2', () {
+      expect(
+        PredictionRoundResolver.resolve(
+          matches: [
+            PredictionRoundMatch(
+              round: 1,
+              date: DateTime(2026, 8, 15, 14, 30),
+              division: 'A',
+              status: 'finished',
+            ),
+            PredictionRoundMatch(
+              round: 2,
+              date: DateTime(2026, 8, 22, 14, 30),
+              division: 'A',
+            ),
+          ],
+          division: 'A',
+          now: DateTime(2026, 8, 16),
+        ),
+        2,
+      );
+    });
+
+    test('gedeeltelijk gespeelde ronde blijft geselecteerd zolang open', () {
+      expect(
+        PredictionRoundResolver.resolve(
+          matches: [
+            PredictionRoundMatch(
+              round: 3,
+              date: DateTime(2026, 8, 29, 14, 30),
+              division: 'A',
+              status: 'finished',
+            ),
+            PredictionRoundMatch(
+              round: 3,
+              date: DateTime(2026, 8, 30, 14, 30),
+              division: 'A',
+            ),
+            PredictionRoundMatch(
+              round: 4,
+              date: DateTime(2026, 9, 5, 14, 30),
+              division: 'A',
+            ),
+          ],
+          division: 'A',
+          now: DateTime(2026, 8, 29, 10),
+        ),
+        3,
+      );
+    });
+
+    test('geen open voorspellingen maar wel ongespeeld kiest vroegste', () {
+      expect(
+        PredictionRoundResolver.resolve(
+          matches: [
+            PredictionRoundMatch(
+              round: 3,
+              date: DateTime(2026, 8, 29, 14, 30),
+              division: 'A',
+              status: 'scheduled',
+            ),
+            PredictionRoundMatch(
+              round: 4,
+              date: DateTime(2026, 9, 5, 14, 30),
+              division: 'A',
+              status: 'scheduled',
+            ),
+          ],
+          division: 'A',
+          now: DateTime(2026, 9, 5, 13),
+        ),
+        3,
+      );
+    });
+
+    test('vroegste ongespeelde ronde wacht als latere ronde nog openstaat', () {
+      expect(
+        PredictionRoundResolver.resolve(
+          matches: [
+            PredictionRoundMatch(
+              round: 3,
+              date: DateTime(2026, 8, 29, 14, 30),
+              division: 'A',
+              status: 'scheduled',
+            ),
+            PredictionRoundMatch(
+              round: 4,
+              date: DateTime(2026, 9, 5, 14, 30),
+              division: 'A',
+              status: 'scheduled',
+            ),
+          ],
+          division: 'A',
+          now: DateTime(2026, 9, 5, 10),
+        ),
+        4,
+      );
+    });
+
+    test('uitgestelde wedstrijd uit eerdere ronde wordt fallback', () {
+      expect(
+        PredictionRoundResolver.resolve(
+          matches: [
+            PredictionRoundMatch(
+              round: 2,
+              date: DateTime(2026, 8, 22, 14, 30),
+              division: 'A',
+              status: 'postponed',
+            ),
+            PredictionRoundMatch(
+              round: 3,
+              date: DateTime(2026, 8, 29, 14, 30),
+              division: 'A',
+              status: 'finished',
+            ),
+          ],
+          division: 'A',
+          now: DateTime(2026, 9, 1),
+        ),
+        2,
+      );
+    });
+
+    test('volledig afgelopen seizoen kiest laatste beschikbare ronde', () {
+      expect(
+        PredictionRoundResolver.resolve(
+          matches: [
+            PredictionRoundMatch(
+              round: 33,
+              date: DateTime(2027, 5, 16, 14, 30),
+              division: 'A',
+              status: 'finished',
+            ),
+            PredictionRoundMatch(
+              round: 34,
+              date: DateTime(2027, 5, 23, 14, 30),
+              division: 'A',
+              status: 'finished',
+            ),
+          ],
+          division: 'A',
+          now: DateTime(2027, 6, 1),
+        ),
+        34,
+      );
+    });
   });
 }

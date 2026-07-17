@@ -241,13 +241,25 @@ class _IntroVideoScreenState extends State<IntroVideoScreen>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Derde Divisie introfilm',
-                        style: TextStyle(
-                          color: Color(0xFF153B2A),
-                          fontSize: 30,
-                          fontWeight: FontWeight.w900,
-                        ),
+                      Row(
+                        children: [
+                          IconButton.filledTonal(
+                            tooltip: 'Terug',
+                            onPressed: () => Navigator.of(context).maybePop(),
+                            icon: const Icon(Icons.arrow_back_rounded),
+                          ),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Text(
+                              'Derde Divisie introfilm',
+                              style: TextStyle(
+                                color: Color(0xFF153B2A),
+                                fontSize: 30,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 6),
                       const Text(

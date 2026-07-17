@@ -8,6 +8,18 @@ class PredictionScore {
 
   final int home;
   final int away;
+
+  String get label => '$home-$away';
+}
+
+class PredictionScoreGroup {
+  const PredictionScoreGroup({
+    required this.label,
+    required this.scores,
+  });
+
+  final String label;
+  final List<PredictionScore> scores;
 }
 
 class PredictionScorePicker extends StatelessWidget {
@@ -27,18 +39,42 @@ class PredictionScorePicker extends StatelessWidget {
   final String semanticLabel;
 
   static const quickScores = <PredictionScore>[
-    PredictionScore(1, 0),
-    PredictionScore(2, 0),
-    PredictionScore(2, 1),
     PredictionScore(3, 1),
-    PredictionScore(1, 1),
+    PredictionScore(2, 1),
+    PredictionScore(1, 0),
     PredictionScore(0, 0),
+    PredictionScore(1, 1),
+    PredictionScore(2, 2),
     PredictionScore(0, 1),
     PredictionScore(1, 2),
-    PredictionScore(0, 2),
-    PredictionScore(2, 2),
-    PredictionScore(3, 2),
-    PredictionScore(4, 1),
+    PredictionScore(1, 3),
+  ];
+
+  static const quickScoreGroups = <PredictionScoreGroup>[
+    PredictionScoreGroup(
+      label: 'Thuiswinst',
+      scores: [
+        PredictionScore(3, 1),
+        PredictionScore(2, 1),
+        PredictionScore(1, 0),
+      ],
+    ),
+    PredictionScoreGroup(
+      label: 'Gelijk',
+      scores: [
+        PredictionScore(0, 0),
+        PredictionScore(1, 1),
+        PredictionScore(2, 2),
+      ],
+    ),
+    PredictionScoreGroup(
+      label: 'Uitwinst',
+      scores: [
+        PredictionScore(0, 1),
+        PredictionScore(1, 2),
+        PredictionScore(1, 3),
+      ],
+    ),
   ];
 
   @override
@@ -210,15 +246,15 @@ class _PredictionScoreSheetState extends State<_PredictionScoreSheet> {
                   const Text('Kies uitslag', style: AppTextStyles.sectionTitle),
                   const SizedBox(height: AppSpacing.sm),
                   Wrap(
-                    spacing: AppSpacing.xs,
-                    runSpacing: AppSpacing.xs,
+                    spacing: AppSpacing.sm,
+                    runSpacing: AppSpacing.sm,
                     children: [
-                      for (final score in PredictionScorePicker.quickScores)
-                        ChoiceChip(
-                          selected: widget.selectedHome == score.home &&
-                              widget.selectedAway == score.away,
-                          label: Text('${score.home}-${score.away}'),
-                          onSelected: (_) => Navigator.pop(context, score),
+                      for (final group
+                          in PredictionScorePicker.quickScoreGroups)
+                        _ScoreGroup(
+                          group: group,
+                          selectedHome: widget.selectedHome,
+                          selectedAway: widget.selectedAway,
                         ),
                       ActionChip(
                         avatar: const Icon(Icons.edit_outlined, size: 17),
@@ -272,6 +308,65 @@ class _PredictionScoreSheetState extends State<_PredictionScoreSheet> {
       PredictionScore(
         int.parse(_homeController.text.trim()),
         int.parse(_awayController.text.trim()),
+      ),
+    );
+  }
+}
+
+class _ScoreGroup extends StatelessWidget {
+  const _ScoreGroup({
+    required this.group,
+    required this.selectedHome,
+    required this.selectedAway,
+  });
+
+  final PredictionScoreGroup group;
+  final int? selectedHome;
+  final int? selectedAway;
+
+  @override
+  Widget build(BuildContext context) {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minWidth: 178),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: AppColors.background,
+          borderRadius: BorderRadius.circular(AppRadius.small),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.xs),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(4, 2, 4, 6),
+                child: Text(
+                  group.label,
+                  style: const TextStyle(
+                    color: AppColors.textMuted,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              Wrap(
+                spacing: AppSpacing.xs,
+                runSpacing: AppSpacing.xs,
+                children: [
+                  for (final score in group.scores)
+                    ChoiceChip(
+                      selected: selectedHome == score.home &&
+                          selectedAway == score.away,
+                      label: Text(score.label),
+                      onSelected: (_) => Navigator.pop(context, score),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

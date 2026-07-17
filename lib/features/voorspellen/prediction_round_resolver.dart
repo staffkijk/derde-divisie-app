@@ -5,11 +5,36 @@ class PredictionRoundMatch {
     required this.round,
     required this.date,
     required this.division,
+    this.status,
   });
 
   final int round;
   final DateTime date;
   final String division;
+  final String? status;
+
+  bool get isPlayed {
+    final normalized = _normalizedStatus;
+    return normalized == 'finished' ||
+        normalized == 'played' ||
+        normalized == 'gespeeld' ||
+        normalized == 'processed' ||
+        normalized == 'verwerkt';
+  }
+
+  bool isUnplayedAt(DateTime now) {
+    final normalized = _normalizedStatus;
+    if (isPlayed) return false;
+    if (normalized == 'scheduled' ||
+        normalized == 'postponed' ||
+        normalized == 'uitgesteld') {
+      return true;
+    }
+
+    return date.isAfter(now);
+  }
+
+  String get _normalizedStatus => status?.trim().toLowerCase() ?? '';
 }
 
 class PredictionRoundResolver {
@@ -34,27 +59,44 @@ class PredictionRoundResolver {
 
     if (divisionMatches.isEmpty) return null;
 
-    final rounds = <int, DateTime>{};
+    final rounds = <int, _RoundState>{};
     for (final match in divisionMatches) {
       final deadline = deadlineFor(match.date);
       final existing = rounds[match.round];
-      if (existing == null || deadline.isBefore(existing)) {
-        rounds[match.round] = deadline;
+      if (existing == null) {
+        rounds[match.round] = _RoundState(
+          round: match.round,
+          earliestDeadline: deadline,
+          earliestMatchDate: match.date,
+          hasUnplayedMatch: match.isUnplayedAt(now),
+        );
+      } else {
+        rounds[match.round] = existing.add(match, deadline, now);
       }
     }
 
-    final sorted = rounds.entries.toList()
+    final sorted = rounds.values.toList()
       ..sort((a, b) {
-        final deadlineCompare = a.value.compareTo(b.value);
+        final deadlineCompare = a.earliestDeadline.compareTo(
+          b.earliestDeadline,
+        );
         if (deadlineCompare != 0) return deadlineCompare;
-        return a.key.compareTo(b.key);
+        return a.round.compareTo(b.round);
       });
 
-    for (final entry in sorted) {
-      if (!entry.value.isBefore(now)) return entry.key;
+    for (final round in sorted) {
+      if (round.hasUnplayedMatch && !round.earliestDeadline.isBefore(now)) {
+        return round.round;
+      }
     }
 
-    return sorted.last.key;
+    final byRound = [...sorted]..sort((a, b) => a.round.compareTo(b.round));
+
+    for (final round in byRound) {
+      if (round.hasUnplayedMatch) return round.round;
+    }
+
+    return byRound.last.round;
   }
 
   static DateTime deadlineFor(DateTime matchDate) {
@@ -72,8 +114,18 @@ class PredictionRoundResolver {
           round: match.speelronde,
           date: match.datum,
           division: division,
+          status: _wedstrijdStatus(match),
         ),
     ];
+  }
+
+  static String _wedstrijdStatus(Wedstrijd match) {
+    final dynamic dynamicMatch = match;
+    try {
+      return dynamicMatch.status?.toString() ?? '';
+    } catch (_) {
+      return '';
+    }
   }
 
   static bool _sameDivision(String a, String b) {
@@ -85,5 +137,31 @@ class PredictionRoundResolver {
     }
 
     return normalize(a) == normalize(b);
+  }
+}
+
+class _RoundState {
+  const _RoundState({
+    required this.round,
+    required this.earliestDeadline,
+    required this.earliestMatchDate,
+    required this.hasUnplayedMatch,
+  });
+
+  final int round;
+  final DateTime earliestDeadline;
+  final DateTime earliestMatchDate;
+  final bool hasUnplayedMatch;
+
+  _RoundState add(PredictionRoundMatch match, DateTime deadline, DateTime now) {
+    return _RoundState(
+      round: round,
+      earliestDeadline:
+          deadline.isBefore(earliestDeadline) ? deadline : earliestDeadline,
+      earliestMatchDate: match.date.isBefore(earliestMatchDate)
+          ? match.date
+          : earliestMatchDate,
+      hasUnplayedMatch: hasUnplayedMatch || match.isUnplayedAt(now),
+    );
   }
 }

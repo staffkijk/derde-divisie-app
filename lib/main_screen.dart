@@ -13,6 +13,7 @@ import 'features/derde_divisie/historical_standings_screen.dart';
 import 'features/derde_divisie/unified_program_screen.dart';
 import 'features/media/intro_video_screen.dart';
 import 'features/notifications/notification_center_screen.dart';
+import 'features/about/juridisch_scherm.dart';
 import 'package:derde_divisie/features/profiel/profile_screen.dart';
 import 'features/moderator/moderator_dashboard_screen.dart';
 import 'package:derde_divisie/features/poules/poules_overzicht_screen.dart';
@@ -47,6 +48,7 @@ class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
   bool isModerator = false;
   bool _hasMelding = false;
+  bool _showAnalyticsConsentBanner = false;
   int? _lastTrackedIndex;
 
   late final StreamSubscription<User?> _authSub;
@@ -207,35 +209,27 @@ class _MainScreenState extends State<MainScreen> {
   Future<void> _maybeShowAnalyticsConsent() async {
     final service = AnalyticsService.instance;
     await service.initialize();
-    if (!mounted || !service.shouldAskConsent) return;
+    if (!mounted) return;
+    setState(() => _showAnalyticsConsentBanner = service.shouldAskConsent);
+  }
 
-    final accepted = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Text('Analytics toestaan?'),
-        content: const Text(
-          'DerdeDiv wil Google Analytics gebruiken om te zien welke onderdelen worden gebruikt. We sturen geen e-mailadres, naam, gebruikersnaam of vrije tekst mee.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Niet toestaan'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Toestaan'),
-          ),
-        ],
-      ),
-    );
-
-    if (accepted == null) return;
+  Future<void> _setAnalyticsConsent(bool accepted) async {
+    final service = AnalyticsService.instance;
     await service.setConsent(accepted);
-    if (accepted && mounted) {
+    if (!mounted) return;
+    setState(() => _showAnalyticsConsentBanner = false);
+    if (accepted) {
       service.resetScreenTracking();
       _trackAnalyticsScreenOnly(_selectedIndex);
     }
+  }
+
+  void _openPrivacyInfo() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const JuridischScherm(scrollTo: 'privacy'),
+      ),
+    );
   }
 
   Future<void> _selectMobileDestination(int index) async {
@@ -386,158 +380,296 @@ class _MainScreenState extends State<MainScreen> {
             final isTablet = constraints.maxWidth >= 720 && !isDesktop;
 
             if (isDesktop) {
-              return Scaffold(
-                backgroundColor: _cream,
-                body: Row(
-                  children: [
-                    _DesktopNavigation(
-                      items: _navItems,
-                      selectedIndex: _selectedIndex,
-                      loggedIn: loggedIn,
-                      isModerator: isModerator,
-                      onSelect: _selectIndex,
-                      onLogin: _ensureLoggedIn,
-                      onLogout: _signOut,
-                      onModerator: _openModerator,
-                    ),
-                    Expanded(
-                      child: Column(
-                        children: [
-                          _DesktopHeader(
-                            title: _navItems[_selectedIndex].label,
-                            loggedIn: loggedIn,
-                            hasMelding: _hasMelding,
-                            isModerator: isModerator,
-                            onLogin: _ensureLoggedIn,
-                            onLogout: _signOut,
-                            onShowAnnouncement: () =>
-                                _showAnnouncement(loggedIn),
-                            onModerator: _openModerator,
-                            onOpenNotifications: _openNotifications,
-                            reminderService: _reminderService,
-                          ),
-                          Expanded(
-                            child: Container(
-                              color: _cream,
-                              child: screens[_selectedIndex],
-                            ),
-                          ),
-                        ],
+              return _withAnalyticsConsentBanner(
+                isDesktop: true,
+                child: Scaffold(
+                  backgroundColor: _cream,
+                  body: Row(
+                    children: [
+                      _DesktopNavigation(
+                        items: _navItems,
+                        selectedIndex: _selectedIndex,
+                        loggedIn: loggedIn,
+                        isModerator: isModerator,
+                        onSelect: _selectIndex,
+                        onLogin: _ensureLoggedIn,
+                        onLogout: _signOut,
+                        onModerator: _openModerator,
                       ),
-                    ),
-                  ],
+                      Expanded(
+                        child: Column(
+                          children: [
+                            _DesktopHeader(
+                              title: _navItems[_selectedIndex].label,
+                              loggedIn: loggedIn,
+                              hasMelding: _hasMelding,
+                              isModerator: isModerator,
+                              onLogin: _ensureLoggedIn,
+                              onLogout: _signOut,
+                              onShowAnnouncement: () =>
+                                  _showAnnouncement(loggedIn),
+                              onModerator: _openModerator,
+                              onOpenNotifications: _openNotifications,
+                              reminderService: _reminderService,
+                            ),
+                            Expanded(
+                              child: Container(
+                                color: _cream,
+                                child: screens[_selectedIndex],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               );
             }
 
-            return Scaffold(
-              backgroundColor: _cream,
-              appBar: AppBar(
-                titleSpacing: 16,
-                title: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const DerdeDivLogo.compact(width: 30, height: 30),
-                    const SizedBox(width: 10),
-                    Text(
-                      isTablet
-                          ? _navItems[_selectedIndex].label
-                          : _navItems[_selectedIndex].shortLabel,
+            return _withAnalyticsConsentBanner(
+              isDesktop: false,
+              child: Scaffold(
+                backgroundColor: _cream,
+                appBar: AppBar(
+                  titleSpacing: 16,
+                  title: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const DerdeDivLogo.compact(width: 30, height: 30),
+                      const SizedBox(width: 10),
+                      Text(
+                        isTablet
+                            ? _navItems[_selectedIndex].label
+                            : _navItems[_selectedIndex].shortLabel,
+                      ),
+                    ],
+                  ),
+                  actions: [
+                    UpdateLogButton(isAdmin: isModerator),
+                    _NotificationBell(
+                      service: _reminderService,
+                      hasAnnouncement: _hasMelding,
+                      onOpenNotifications: _openNotifications,
+                      onShowAnnouncement: () => _showAnnouncement(loggedIn),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.help_outline),
+                      tooltip: 'Help',
+                      onPressed: () => Navigator.pushNamed(context, '/help'),
+                    ),
+                    if (isModerator)
+                      IconButton(
+                        icon: const Icon(Icons.admin_panel_settings_outlined),
+                        tooltip: 'Moderatorpaneel',
+                        onPressed: _openModerator,
+                      ),
+                    if (!loggedIn)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: TextButton(
+                          onPressed: _ensureLoggedIn,
+                          child: const Text(
+                            'Login',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ),
+                      )
+                    else
+                      IconButton(
+                        icon: const Icon(Icons.logout),
+                        tooltip: 'Uitloggen',
+                        onPressed: _signOut,
+                      ),
+                  ],
+                ),
+                body: _selectedIndex == MainNavigationConfig.divisionAIndex ||
+                        _selectedIndex == MainNavigationConfig.divisionBIndex
+                    ? _MobileDivisionsView(
+                        selectedDivision: _selectedIndex ==
+                                MainNavigationConfig.divisionBIndex
+                            ? 'B'
+                            : 'A',
+                        onDivisionChanged: (division) {
+                          final nextIndex = division == 'B'
+                              ? MainNavigationConfig.divisionBIndex
+                              : MainNavigationConfig.divisionAIndex;
+                          setState(() {
+                            _selectedIndex = nextIndex;
+                          });
+                          _trackScreenView(nextIndex);
+                        },
+                      )
+                    : screens[_selectedIndex],
+                bottomNavigationBar: NavigationBar(
+                  selectedIndex: _mobileSelectedIndex(),
+                  onDestinationSelected: _selectMobileDestination,
+                  labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+                  destinations: const [
+                    NavigationDestination(
+                      icon: Icon(Icons.home_outlined),
+                      selectedIcon: Icon(Icons.home),
+                      label: 'Home',
+                    ),
+                    NavigationDestination(
+                      icon: Icon(Icons.leaderboard_outlined),
+                      selectedIcon: Icon(Icons.leaderboard),
+                      label: 'Divisies',
+                    ),
+                    NavigationDestination(
+                      icon: Icon(Icons.calendar_month_outlined),
+                      selectedIcon: Icon(Icons.calendar_month),
+                      label: 'Programma',
+                    ),
+                    NavigationDestination(
+                      icon: Icon(Icons.edit_calendar_outlined),
+                      selectedIcon: Icon(Icons.edit_calendar),
+                      label: 'Voorspellen',
+                    ),
+                    NavigationDestination(
+                      icon: Icon(Icons.more_horiz),
+                      selectedIcon: Icon(Icons.more),
+                      label: 'Meer',
                     ),
                   ],
                 ),
-                actions: [
-                  UpdateLogButton(isAdmin: isModerator),
-                  _NotificationBell(
-                    service: _reminderService,
-                    hasAnnouncement: _hasMelding,
-                    onOpenNotifications: _openNotifications,
-                    onShowAnnouncement: () => _showAnnouncement(loggedIn),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.help_outline),
-                    tooltip: 'Help',
-                    onPressed: () => Navigator.pushNamed(context, '/help'),
-                  ),
-                  if (isModerator)
-                    IconButton(
-                      icon: const Icon(Icons.admin_panel_settings_outlined),
-                      tooltip: 'Moderatorpaneel',
-                      onPressed: _openModerator,
-                    ),
-                  if (!loggedIn)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: TextButton(
-                        onPressed: _ensureLoggedIn,
-                        child: const Text(
-                          'Login',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ),
-                    )
-                  else
-                    IconButton(
-                      icon: const Icon(Icons.logout),
-                      tooltip: 'Uitloggen',
-                      onPressed: _signOut,
-                    ),
-                ],
-              ),
-              body: _selectedIndex == MainNavigationConfig.divisionAIndex ||
-                      _selectedIndex == MainNavigationConfig.divisionBIndex
-                  ? _MobileDivisionsView(
-                      selectedDivision:
-                          _selectedIndex == MainNavigationConfig.divisionBIndex
-                              ? 'B'
-                              : 'A',
-                      onDivisionChanged: (division) {
-                        final nextIndex = division == 'B'
-                            ? MainNavigationConfig.divisionBIndex
-                            : MainNavigationConfig.divisionAIndex;
-                        setState(() {
-                          _selectedIndex = nextIndex;
-                        });
-                        _trackScreenView(nextIndex);
-                      },
-                    )
-                  : screens[_selectedIndex],
-              bottomNavigationBar: NavigationBar(
-                selectedIndex: _mobileSelectedIndex(),
-                onDestinationSelected: _selectMobileDestination,
-                labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-                destinations: const [
-                  NavigationDestination(
-                    icon: Icon(Icons.home_outlined),
-                    selectedIcon: Icon(Icons.home),
-                    label: 'Home',
-                  ),
-                  NavigationDestination(
-                    icon: Icon(Icons.leaderboard_outlined),
-                    selectedIcon: Icon(Icons.leaderboard),
-                    label: 'Divisies',
-                  ),
-                  NavigationDestination(
-                    icon: Icon(Icons.calendar_month_outlined),
-                    selectedIcon: Icon(Icons.calendar_month),
-                    label: 'Programma',
-                  ),
-                  NavigationDestination(
-                    icon: Icon(Icons.edit_calendar_outlined),
-                    selectedIcon: Icon(Icons.edit_calendar),
-                    label: 'Voorspellen',
-                  ),
-                  NavigationDestination(
-                    icon: Icon(Icons.more_horiz),
-                    selectedIcon: Icon(Icons.more),
-                    label: 'Meer',
-                  ),
-                ],
               ),
             );
           },
         );
       },
+    );
+  }
+
+  Widget _withAnalyticsConsentBanner({
+    required Widget child,
+    required bool isDesktop,
+  }) {
+    return Stack(
+      children: [
+        child,
+        if (_showAnalyticsConsentBanner)
+          _AnalyticsConsentBanner(
+            isDesktop: isDesktop,
+            onDenied: () => _setAnalyticsConsent(false),
+            onAccepted: () => _setAnalyticsConsent(true),
+            onMoreInfo: _openPrivacyInfo,
+          ),
+      ],
+    );
+  }
+}
+
+class _AnalyticsConsentBanner extends StatelessWidget {
+  const _AnalyticsConsentBanner({
+    required this.isDesktop,
+    required this.onDenied,
+    required this.onAccepted,
+    required this.onMoreInfo,
+  });
+
+  final bool isDesktop;
+  final VoidCallback onDenied;
+  final VoidCallback onAccepted;
+  final VoidCallback onMoreInfo;
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomPadding = isDesktop ? 20.0 : 92.0;
+    return Positioned(
+      left: 0,
+      right: 0,
+      bottom: 0,
+      child: SafeArea(
+        minimum: EdgeInsets.fromLTRB(14, 8, 14, bottomPadding),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 760),
+            child: Material(
+              elevation: 10,
+              shadowColor: Colors.black26,
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  isDesktop ? 18 : 14,
+                  14,
+                  isDesktop ? 18 : 14,
+                  14,
+                ),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final compact = constraints.maxWidth < 560;
+                    final text = Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Text(
+                          'Analytics',
+                          style: TextStyle(
+                            color: Color(0xFF153B2A),
+                            fontWeight: FontWeight.w900,
+                            fontSize: 16,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          'We gebruiken Google Analytics om te begrijpen welke onderdelen van DerdeDiv worden gebruikt. We sturen geen naam, e-mailadres, gebruikersnaam of vrije tekst mee.',
+                          style: TextStyle(
+                            color: Color(0xFF5F6D64),
+                            height: 1.3,
+                          ),
+                        ),
+                      ],
+                    );
+                    final actions = Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
+                      alignment:
+                          compact ? WrapAlignment.start : WrapAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: onDenied,
+                          child: const Text('Niet toestaan'),
+                        ),
+                        TextButton(
+                          onPressed: onMoreInfo,
+                          child: const Text('Meer informatie'),
+                        ),
+                        FilledButton(
+                          onPressed: onAccepted,
+                          child: const Text('Toestaan'),
+                        ),
+                      ],
+                    );
+
+                    if (compact) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          text,
+                          const SizedBox(height: 10),
+                          actions,
+                        ],
+                      );
+                    }
+
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Expanded(child: text),
+                        const SizedBox(width: 16),
+                        actions,
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

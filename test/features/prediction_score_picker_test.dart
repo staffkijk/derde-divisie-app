@@ -5,6 +5,19 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:derde_divisie/features/voorspellen/widgets/prediction_score_picker.dart';
 
 void main() {
+  test('snelle uitslagen staan in logische groepen', () {
+    expect(
+      PredictionScorePicker.quickScoreGroups.map((group) => group.label),
+      ['Thuiswinst', 'Gelijk', 'Uitwinst'],
+    );
+    expect(
+      PredictionScorePicker.quickScoreGroups
+          .expand((group) => group.scores)
+          .map((score) => score.label),
+      ['3-1', '2-1', '1-0', '0-0', '1-1', '2-2', '0-1', '1-2', '1-3'],
+    );
+  });
+
   testWidgets('snelle uitslag vult beide scores met een callback',
       (tester) async {
     final selected = <PredictionScore>[];

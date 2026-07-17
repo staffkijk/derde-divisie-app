@@ -3,10 +3,14 @@
 import * as functions from "firebase-functions/v1";
 import * as admin from "firebase-admin";
 import axios from "axios";
+import {BetaAnalyticsDataClient} from "@google-analytics/data";
+import {defineString} from "firebase-functions/params";
 
 if (!admin.apps.length) admin.initializeApp();
 const db = admin.firestore();
 const region = "europe-west1";
+const analyticsDataClient = new BetaAnalyticsDataClient();
+const ga4PropertyIdParam = defineString("GA4_PROPERTY_ID");
 
 /* -------------------------------------------------------------------------- */
 /*                        Helper functies voorspellen                         */
@@ -267,5 +271,145 @@ export const sendPredictionReminderPushes = functions
           { merge: true }
         );
       }
+    }
+  });
+
+function ga4PropertyId(): string {
+  return ga4PropertyIdParam.value().trim();
+}
+
+async function assertModerator(context: functions.https.CallableContext) {
+  const uid = context.auth?.uid;
+  if (!uid) {
+    throw new functions.https.HttpsError(
+      "unauthenticated",
+      "Log in als moderator om GA4 rapportagedata te bekijken."
+    );
+  }
+
+  const user = await db.collection("users").doc(uid).get();
+  if (user.data()?.ismoderator !== true) {
+    throw new functions.https.HttpsError(
+      "permission-denied",
+      "Alleen moderators kunnen GA4 rapportagedata bekijken."
+    );
+  }
+}
+
+function metricValue(row: any, index = 0): number {
+  const value = row?.metricValues?.[index]?.value;
+  const parsed = Number.parseInt(String(value ?? "0"), 10);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function dimensionValue(row: any, index = 0): string {
+  return String(row?.dimensionValues?.[index]?.value ?? "").trim();
+}
+
+function rowsToBreakdown(rows: any[] | null | undefined) {
+  return (rows ?? []).slice(0, 5).map((row) => ({
+    label: dimensionValue(row) || "(onbekend)",
+    value: metricValue(row),
+  }));
+}
+
+async function runMetricReport(
+  property: string,
+  startDate: string,
+  endDate: string,
+  metricNames: string[]
+) {
+  const [response] = await analyticsDataClient.runReport({
+    property,
+    dateRanges: [{startDate, endDate}],
+    metrics: metricNames.map((name) => ({name})),
+  });
+  const row = response.rows?.[0];
+  return metricNames.reduce<Record<string, number>>((result, name, index) => {
+    result[name] = metricValue(row, index);
+    return result;
+  }, {});
+}
+
+async function runBreakdownReport(
+  property: string,
+  dimensionName: string,
+  metricName: string,
+  limit = 5
+) {
+  const [response] = await analyticsDataClient.runReport({
+    property,
+    dateRanges: [{startDate: "30daysAgo", endDate: "today"}],
+    dimensions: [{name: dimensionName}],
+    metrics: [{name: metricName}],
+    limit,
+    orderBys: [{metric: {metricName}, desc: true}],
+  });
+  return rowsToBreakdown(response.rows);
+}
+
+export const getModeratorGa4Analytics = functions
+  .region(region)
+  .https.onCall(async (_data, context) => {
+    await assertModerator(context);
+
+    const propertyId = ga4PropertyId();
+    if (!propertyId) {
+      return {
+        configured: false,
+        message:
+          "GA4 rapportagedata nog niet geconfigureerd: parameter GA4_PROPERTY_ID ontbreekt",
+      };
+    }
+
+    const property = `properties/${propertyId}`;
+
+    try {
+      const [today, sevenDays, thirtyDays, realtime] = await Promise.all([
+        runMetricReport(property, "today", "today", ["activeUsers"]),
+        runMetricReport(property, "7daysAgo", "today", ["activeUsers"]),
+        runMetricReport(property, "30daysAgo", "today", [
+          "activeUsers",
+          "sessions",
+          "newUsers",
+        ]),
+        analyticsDataClient.runRealtimeReport({
+          property,
+          metrics: [{name: "activeUsers"}],
+        }),
+      ]);
+
+      const [topPages, deviceCategories, trafficSources] = await Promise.all([
+        runBreakdownReport(property, "pageTitle", "screenPageViews"),
+        runBreakdownReport(property, "deviceCategory", "activeUsers"),
+        runBreakdownReport(property, "sessionDefaultChannelGroup", "sessions"),
+      ]);
+
+      const activeUsersNow = metricValue(realtime[0].rows?.[0]);
+      const visitorsThirtyDays = thirtyDays.activeUsers ?? 0;
+      const newUsersThirtyDays = thirtyDays.newUsers ?? 0;
+
+      return {
+        configured: true,
+        visitorsToday: today.activeUsers ?? 0,
+        visitorsSevenDays: sevenDays.activeUsers ?? 0,
+        visitorsThirtyDays,
+        activeUsersNow,
+        sessionsThirtyDays: thirtyDays.sessions ?? 0,
+        newUsersThirtyDays,
+        returningUsersThirtyDays: Math.max(
+          visitorsThirtyDays - newUsersThirtyDays,
+          0
+        ),
+        topPages,
+        deviceCategories,
+        trafficSources,
+      };
+    } catch (error: any) {
+      console.error("getModeratorGa4Analytics error", error);
+      throw new functions.https.HttpsError(
+        "failed-precondition",
+        "GA4 rapportagedata nog niet geconfigureerd"
+      );
     }
   });

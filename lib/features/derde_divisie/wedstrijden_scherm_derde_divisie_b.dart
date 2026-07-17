@@ -421,44 +421,12 @@ class _WedstrijdenSchermDerdeDivisieBState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SizedBox(height: isMobile ? 2 : 8),
-              _buildRondeSelector(),
-              Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: isMobile ? 4 : 8,
-                ),
-                child: Container(
-                  width: double.infinity,
-                  padding: EdgeInsets.all(isMobile ? 9 : 12),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: Text(
-                    '$predictedCount van ${visibleMatches.length} voorspeld'
-                    '${missingCount > 0 ? ' - $missingCount ontbreekt' : ' - volledig'}'
-                    '\nDeadline: $deadlineTekst',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                      fontSize: isMobile ? 12 : 14,
-                    ),
-                  ),
-                ),
+              _buildCompactControls(
+                predictedCount: predictedCount,
+                totalCount: visibleMatches.length,
+                missingCount: missingCount,
+                deadlineText: deadlineTekst,
               ),
-              if (_favoriteTeamId != null)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: FilterChip(
-                    selected: _favoriteOnly,
-                    label: const Text('Alleen mijn favoriete club'),
-                    avatar: const Icon(Icons.favorite_outline, size: 17),
-                    onSelected: (value) =>
-                        setState(() => _favoriteOnly = value),
-                  ),
-                ),
               Expanded(
                 child: visibleMatches.isEmpty
                     ? const Center(
@@ -490,9 +458,9 @@ class _WedstrijdenSchermDerdeDivisieBState
                           return Container(
                             margin: const EdgeInsets.symmetric(
                               horizontal: 4,
-                              vertical: 6,
+                              vertical: 4,
                             ),
-                            padding: EdgeInsets.all(isMobile ? 9 : 12),
+                            padding: EdgeInsets.all(isMobile ? 8 : 10),
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(14),
@@ -534,7 +502,7 @@ class _WedstrijdenSchermDerdeDivisieBState
                                     _buildTeamWithLogo(w.uit, alignRight: true),
                                   ],
                                 ),
-                                const SizedBox(height: 8),
+                                const SizedBox(height: 5),
                                 if (uitslagBekend)
                                   Column(
                                     children: [
@@ -610,6 +578,7 @@ class _WedstrijdenSchermDerdeDivisieBState
     final isMobile = MediaQuery.sizeOf(context).width < 600;
 
     return Row(
+      mainAxisSize: MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         IconButton(
@@ -640,6 +609,60 @@ class _WedstrijdenSchermDerdeDivisieBState
           icon: const Icon(Icons.chevron_right),
         ),
       ],
+    );
+  }
+
+  Widget _buildCompactControls({
+    required int predictedCount,
+    required int totalCount,
+    required int missingCount,
+    required String deadlineText,
+  }) {
+    final isMobile = MediaQuery.sizeOf(context).width < 600;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(12, isMobile ? 4 : 8, 12, 8),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: isMobile ? 8 : 12,
+            vertical: isMobile ? 6 : 8,
+          ),
+          child: Wrap(
+            spacing: 12,
+            runSpacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              _buildRondeSelector(),
+              Chip(
+                visualDensity: VisualDensity.compact,
+                avatar: const Icon(Icons.check_circle_outline, size: 16),
+                label: Text(
+                  '$predictedCount van $totalCount voorspeld'
+                  '${missingCount > 0 ? ' - $missingCount ontbreekt' : ''}',
+                ),
+              ),
+              Chip(
+                visualDensity: VisualDensity.compact,
+                avatar: const Icon(Icons.schedule_outlined, size: 16),
+                label: Text('Deadline: $deadlineText'),
+              ),
+              if (_favoriteTeamId != null)
+                FilterChip(
+                  visualDensity: VisualDensity.compact,
+                  selected: _favoriteOnly,
+                  label: const Text('Favoriete club'),
+                  avatar: const Icon(Icons.favorite_outline, size: 17),
+                  onSelected: (value) => setState(() => _favoriteOnly = value),
+                ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

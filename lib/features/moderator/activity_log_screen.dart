@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:derde_divisie/core/design/app_design.dart';
 import 'package:derde_divisie/data/services/activity_analytics.dart';
 import 'package:derde_divisie/data/services/activity_event_utils.dart';
+import 'package:derde_divisie/data/services/moderator_ga4_analytics_service.dart';
 
 class ActivityLogScreen extends StatefulWidget {
   const ActivityLogScreen({super.key});
@@ -274,50 +275,270 @@ class _WebsiteVisitPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Row(
+    return FutureBuilder<ModeratorGa4Analytics>(
+      future: ModeratorGa4AnalyticsService().load(),
+      builder: (context, snapshot) {
+        final analytics = snapshot.data;
+        return AppCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Icon(Icons.public_outlined, color: AppColors.primary),
-              SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Text(
-                  'Websitebezoek',
-                  style: AppTextStyles.sectionTitle,
-                ),
+              const Row(
+                children: [
+                  Icon(Icons.public_outlined, color: AppColors.primary),
+                  SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      'Websitebezoek',
+                      style: AppTextStyles.sectionTitle,
+                    ),
+                  ),
+                ],
               ),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                analytics == null
+                    ? 'GA4 rapportagedata wordt geladen. Search Console staat los hiervan en is bedoeld voor zoekprestaties.'
+                    : analytics.configured
+                        ? 'GA4 toont websitebezoek en gebruik. Search Console blijft apart voor zoekresultaten, vertoningen en klikken.'
+                        : analytics.message ??
+                            'GA4 rapportagedata nog niet geconfigureerd',
+                style: AppTextStyles.bodyMuted,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              if (snapshot.hasError)
+                const _State(
+                  icon: Icons.error_outline,
+                  text:
+                      'GA4 rapportagedata kon nu niet worden geladen. Controleer backendconfiguratie en moderatorrechten.',
+                  color: AppColors.danger,
+                )
+              else
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final wide = constraints.maxWidth >= 760;
+                    final itemWidth = wide
+                        ? (constraints.maxWidth - AppSpacing.sm * 3) / 4
+                        : (constraints.maxWidth - AppSpacing.sm) / 2;
+                    final metrics = analytics == null
+                        ? const [
+                            _UnavailableMetric('Bezoekers vandaag'),
+                            _UnavailableMetric('Bezoekers 7 dagen'),
+                            _UnavailableMetric('Bezoekers 30 dagen'),
+                            _UnavailableMetric('Actieve bezoekers nu'),
+                          ]
+                        : [
+                            _Ga4Metric(
+                              'Bezoekers vandaag',
+                              analytics.visitorsToday,
+                              configured: analytics.configured,
+                            ),
+                            _Ga4Metric(
+                              'Bezoekers 7 dagen',
+                              analytics.visitorsSevenDays,
+                              configured: analytics.configured,
+                            ),
+                            _Ga4Metric(
+                              'Bezoekers 30 dagen',
+                              analytics.visitorsThirtyDays,
+                              configured: analytics.configured,
+                            ),
+                            _Ga4Metric(
+                              'Actieve bezoekers nu',
+                              analytics.activeUsersNow,
+                              configured: analytics.configured,
+                            ),
+                          ];
+                    return Wrap(
+                      spacing: AppSpacing.sm,
+                      runSpacing: AppSpacing.sm,
+                      children: metrics
+                          .map((child) =>
+                              SizedBox(width: itemWidth, child: child))
+                          .toList(),
+                    );
+                  },
+                ),
+              if (analytics != null && analytics.configured) ...[
+                const SizedBox(height: AppSpacing.md),
+                Wrap(
+                  spacing: AppSpacing.md,
+                  runSpacing: AppSpacing.md,
+                  children: [
+                    _Ga4MiniPanel(
+                      title: 'Sessies en bezoekers',
+                      rows: {
+                        'Sessies 30 dagen': analytics.sessionsThirtyDays,
+                        'Nieuwe bezoekers': analytics.newUsersThirtyDays,
+                        'Terugkerend': analytics.returningUsersThirtyDays,
+                      },
+                    ),
+                    _Ga4ListPanel(
+                      title: 'Populairste pagina\'s',
+                      items: analytics.topPages,
+                    ),
+                    _Ga4ListPanel(
+                      title: 'Apparaten',
+                      items: analytics.deviceCategories,
+                    ),
+                    _Ga4ListPanel(
+                      title: 'Verkeersbronnen',
+                      items: analytics.trafficSources,
+                    ),
+                  ],
+                ),
+              ],
+              const SizedBox(height: AppSpacing.md),
+              const _AnalyticsSourceChecklist(),
             ],
           ),
-          const SizedBox(height: AppSpacing.sm),
-          const Text(
-            'Nog niet gekoppeld aan GA4 of Google Search Console. Daarom worden hier geen bezoekersaantallen getoond.',
-            style: AppTextStyles.bodyMuted,
-          ),
-          const SizedBox(height: AppSpacing.md),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final wide = constraints.maxWidth >= 760;
-              final itemWidth = wide
-                  ? (constraints.maxWidth - AppSpacing.sm * 3) / 4
-                  : (constraints.maxWidth - AppSpacing.sm) / 2;
-              return Wrap(
-                spacing: AppSpacing.sm,
-                runSpacing: AppSpacing.sm,
-                children: const [
-                  _UnavailableMetric('Bezoekers vandaag'),
-                  _UnavailableMetric('Bezoekers 7 dagen'),
-                  _UnavailableMetric('Bezoekers 30 dagen'),
-                  _UnavailableMetric('Actieve bezoekers nu'),
-                ]
-                    .map((child) => SizedBox(width: itemWidth, child: child))
+        );
+      },
+    );
+  }
+}
+
+class _Ga4Metric extends StatelessWidget {
+  const _Ga4Metric(
+    this.label,
+    this.value, {
+    required this.configured,
+  });
+
+  final String label;
+  final int value;
+  final bool configured;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(AppRadius.small),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              configured ? '$value' : '-',
+              style: TextStyle(
+                color: configured ? AppColors.primaryDark : AppColors.textMuted,
+                fontSize: 24,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            Text(label, style: AppTextStyles.bodyMuted),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Ga4MiniPanel extends StatelessWidget {
+  const _Ga4MiniPanel({required this.title, required this.rows});
+
+  final String title;
+  final Map<String, int> rows;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 260,
+      child: _Ga4PanelShell(
+        title: title,
+        child: Column(
+          children: rows.entries
+              .map(
+                (entry) => _Ga4PanelRow(
+                  label: entry.key,
+                  value: entry.value.toString(),
+                ),
+              )
+              .toList(),
+        ),
+      ),
+    );
+  }
+}
+
+class _Ga4ListPanel extends StatelessWidget {
+  const _Ga4ListPanel({required this.title, required this.items});
+
+  final String title;
+  final List<ModeratorGa4BreakdownItem> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 260,
+      child: _Ga4PanelShell(
+        title: title,
+        child: items.isEmpty
+            ? const Text('Nog geen gegevens.', style: AppTextStyles.bodyMuted)
+            : Column(
+                children: items
+                    .take(5)
+                    .map(
+                      (item) => _Ga4PanelRow(
+                        label: item.label,
+                        value: item.value.toString(),
+                      ),
+                    )
                     .toList(),
-              );
-            },
+              ),
+      ),
+    );
+  }
+}
+
+class _Ga4PanelShell extends StatelessWidget {
+  const _Ga4PanelShell({required this.title, required this.child});
+
+  final String title;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(AppRadius.small),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+            const SizedBox(height: AppSpacing.sm),
+            child,
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Ga4PanelRow extends StatelessWidget {
+  const _Ga4PanelRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
           ),
-          const SizedBox(height: AppSpacing.md),
-          const _AnalyticsSourceChecklist(),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.w800)),
         ],
       ),
     );
