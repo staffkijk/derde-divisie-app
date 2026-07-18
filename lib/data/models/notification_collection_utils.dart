@@ -5,11 +5,25 @@ class UserNotificationRecord {
   final Map<String, dynamic> data;
 }
 
+const predictionReminderNotificationTypes = {
+  'missing_predictions',
+  'missing_prediction',
+  'prediction_reminder',
+  'prediction_reminders',
+  'missingPredictions',
+};
+
+bool isMissingPredictionNotification(UserNotificationRecord notification) {
+  final type = notification.data['type']?.toString();
+  return predictionReminderNotificationTypes.contains(type) ||
+      notification.id.startsWith('missing_predictions_');
+}
+
 List<String> missingPredictionNotificationIds(
   Iterable<UserNotificationRecord> notifications,
 ) =>
     notifications
-        .where((item) => item.data['type'] == 'missing_predictions')
+        .where(isMissingPredictionNotification)
         .map((item) => item.id)
         .toList(growable: false);
 

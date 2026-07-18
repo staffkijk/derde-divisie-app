@@ -5,6 +5,7 @@ import 'package:derde_divisie/core/design/app_design.dart';
 import 'package:derde_divisie/data/services/activity_log_service.dart';
 import 'package:derde_divisie/data/services/prediction_reminder_service.dart';
 import 'package:derde_divisie/features/notifications/prediction_reminder_preferences_panel.dart';
+import 'package:derde_divisie/data/services/notification_preferences_service.dart';
 
 class NotificationCenterScreen extends StatefulWidget {
   const NotificationCenterScreen({
@@ -21,6 +22,12 @@ class NotificationCenterScreen extends StatefulWidget {
 
 class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
   final _service = PredictionReminderService();
+
+  @override
+  void initState() {
+    super.initState();
+    NotificationPreferencesService().cleanupIfDisabled();
+  }
 
   Future<void> _showSettings() async {
     await showDialog<void>(
@@ -109,11 +116,14 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
                       },
                     );
                     if (!context.mounted) return;
+                    final target = await _service.resolveNavigationTarget(
+                      notificationDivision: data['division']?.toString(),
+                      notificationRound:
+                          int.tryParse(data['round']?.toString() ?? ''),
+                    );
+                    if (!context.mounted) return;
                     Navigator.pop(context);
-                    final division = (data['division'] ?? 'A').toString();
-                    final round =
-                        int.tryParse(data['round']?.toString() ?? '') ?? 1;
-                    widget.onOpenPrediction(division, round);
+                    widget.onOpenPrediction(target.division, target.round);
                   },
                 ),
               );

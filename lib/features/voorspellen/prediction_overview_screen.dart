@@ -14,7 +14,14 @@ import 'package:derde_divisie/features/voorspellen/ranking_screen.dart';
 import 'package:derde_divisie/features/voorspellen/voorspel_een_team_screen.dart';
 
 class PredictionOverviewScreen extends StatefulWidget {
-  const PredictionOverviewScreen({super.key});
+  const PredictionOverviewScreen({
+    super.key,
+    this.initialDivision,
+    this.initialRound,
+  });
+
+  final String? initialDivision;
+  final int? initialRound;
 
   @override
   State<PredictionOverviewScreen> createState() =>
@@ -57,7 +64,13 @@ class _PredictionOverviewScreenState extends State<PredictionOverviewScreen> {
                   Expanded(
                     child: TabBarView(
                       children: [
-                        const _MatchesPredictionTab(),
+                        _MatchesPredictionTab(
+                          key: ValueKey(
+                            '${widget.initialDivision}-${widget.initialRound}',
+                          ),
+                          initialDivision: widget.initialDivision,
+                          initialRound: widget.initialRound,
+                        ),
                         _ScrollableTab(
                           horizontalPadding: horizontal,
                           child: const _FinalRankingTab(),
@@ -107,7 +120,14 @@ class _ScrollableTab extends StatelessWidget {
 }
 
 class _MatchesPredictionTab extends StatefulWidget {
-  const _MatchesPredictionTab();
+  const _MatchesPredictionTab({
+    super.key,
+    this.initialDivision,
+    this.initialRound,
+  });
+
+  final String? initialDivision;
+  final int? initialRound;
 
   @override
   State<_MatchesPredictionTab> createState() => _MatchesPredictionTabState();
@@ -124,7 +144,12 @@ class _MatchesPredictionTabState extends State<_MatchesPredictionTab>
   @override
   void initState() {
     super.initState();
-    _loadFavoriteDivision();
+    if (widget.initialDivision == 'A' || widget.initialDivision == 'B') {
+      _division = widget.initialDivision!;
+      _loadedFavorite = true;
+    } else {
+      _loadFavoriteDivision();
+    }
   }
 
   Future<void> _loadFavoriteDivision() async {
@@ -180,8 +205,14 @@ class _MatchesPredictionTabState extends State<_MatchesPredictionTab>
           child: !_loadedFavorite
               ? const Center(child: CircularProgressIndicator())
               : _division == 'A'
-                  ? const WedstrijdenSchermDerdeDivisieA(divisie: 'A')
-                  : const WedstrijdenSchermDerdeDivisieB(divisie: 'B'),
+                  ? WedstrijdenSchermDerdeDivisieA(
+                      divisie: 'A',
+                      initialRound: widget.initialRound,
+                    )
+                  : WedstrijdenSchermDerdeDivisieB(
+                      divisie: 'B',
+                      initialRound: widget.initialRound,
+                    ),
         ),
       ],
     );

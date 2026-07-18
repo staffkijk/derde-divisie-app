@@ -51,6 +51,8 @@ class _MainScreenState extends State<MainScreen> {
   bool _hasMelding = false;
   bool _showAnalyticsConsentBanner = false;
   int? _lastTrackedIndex;
+  String? _predictionDivision;
+  int? _predictionRound;
 
   late final StreamSubscription<User?> _authSub;
   final _reminderService = PredictionReminderService();
@@ -151,7 +153,10 @@ class _MainScreenState extends State<MainScreen> {
         const DivisionOverviewScreen(division: 'Derde Divisie A'),
         const DivisionOverviewScreen(division: 'Derde Divisie B'),
         const UnifiedProgramScreen(),
-        const PredictionOverviewScreen(),
+        PredictionOverviewScreen(
+          initialDivision: _predictionDivision,
+          initialRound: _predictionRound,
+        ),
         const PoulesOverzichtScreen(),
         const HistoricalStandingsScreen(),
         const ProfileScreen(),
@@ -359,6 +364,10 @@ class _MainScreenState extends State<MainScreen> {
       MaterialPageRoute(
         builder: (_) => NotificationCenterScreen(
           onOpenPrediction: (division, round) {
+            setState(() {
+              _predictionDivision = division;
+              _predictionRound = round;
+            });
             _selectIndex(MainNavigationConfig.predictIndex);
           },
         ),

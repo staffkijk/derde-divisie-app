@@ -29,6 +29,51 @@ class PredictionReminderStatus {
   bool get expired => deadline != null && DateTime.now().isAfter(deadline!);
 }
 
+class PredictionNavigationTarget {
+  const PredictionNavigationTarget(
+      {required this.division, required this.round});
+
+  final String division;
+  final int round;
+}
+
+class PredictionReminderTargetResolver {
+  static PredictionNavigationTarget resolve({
+    String? notificationDivision,
+    int? notificationRound,
+    required Iterable<PredictionReminderStatus> incompleteStatuses,
+  }) {
+    final normalized = SeasonConfig.normalizeDivisionCode(
+      notificationDivision ?? '',
+    );
+    if ((normalized == 'A' || normalized == 'B') &&
+        notificationRound != null &&
+        notificationRound > 0) {
+      return PredictionNavigationTarget(
+        division: normalized,
+        round: notificationRound,
+      );
+    }
+    final valid = incompleteStatuses
+        .where((status) =>
+            !status.complete && !status.expired && status.missing > 0)
+        .toList();
+    if (valid.isNotEmpty) {
+      final status = valid.first;
+      return PredictionNavigationTarget(
+        division: status.division,
+        round: status.round,
+      );
+    }
+    return PredictionNavigationTarget(
+      division: normalized == 'B' ? 'B' : 'A',
+      round: notificationRound != null && notificationRound > 0
+          ? notificationRound
+          : 1,
+    );
+  }
+}
+
 class PredictionReminderService {
   PredictionReminderService({
     FirebaseFirestore? firestore,
@@ -80,6 +125,34 @@ class PredictionReminderService {
       'read': true,
       'readAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
+  }
+
+  Future<PredictionNavigationTarget> resolveNavigationTarget({
+    String? notificationDivision,
+    int? notificationRound,
+  }) async {
+    final normalized = SeasonConfig.normalizeDivisionCode(
+      notificationDivision ?? '',
+    );
+    if ((normalized == 'A' || normalized == 'B') &&
+        notificationRound != null &&
+        notificationRound > 0) {
+      return PredictionReminderTargetResolver.resolve(
+        notificationDivision: normalized,
+        notificationRound: notificationRound,
+        incompleteStatuses: const [],
+      );
+    }
+    final statuses = <PredictionReminderStatus>[];
+    for (final division in const ['A', 'B']) {
+      final status = await evaluate(division: division);
+      if (status != null) statuses.add(status);
+    }
+    return PredictionReminderTargetResolver.resolve(
+      notificationDivision: notificationDivision,
+      notificationRound: notificationRound,
+      incompleteStatuses: statuses,
+    );
   }
 
   Future<PredictionReminderStatus?> evaluate({

@@ -77,23 +77,9 @@ class NotificationPreferencesService implements NotificationPreferencesStore {
     }, SetOptions(merge: true));
 
     var removed = true;
-    if (wasMissingPredictionRemindersEnabled &&
-        !preferences.missingPredictionReminders) {
+    if (!preferences.missingPredictionReminders) {
       try {
-        final reminders = await userRef
-            .collection('notifications')
-            .where('type', isEqualTo: 'missing_predictions')
-            .get();
-        final ids = missingPredictionNotificationIds(
-          reminders.docs.map(
-            (doc) => UserNotificationRecord(id: doc.id, data: doc.data()),
-          ),
-        );
-        final batch = _firestore.batch();
-        for (final id in ids) {
-          batch.delete(userRef.collection('notifications').doc(id));
-        }
-        if (ids.isNotEmpty) await batch.commit();
+        await _deleteExistingPredictionReminders(userRef);
       } catch (error, stack) {
         removed = false;
         debugPrint(
@@ -106,5 +92,40 @@ class NotificationPreferencesService implements NotificationPreferencesStore {
       preferencesSaved: true,
       oldRemindersRemoved: removed,
     );
+  }
+
+  Future<bool> cleanupIfDisabled() async {
+    final uid = _uid;
+    if (uid == null) return true;
+    final preferences = await load();
+    if (preferences.missingPredictionReminders) return true;
+    try {
+      await _deleteExistingPredictionReminders(
+        _firestore.collection('users').doc(uid),
+      );
+      return true;
+    } catch (error, stack) {
+      debugPrint('Legacy voorspellingsherinneringen opschonen mislukt: $error');
+      debugPrintStack(stackTrace: stack);
+      return false;
+    }
+  }
+
+  Future<void> _deleteExistingPredictionReminders(
+    DocumentReference<Map<String, dynamic>> userRef,
+  ) async {
+    final notifications = await userRef.collection('notifications').get();
+    final ids = missingPredictionNotificationIds(
+      notifications.docs.map(
+        (doc) => UserNotificationRecord(id: doc.id, data: doc.data()),
+      ),
+    );
+    for (var offset = 0; offset < ids.length; offset += 500) {
+      final batch = _firestore.batch();
+      for (final id in ids.skip(offset).take(500)) {
+        batch.delete(userRef.collection('notifications').doc(id));
+      }
+      await batch.commit();
+    }
   }
 }

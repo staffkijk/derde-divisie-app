@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:derde_divisie/data/config/season_config.dart';
 import 'package:derde_divisie/data/models/notification_preferences.dart';
 import 'package:derde_divisie/data/services/notification_preferences_service.dart';
 import 'package:derde_divisie/features/notifications/prediction_reminder_preferences_panel.dart';
@@ -12,6 +13,7 @@ class _FakePreferencesStore implements NotificationPreferencesStore {
       StreamController<NotificationPreferences>.broadcast(sync: true);
   NotificationPreferences value = const NotificationPreferences();
   int removedMissingPredictionReminders = 0;
+  int saveCalls = 0;
 
   void emit() => _controller.add(value);
 
@@ -23,6 +25,7 @@ class _FakePreferencesStore implements NotificationPreferencesStore {
     NotificationPreferences preferences, {
     required bool wasMissingPredictionRemindersEnabled,
   }) async {
+    saveCalls++;
     if (wasMissingPredictionRemindersEnabled &&
         !preferences.missingPredictionReminders) {
       removedMissingPredictionReminders = 2;
@@ -108,5 +111,56 @@ void main() {
       matching: find.byType(IgnorePointer),
     );
     expect(tester.widget<IgnorePointer>(disabledArea.first).ignoring, isTrue);
+  });
+
+  testWidgets('alle voorkeurvelden slaan direct op en overleven navigeren',
+      (tester) async {
+    final store = _FakePreferencesStore();
+    addTearDown(store.close);
+
+    Future<void> showPanel() async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: PredictionReminderPreferencesPanel(service: store),
+            ),
+          ),
+        ),
+      );
+      store.emit();
+      await tester.pumpAndSettle();
+    }
+
+    await showPanel();
+    await tester.tap(find.text('Derde Divisie A'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Derde Divisie B'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Alle teams / alle wedstrijden'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Specifieke geselecteerde teams').last);
+    await tester.pumpAndSettle();
+
+    final firstTeam = SeasonConfig.teamsInListOrder.first;
+    await tester.ensureVisible(find.text(firstTeam.listLabel));
+    await tester.tap(find.text(firstTeam.listLabel));
+    await tester.pumpAndSettle();
+
+    expect(store.value.divisionA, isFalse);
+    expect(store.value.divisionB, isFalse);
+    expect(store.value.teamScope, NotificationTeamScope.selected);
+    expect(store.value.selectedTeamIds, contains(firstTeam.id));
+    expect(store.saveCalls, 4);
+
+    await tester.pumpWidget(const MaterialApp(home: SizedBox()));
+    await showPanel();
+
+    final chips = tester.widgetList<FilterChip>(find.byType(FilterChip));
+    expect(chips.elementAt(0).selected, isFalse);
+    expect(chips.elementAt(1).selected, isFalse);
+    expect(store.value.teamScope, NotificationTeamScope.selected);
+    expect(store.value.selectedTeamIds, contains(firstTeam.id));
   });
 }

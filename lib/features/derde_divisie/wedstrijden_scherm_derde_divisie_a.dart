@@ -18,8 +18,13 @@ import 'package:derde_divisie/features/voorspellen/widgets/prediction_score_pick
 
 class WedstrijdenSchermDerdeDivisieA extends StatefulWidget {
   final String divisie;
+  final int? initialRound;
 
-  const WedstrijdenSchermDerdeDivisieA({super.key, required this.divisie});
+  const WedstrijdenSchermDerdeDivisieA({
+    super.key,
+    required this.divisie,
+    this.initialRound,
+  });
 
   @override
   State<WedstrijdenSchermDerdeDivisieA> createState() =>
@@ -124,10 +129,12 @@ class _WedstrijdenSchermDerdeDivisieAState
   }
 
   Future<void> _init() async {
-    _huidigeSpeelronde = await _roundSelection.initializeFromCurrentSeason(
-      fallbackMatches: getWedstrijden(widget.divisie),
-      now: DateTime.now(),
-    );
+    _huidigeSpeelronde = widget.initialRound != null && widget.initialRound! > 0
+        ? widget.initialRound!
+        : await _roundSelection.initializeFromCurrentSeason(
+            fallbackMatches: getWedstrijden(widget.divisie),
+            now: DateTime.now(),
+          );
     _laadWedstrijdenBasisVoorSpeelronde(_huidigeSpeelronde);
     _listenSeasonMatchesFirestore(_huidigeSpeelronde);
     _listenMatchesFirestore(_huidigeSpeelronde);

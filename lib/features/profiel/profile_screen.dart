@@ -5,7 +5,6 @@ import 'package:logging/logging.dart';
 
 import 'package:derde_divisie/data/config/season_config.dart';
 import 'package:derde_divisie/core/utils/gemeenten.dart';
-import 'package:derde_divisie/data/models/notification_preferences.dart';
 import 'package:derde_divisie/data/services/activity_log_service.dart';
 import 'package:derde_divisie/data/services/analytics_service.dart';
 import 'package:derde_divisie/features/notifications/prediction_reminder_preferences_panel.dart';
@@ -41,8 +40,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool voorspellingenZichtbaar = true;
   bool allowEmailSharingWithPouleOwner = false;
   bool analyticsEnabled = false;
-  NotificationPreferences notificationPreferences =
-      const NotificationPreferences();
   bool _usernameChanged = false;
   bool isLoading = true;
   bool isSaving = false;
@@ -113,9 +110,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             data?['voorspellingenZichtbaar'] as bool? ?? true;
         allowEmailSharingWithPouleOwner =
             data?['allowEmailSharingWithPouleOwner'] as bool? ?? false;
-        notificationPreferences = NotificationPreferences.fromMap(
-          data?['notificationPreferences'] as Map<String, dynamic>?,
-        );
         analyticsEnabled = AnalyticsService.instance.collectionEnabled;
         _usernameChanged = data?['usernameChanged'] as bool? ?? false;
 
@@ -229,7 +223,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         'favoriteDivision': selectedTeam?.division ?? FieldValue.delete(),
         'voorspellingenZichtbaar': voorspellingenZichtbaar,
         'allowEmailSharingWithPouleOwner': allowEmailSharingWithPouleOwner,
-        'notificationPreferences': notificationPreferences.toMap(),
         'emailSharingConsentAt': allowEmailSharingWithPouleOwner
             ? FieldValue.serverTimestamp()
             : FieldValue.delete(),
@@ -291,9 +284,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: _borderGreen),
       ),
-      child: PredictionReminderPreferencesPanel(
-        onChanged: (preferences) => notificationPreferences = preferences,
-      ),
+      child: const PredictionReminderPreferencesPanel(),
     );
   }
 

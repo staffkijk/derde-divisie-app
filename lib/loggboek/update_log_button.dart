@@ -81,7 +81,7 @@ class UpdateLogButton extends StatelessWidget {
                     },
                     // 🔔 Bel-icoon met expliciete kleur (werkt betrouwbaar op mobiel/PWA)
                     icon: Icon(
-                      Icons.notifications,
+                      Icons.system_update_alt_rounded,
                       color: resolvedIconColor,
                       size: 26,
                     ),

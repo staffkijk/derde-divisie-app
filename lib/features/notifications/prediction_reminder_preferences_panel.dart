@@ -33,6 +33,11 @@ class _PredictionReminderPreferencesPanelState
   void initState() {
     super.initState();
     _service = widget.service ?? NotificationPreferencesService();
+    if (_service is NotificationPreferencesService) {
+      unawaited(
+        (_service as NotificationPreferencesService).cleanupIfDisabled(),
+      );
+    }
     _subscription = _service.watch().listen((preferences) {
       if (!mounted || _saving) return;
       setState(() {
