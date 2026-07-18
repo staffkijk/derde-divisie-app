@@ -3,9 +3,24 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:derde_divisie/data/models/notification_preferences.dart';
 
 void main() {
-  test('prediction reminders can be disabled entirely', () {
+  test('missing field allows missing prediction reminders', () {
+    final preferences = NotificationPreferences.fromMap(const {});
+
+    expect(preferences.missingPredictionReminders, isTrue);
+    expect(preferences.allowsDivision('A'), isTrue);
+  });
+
+  test('explicit true allows missing prediction reminders', () {
+    final preferences = NotificationPreferences.fromMap(
+      const {'missingPredictionReminders': true},
+    );
+
+    expect(preferences.allowsDivision('A'), isTrue);
+  });
+
+  test('explicit false blocks missing prediction reminders', () {
     const preferences = NotificationPreferences(
-      predictionRemindersEnabled: false,
+      missingPredictionReminders: false,
     );
 
     expect(preferences.allowsDivision('A'), isFalse);
@@ -13,6 +28,32 @@ void main() {
       preferences.allowsMatchTeams(division: 'A', matchTeamIds: ['acv']),
       isFalse,
     );
+  });
+
+  test('copyWith can disable and enable reminders again', () {
+    const preferences = NotificationPreferences();
+
+    final disabled = preferences.copyWith(missingPredictionReminders: false);
+    final enabled = disabled.copyWith(missingPredictionReminders: true);
+
+    expect(disabled.toMap()['missingPredictionReminders'], isFalse);
+    expect(enabled.toMap()['missingPredictionReminders'], isTrue);
+  });
+
+  test('other notification preferences remain intact when reminders are off',
+      () {
+    const preferences = NotificationPreferences(
+      missingPredictionReminders: false,
+      divisionA: false,
+      divisionB: true,
+      teamScope: NotificationTeamScope.selected,
+      selectedTeamIds: ['acv'],
+    );
+
+    final map = preferences.toMap();
+    expect(map['divisionB'], isTrue);
+    expect(map['teamScope'], 'selected');
+    expect(map['selectedTeamIds'], ['acv']);
   });
 
   test('division filters block disabled competitions', () {

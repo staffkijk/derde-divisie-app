@@ -149,6 +149,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
               SeasonConfig.teamByName(geselecteerdeClub!)?.division,
         },
         'allowEmailSharingWithPouleOwner': false,
+        'notificationPreferences': const {
+          'missingPredictionReminders': true,
+        },
         'punten_A': 0,
         'punten_B': 0,
         'totalen': 0,

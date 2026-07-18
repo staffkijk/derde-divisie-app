@@ -8,14 +8,14 @@ enum NotificationTeamScope {
 
 class NotificationPreferences {
   const NotificationPreferences({
-    this.predictionRemindersEnabled = true,
+    this.missingPredictionReminders = true,
     this.divisionA = true,
     this.divisionB = true,
     this.teamScope = NotificationTeamScope.all,
     this.selectedTeamIds = const [],
   });
 
-  final bool predictionRemindersEnabled;
+  final bool missingPredictionReminders;
   final bool divisionA;
   final bool divisionB;
   final NotificationTeamScope teamScope;
@@ -24,8 +24,8 @@ class NotificationPreferences {
   factory NotificationPreferences.fromMap(Map<String, dynamic>? data) {
     if (data == null) return const NotificationPreferences();
     return NotificationPreferences(
-      predictionRemindersEnabled:
-          data['predictionRemindersEnabled'] as bool? ?? true,
+      // An absent value deliberately opts existing users in.
+      missingPredictionReminders: data['missingPredictionReminders'] != false,
       divisionA: data['divisionA'] as bool? ?? true,
       divisionB: data['divisionB'] as bool? ?? true,
       teamScope: _teamScope(data['teamScope']),
@@ -39,7 +39,7 @@ class NotificationPreferences {
 
   Map<String, dynamic> toMap() {
     return {
-      'predictionRemindersEnabled': predictionRemindersEnabled,
+      'missingPredictionReminders': missingPredictionReminders,
       'divisionA': divisionA,
       'divisionB': divisionB,
       'teamScope': teamScope.name,
@@ -48,15 +48,15 @@ class NotificationPreferences {
   }
 
   NotificationPreferences copyWith({
-    bool? predictionRemindersEnabled,
+    bool? missingPredictionReminders,
     bool? divisionA,
     bool? divisionB,
     NotificationTeamScope? teamScope,
     List<String>? selectedTeamIds,
   }) {
     return NotificationPreferences(
-      predictionRemindersEnabled:
-          predictionRemindersEnabled ?? this.predictionRemindersEnabled,
+      missingPredictionReminders:
+          missingPredictionReminders ?? this.missingPredictionReminders,
       divisionA: divisionA ?? this.divisionA,
       divisionB: divisionB ?? this.divisionB,
       teamScope: teamScope ?? this.teamScope,
@@ -66,7 +66,7 @@ class NotificationPreferences {
 
   bool allowsDivision(String division) {
     final normalized = SeasonConfig.normalizeDivisionCode(division);
-    if (!predictionRemindersEnabled) return false;
+    if (!missingPredictionReminders) return false;
     if (normalized == 'A') return divisionA;
     if (normalized == 'B') return divisionB;
     return true;

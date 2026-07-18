@@ -227,6 +227,8 @@ export const sendPredictionReminderPushes = functions
     const now = admin.firestore.Timestamp.now();
 
     for (const user of users.docs) {
+      const preferences = user.data().notificationPreferences;
+      if (preferences?.missingPredictionReminders === false) continue;
       const notifications = await user.ref
         .collection("notifications")
         .where("type", "==", "missing_predictions")

@@ -45,6 +45,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _usernameChanged = false;
   bool isLoading = true;
   bool isSaving = false;
+  bool _isSavingMissingPredictionReminders = false;
 
   static const Color _darkGreen = Color(0xFF0F3D2A);
   static const Color _green = Color(0xFF49B653);
@@ -309,23 +310,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
               ),
-              Switch(
-                value: notificationPreferences.predictionRemindersEnabled,
-                activeColor: _green,
-                onChanged: (value) {
-                  setState(() {
-                    notificationPreferences = notificationPreferences.copyWith(
-                      predictionRemindersEnabled: value,
-                    );
-                  });
-                },
-              ),
             ],
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Voorspelherinneringen worden toegepast op in-app meldingen en voorbereide pushmeldingen.',
-            style: TextStyle(color: _textMuted, fontSize: 13),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text(
+              'Herinnering ontbrekende voorspellingen',
+              style: TextStyle(
+                color: _textDark,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            subtitle: const Text(
+              'Ontvang een melding als je voor een komende speelronde nog niet alles hebt voorspeld.',
+              style: TextStyle(color: _textMuted, fontSize: 13),
+            ),
+            value: notificationPreferences.missingPredictionReminders,
+            activeColor: _green,
+            onChanged: _isSavingMissingPredictionReminders
+                ? null
+                : _setMissingPredictionReminders,
           ),
           const SizedBox(height: 12),
           Wrap(
@@ -414,6 +420,42 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _setMissingPredictionReminders(bool value) async {
+    final previous = notificationPreferences.missingPredictionReminders;
+    if (value == previous || _isSavingMissingPredictionReminders) return;
+
+    setState(() {
+      _isSavingMissingPredictionReminders = true;
+      notificationPreferences = notificationPreferences.copyWith(
+        missingPredictionReminders: value,
+      );
+    });
+
+    try {
+      await userDocRef.update({
+        'notificationPreferences.missingPredictionReminders': value,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e, stack) {
+      _logger.severe('Fout bij opslaan notificatievoorkeur', e, stack);
+      if (!mounted) return;
+      setState(() {
+        notificationPreferences = notificationPreferences.copyWith(
+          missingPredictionReminders: previous,
+        );
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('De herinneringsinstelling kon niet worden opgeslagen'),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isSavingMissingPredictionReminders = false);
+      }
+    }
   }
 
   void _showAvatarSelection() {
