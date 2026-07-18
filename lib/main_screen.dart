@@ -22,6 +22,7 @@ import 'package:derde_divisie/features/auth/login_screen.dart';
 import 'data/services/activity_log_service.dart';
 import 'data/services/analytics_service.dart';
 import 'data/services/prediction_reminder_service.dart';
+import 'data/models/notification_collection_utils.dart';
 import 'loggboek/update_log_button.dart';
 
 const mainNavigationScreenTypes = <Type>[
@@ -816,7 +817,12 @@ class _NotificationBell extends StatelessWidget {
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
       stream: service.unreadNotificationsStream(),
       builder: (context, snapshot) {
-        final unread = snapshot.data?.docs.length ?? 0;
+        final unread = unreadNotificationCount(
+          snapshot.data?.docs.map(
+                (doc) => UserNotificationRecord(id: doc.id, data: doc.data()),
+              ) ??
+              const [],
+        );
         return Stack(
           clipBehavior: Clip.none,
           children: [
@@ -826,8 +832,8 @@ class _NotificationBell extends StatelessWidget {
                     ? Icons.notifications_active_outlined
                     : Icons.notifications_none_outlined,
               ),
-              tooltip: unread > 0 ? 'Meldingen' : 'Melding opnieuw tonen',
-              onPressed: unread > 0 ? onOpenNotifications : onShowAnnouncement,
+              tooltip: 'Meldingen',
+              onPressed: onOpenNotifications,
             ),
             if (unread > 0)
               Positioned(

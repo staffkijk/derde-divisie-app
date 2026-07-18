@@ -64,6 +64,15 @@ class PredictionReminderService {
     return snap.docs;
   }
 
+  Stream<QuerySnapshot<Map<String, dynamic>>> notificationsStream() {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return const Stream.empty();
+    return notificationsFor(uid)
+        .orderBy('createdAt', descending: true)
+        .limit(50)
+        .snapshots();
+  }
+
   Future<void> markRead(String notificationId) async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) return;

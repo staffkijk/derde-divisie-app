@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:derde_divisie/core/design/app_design.dart';
 import 'package:derde_divisie/data/services/activity_log_service.dart';
 import 'package:derde_divisie/data/services/prediction_reminder_service.dart';
+import 'package:derde_divisie/features/notifications/prediction_reminder_preferences_panel.dart';
 
 class NotificationCenterScreen extends StatefulWidget {
   const NotificationCenterScreen({
@@ -21,18 +22,54 @@ class NotificationCenterScreen extends StatefulWidget {
 class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
   final _service = PredictionReminderService();
 
+  Future<void> _showSettings() async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.tune_rounded),
+            SizedBox(width: 8),
+            Text('Meldingsinstellingen'),
+          ],
+        ),
+        content: const SingleChildScrollView(
+          child: SizedBox(
+            width: 520,
+            child: PredictionReminderPreferencesPanel(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Sluiten'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(title: const Text('Meldingen')),
-      body: FutureBuilder<List<QueryDocumentSnapshot<Map<String, dynamic>>>>(
-        future: _service.loadNotifications(),
+      appBar: AppBar(
+        title: const Text('Meldingen'),
+        actions: [
+          IconButton(
+            tooltip: 'Meldingsinstellingen',
+            onPressed: _showSettings,
+            icon: const Icon(Icons.tune_rounded),
+          ),
+        ],
+      ),
+      body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+        stream: _service.notificationsStream(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
-          final docs = snapshot.data!;
+          final docs = snapshot.data!.docs;
           if (docs.isEmpty) {
             return const Center(child: Text('Je hebt geen meldingen.'));
           }
