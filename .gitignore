@@ -65,3 +65,4 @@ firestore_exports/
 
 # Tijdelijke Excel lock-bestanden
 ~$*.xlsx
+functions/.env.derde-divisie-app
