@@ -13,7 +13,7 @@ import 'package:derde_divisie/data/services/division_data_service.dart';
 import 'package:derde_divisie/core/design/app_design.dart';
 import 'package:derde_divisie/core/widgets/team_logo.dart';
 import 'package:derde_divisie/data/config/season_config.dart';
-import 'package:derde_divisie/features/voorspellen/prediction_round_resolver.dart';
+import 'package:derde_divisie/features/voorspellen/prediction_round_selection.dart';
 import 'package:derde_divisie/features/voorspellen/widgets/prediction_score_picker.dart';
 
 class WedstrijdenSchermDerdeDivisieB extends StatefulWidget {
@@ -45,14 +45,20 @@ class _WedstrijdenSchermDerdeDivisieBState
   bool _usingSeasonMatches = false;
   String? _favoriteTeamId;
   bool _favoriteOnly = false;
+  bool _initialRoundLoading = true;
+  late final PredictionRoundSelection _roundSelection =
+      PredictionRoundSelection(division: 'B');
 
   List<int> get _availableRounds {
-    final rounds = wedstrijdenDerdeDivisieB
-        .map((wedstrijd) => wedstrijd.speelronde)
-        .where((round) => round > 0)
-        .toSet()
-        .toList()
-      ..sort();
+    final firestoreRounds = _roundSelection.availableRounds;
+    final rounds = firestoreRounds.isNotEmpty
+        ? firestoreRounds
+        : (wedstrijdenDerdeDivisieB
+            .map((wedstrijd) => wedstrijd.speelronde)
+            .where((round) => round > 0)
+            .toSet()
+            .toList()
+          ..sort());
     return rounds.isEmpty ? [_huidigeSpeelronde] : rounds;
   }
 
@@ -89,27 +95,18 @@ class _WedstrijdenSchermDerdeDivisieBState
   }
 
   Future<void> _init() async {
-    _bepaalHuidigeSpeelrondeOpDatum();
+    _huidigeSpeelronde = await _roundSelection.initializeFromCurrentSeason(
+      fallbackMatches: wedstrijdenDerdeDivisieB,
+      now: DateTime.now(),
+    );
     _laadWedstrijdenBasisVoorSpeelronde(_huidigeSpeelronde);
     _listenSeasonMatchesFirestore(_huidigeSpeelronde);
     _listenMatchesFirestore(_huidigeSpeelronde);
     await _laadVoorspellingen();
-    setState(() {});
+    if (mounted) setState(() => _initialRoundLoading = false);
   }
 
   /// 🔹 Automatische speelronde o.b.v. datum
-  void _bepaalHuidigeSpeelrondeOpDatum() {
-    _huidigeSpeelronde = PredictionRoundResolver.resolve(
-          matches: PredictionRoundResolver.fromWedstrijden(
-            wedstrijdenDerdeDivisieB,
-            'B',
-          ),
-          division: 'B',
-          now: DateTime.now(),
-        ) ??
-        1;
-  }
-
   void _laadWedstrijdenBasisVoorSpeelronde(int speelronde) {
     final wedstrijdenVoorRonde = wedstrijdenDerdeDivisieB
         .where((w) => w.speelronde == speelronde)
@@ -262,6 +259,11 @@ class _WedstrijdenSchermDerdeDivisieBState
 
     _seasonMatchesSub = SeasonPaths.currentSeasonMatches.snapshots().listen(
       (snapshot) {
+        _roundSelection.updateFromSnapshot(
+          snapshot.docs
+              .where((doc) => doc.id != '_meta')
+              .map((doc) => doc.data()),
+        );
         final seasonMatches = _parseSeasonMatches(snapshot.docs, speelronde);
         final hasSeasonMatches = seasonMatches.isNotEmpty;
 
@@ -396,6 +398,9 @@ class _WedstrijdenSchermDerdeDivisieBState
 
   @override
   Widget build(BuildContext context) {
+    if (_initialRoundLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
     final deadlineTekst = (_deadline != null)
         ? DateFormat('EEEE d-MM-yyyy – HH:mm', 'nl').format(_deadline!)
         : 'n.v.t.';
@@ -554,6 +559,7 @@ class _WedstrijdenSchermDerdeDivisieBState
   Widget _buildRondeSelector() {
     Future<void> selectRound(int round) async {
       setState(() {
+        _roundSelection.selectManually(round);
         _huidigeSpeelronde = round;
         _laadWedstrijdenBasisVoorSpeelronde(round);
         _listenSeasonMatchesFirestore(round);
