@@ -37,6 +37,20 @@ service cloud.firestore {
         );
     }
 
+    // Legacy eindstanddocumenten gebruiken de vaste id <uid>_<divisie>, maar
+    // kunnen een eigenaarveld missen. Alleen de eigenaar van die vaste A/B-id
+    // mag het document bij de eerstvolgende save naar het huidige schema brengen.
+    function isOwnerlessOwnEindstandDocument(predictionId) {
+      return signedIn() &&
+        (
+          predictionId == request.auth.uid + '_A' ||
+          predictionId == request.auth.uid + '_B'
+        ) &&
+        !('gebruikerId' in resource.data) &&
+        !('userId' in resource.data) &&
+        !('uid' in resource.data);
+    }
+
     function activityLogIsSafe() {
       return !('metadata' in request.resource.data) ||
         (
@@ -210,7 +224,10 @@ service cloud.firestore {
       allow read: if signedIn();
       allow create: if isModerator() || isNewPredictionOwner();
       allow update: if isModerator() ||
-        (isExistingPredictionOwner() && isNewPredictionOwner());
+        (
+          (isExistingPredictionOwner() || isOwnerlessOwnEindstandDocument(predictionId)) &&
+          isNewPredictionOwner()
+        );
       allow delete: if isModerator();
     }
 

@@ -73,7 +73,7 @@ void main() {
     final order = await pumpClubList(
       tester,
       width: 390,
-      platform: TargetPlatform.iOS,
+      platform: TargetPlatform.android,
     );
 
     final handle = find.byKey(const ValueKey('drag-handle-Ajax Amateurs'));
@@ -85,6 +85,29 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(order.first, isNot('Ajax Amateurs'));
+    final reordered = [...order];
+    await tester.pump();
+    expect(order, reordered, reason: 'een rebuild mag de lokale volgorde niet resetten');
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('oldIndex en newIndex verplaatsen omlaag zonder off-by-one',
+      (tester) async {
+    final order = await pumpClubList(
+      tester,
+      width: 390,
+      platform: TargetPlatform.android,
+    );
+
+    final handle = find.byKey(const ValueKey('drag-handle-Ajax Amateurs'));
+    final gesture = await tester.startGesture(tester.getCenter(handle));
+    await tester.pump(kLongPressTimeout + const Duration(milliseconds: 50));
+    await gesture.moveBy(const Offset(0, 300));
+    await tester.pump();
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    expect(order.indexOf('Ajax Amateurs'), greaterThan(0));
+    expect(order.toSet(), clubs.toSet());
   });
 }

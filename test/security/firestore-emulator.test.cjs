@@ -73,6 +73,18 @@ describe('Firestore emulator security rules', () => {
         scoreThuis: 1,
         scoreUit: 1,
       });
+      await setDoc(doc(db, 'eindstand_voorspellingen/alice_A'), {
+        gebruikerId: 'alice', divisie: 'A', voorspelling: ['Club 1', 'Club 2'],
+      });
+      await setDoc(doc(db, 'eindstand_voorspellingen/alice_B'), {
+        divisie: 'B', voorspelling: ['Legacy Club 1', 'Legacy Club 2'],
+      });
+      await setDoc(doc(db, 'eindstand_voorspellingen/bob_A'), {
+        gebruikerId: 'bob', divisie: 'A', voorspelling: ['Bob Club 1'],
+      });
+      await setDoc(doc(db, 'eindstand_voorspellingen/dave_A'), {
+        gebruikerId: 'bob', divisie: 'A', voorspelling: ['Bob Club 1'],
+      });
     });
   });
 
@@ -143,6 +155,54 @@ describe('Firestore emulator security rules', () => {
       scoreThuis: 4,
       scoreUit: 1,
     }));
+  });
+
+  it('saves new, existing and legacy eindstand predictions for normal users', async () => {
+    const db = authed('alice');
+    const payload = (division) => ({
+      gebruikerId: 'alice', divisie: division, seasonId: '2026-2027',
+      voorspelling: ['Club 2', 'Club 1'],
+    });
+
+    await assertSucceeds(setDoc(
+      doc(db, 'eindstand_voorspellingen/alice_A'), payload('A'), {merge: true},
+    ));
+    await assertSucceeds(setDoc(
+      doc(db, 'eindstand_voorspellingen/alice_B'), payload('B'), {merge: true},
+    ));
+    const newUserDb = authed('charlie');
+    await assertSucceeds(setDoc(
+      doc(newUserDb, 'eindstand_voorspellingen/charlie_A'),
+      {...payload('A'), gebruikerId: 'charlie'},
+    ));
+
+    const reopened = await assertSucceeds(
+      getDoc(doc(db, 'eindstand_voorspellingen/alice_B')),
+    );
+    assert.deepEqual(reopened.data().voorspelling, ['Club 2', 'Club 1']);
+    assert.equal(reopened.data().gebruikerId, 'alice');
+  });
+
+  it('uses the same own eindstand save flow for a moderator', async () => {
+    const db = authed('moderator');
+    await assertSucceeds(setDoc(
+      doc(db, 'eindstand_voorspellingen/moderator_A'),
+      {gebruikerId: 'moderator', divisie: 'A', seasonId: '2026-2027', voorspelling: ['Club 2', 'Club 1']},
+    ));
+  });
+
+  it('does not let a normal user claim another eindstand document', async () => {
+    const db = authed('alice');
+    await assertFails(setDoc(
+      doc(db, 'eindstand_voorspellingen/bob_A'),
+      {gebruikerId: 'alice', divisie: 'A', seasonId: '2026-2027', voorspelling: ['Overgenomen']},
+      {merge: true},
+    ));
+    await assertFails(setDoc(
+      doc(authed('dave'), 'eindstand_voorspellingen/dave_A'),
+      {gebruikerId: 'dave', divisie: 'A', seasonId: '2026-2027', voorspelling: ['Overgenomen']},
+      {merge: true},
+    ));
   });
 
   it('allows profile, privacy and own notifications but blocks changing another user', async () => {

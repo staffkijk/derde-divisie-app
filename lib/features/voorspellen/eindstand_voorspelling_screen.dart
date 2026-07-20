@@ -1,3 +1,5 @@
+import 'dart:developer' as developer;
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -5,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:derde_divisie/data/config/season_config.dart';
 import 'package:derde_divisie/data/firestore/season_paths.dart';
 import 'package:derde_divisie/features/voorspellen/eindstand_prediction_parser.dart';
+import 'package:derde_divisie/features/voorspellen/latest_save_queue.dart';
 
 class EindstandVoorspellingScreen extends StatefulWidget {
   const EindstandVoorspellingScreen({
@@ -30,12 +33,42 @@ class _EindstandVoorspellingScreenState
   int _points = 0;
   late DateTime _deadline;
   SaveStatus _saveStatus = SaveStatus.idle;
+  late final LatestSaveQueue<List<String>> _saveQueue;
 
   bool get _locked => DateTime.now().isAfter(_deadline);
+
+  void _logReorder(String message) {
+    developer.log(
+      'divisie=${widget.divisie} $message',
+      name: 'EindstandVoorspelling.Reorder',
+    );
+  }
 
   @override
   void initState() {
     super.initState();
+    _saveQueue = LatestSaveQueue<List<String>>(
+      write: _writeRanking,
+      onSavingChanged: (saving) {
+        _saving = saving;
+        if (mounted) setState(() {});
+      },
+      onAttemptStarted: () {
+        if (mounted) setState(() => _saveStatus = SaveStatus.saving);
+      },
+      onAttemptSucceeded: () {
+        if (mounted) setState(() => _saveStatus = SaveStatus.saved);
+      },
+      onAttemptFailed: (error, stackTrace) {
+        developer.log(
+          'Eindstandvoorspelling opslaan mislukt voor divisie ${widget.divisie}',
+          name: 'EindstandVoorspelling',
+          error: error,
+          stackTrace: stackTrace,
+        );
+        if (mounted) setState(() => _saveStatus = SaveStatus.failed);
+      },
+    );
     _deadline = DateTime(2026, 8, 31, 23, 59);
     _load();
   }
@@ -88,7 +121,13 @@ class _EindstandVoorspellingScreenState
         _points = parsed.points;
         _loading = false;
       });
-    } catch (_) {
+    } catch (error, stackTrace) {
+      developer.log(
+        'Eindstandvoorspelling laden mislukt voor divisie ${widget.divisie}',
+        name: 'EindstandVoorspelling',
+        error: error,
+        stackTrace: stackTrace,
+      );
       if (!mounted) return;
       setState(() {
         _clubs = SeasonConfig.teamNamesForDivision(widget.divisie);
@@ -103,34 +142,25 @@ class _EindstandVoorspellingScreenState
     final user = _auth.currentUser;
     if (user == null || _locked) return;
 
-    setState(() {
-      _saving = true;
-      _saveStatus = SaveStatus.saving;
-    });
-
-    try {
-      await _db
-          .collection('eindstand_voorspellingen')
-          .doc('${user.uid}_${widget.divisie}')
-          .set({
-        'gebruikerId': user.uid,
-        'divisie': widget.divisie,
-        'seasonId': SeasonConfig.activeSeasonId,
-        'voorspelling': _clubs,
-        'timestamp': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
-      if (!mounted) return;
-      setState(() {
-        _saving = false;
-        _saveStatus = SaveStatus.saved;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _saving = false;
-        _saveStatus = SaveStatus.failed;
-      });
+    if (_saveQueue.isSaving) {
+      _logReorder('save ingepland na lopende write');
     }
+    await _saveQueue.enqueue(List<String>.unmodifiable(_clubs));
+  }
+
+  Future<void> _writeRanking(List<String> ranking) async {
+    final user = _auth.currentUser;
+    if (user == null) throw StateError('Geen ingelogde gebruiker tijdens save');
+    await _db
+        .collection('eindstand_voorspellingen')
+        .doc('${user.uid}_${widget.divisie}')
+        .set({
+      'gebruikerId': user.uid,
+      'divisie': widget.divisie,
+      'seasonId': SeasonConfig.activeSeasonId,
+      'voorspelling': ranking,
+      'timestamp': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
   }
 
   @override
@@ -164,14 +194,37 @@ class _EindstandVoorspellingScreenState
                                 ),
                                 buildDefaultDragHandles: false,
                                 itemCount: _clubs.length,
+                                onReorderStart: (index) {
+                                  final club =
+                                      index >= 0 && index < _clubs.length
+                                          ? _clubs[index]
+                                          : '<ongeldige index>';
+                                  _logReorder(
+                                    'start index=$index club=$club',
+                                  );
+                                },
                                 onReorder: (oldIndex, newIndex) async {
-                                  if (_locked || _saving) return;
+                                  _logReorder(
+                                    'drop oldIndex=$oldIndex rawNewIndex=$newIndex '
+                                    'locked=$_locked saving=$_saving',
+                                  );
+                                  if (_locked) {
+                                    _logReorder('drop genegeerd');
+                                    return;
+                                  }
                                   setState(() {
                                     if (newIndex > oldIndex) newIndex--;
                                     final club = _clubs.removeAt(oldIndex);
                                     _clubs.insert(newIndex, club);
                                   });
+                                  _logReorder(
+                                    'lokaal toegepast newIndex=$newIndex '
+                                    'volgorde=${_clubs.join(' | ')}',
+                                  );
                                   await _save();
+                                },
+                                onReorderEnd: (index) {
+                                  _logReorder('einde index=$index');
                                 },
                                 itemBuilder: (context, index) {
                                   final club = _clubs[index];

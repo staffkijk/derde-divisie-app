@@ -66,5 +66,23 @@ void main() {
         contains("hasAny(['ismoderator', 'isModerator'])"),
       );
     });
+
+    test('legacy eindstanddocument migreert alleen via de eigen vaste id', () {
+      expect(
+        rules,
+        contains('isOwnerlessOwnEindstandDocument(predictionId)'),
+      );
+      expect(rules, contains("predictionId == request.auth.uid + '_A'"));
+      expect(rules, contains("predictionId == request.auth.uid + '_B'"));
+      expect(rules, contains("!('gebruikerId' in resource.data)"));
+      expect(rules, contains("!('userId' in resource.data)"));
+      expect(rules, contains("!('uid' in resource.data)"));
+      expect(
+        rules,
+        contains(
+          '(isExistingPredictionOwner() || isOwnerlessOwnEindstandDocument(predictionId))',
+        ),
+      );
+    });
   });
 }
