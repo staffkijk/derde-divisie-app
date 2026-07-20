@@ -29,8 +29,7 @@
     <!-- Favicon -->
     <link rel="icon" type="image/png" sizes="64x64" href="favicon-v2.png">
 
-    <!-- Preload belangrijkste assets -->
-    <link rel="preload" href="main.dart.js" as="script">
+    <!-- Preload versie-onafhankelijke manifests -->
     <link rel="preload" href="assets/AssetManifest.bin.json" as="fetch" crossorigin="anonymous">
     <link rel="preload" href="assets/FontManifest.json" as="fetch" crossorigin="anonymous">
 
@@ -78,50 +77,7 @@
       window.addEventListener('flutter-first-frame', removeSplashFromWeb);
     </script>
 
-    <!-- Eenmalige migratie van de verouderde Flutter PWA-cache. -->
-    <script>
-      (function () {
-        const migrationKey = 'derdediv_pwa_migration_v1';
-        if (localStorage.getItem(migrationKey) === 'complete') return;
-
-        async function migrateLegacyFlutterPwa() {
-          let changed = false;
-
-          if ('serviceWorker' in navigator) {
-            const registrations = await navigator.serviceWorker.getRegistrations();
-            for (const registration of registrations) {
-              const worker = registration.active || registration.waiting || registration.installing;
-              if (worker && new URL(worker.scriptURL).pathname.endsWith('/flutter_service_worker.js')) {
-                changed = (await registration.unregister()) || changed;
-              }
-            }
-          }
-
-          if ('caches' in window) {
-            const flutterCacheNames = new Set([
-              'flutter-app-cache',
-              'flutter-temp-cache',
-              'flutter-app-manifest',
-            ]);
-            for (const cacheName of await caches.keys()) {
-              if (flutterCacheNames.has(cacheName)) {
-                changed = (await caches.delete(cacheName)) || changed;
-              }
-            }
-          }
-
-          localStorage.setItem(migrationKey, 'complete');
-          if (changed && sessionStorage.getItem(migrationKey) !== 'reloaded') {
-            sessionStorage.setItem(migrationKey, 'reloaded');
-            window.location.replace(window.location.href);
-          }
-        }
-
-        migrateLegacyFlutterPwa().catch((error) => {
-          console.warn('Oude Flutter PWA-cache kon niet volledig worden opgeruimd.', error);
-        });
-      })();
-    </script>
+    <script src="app_update.js"></script>
   </head>
 
   <body>

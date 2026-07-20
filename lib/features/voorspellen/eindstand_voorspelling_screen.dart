@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'package:derde_divisie/data/config/season_config.dart';
 import 'package:derde_divisie/data/firestore/season_paths.dart';
+import 'package:derde_divisie/features/voorspellen/eindstand_prediction_parser.dart';
 
 class EindstandVoorspellingScreen extends StatefulWidget {
   const EindstandVoorspellingScreen({
@@ -28,7 +29,7 @@ class _EindstandVoorspellingScreenState
   bool _saving = false;
   int _points = 0;
   late DateTime _deadline;
-  _SaveStatus _saveStatus = _SaveStatus.idle;
+  SaveStatus _saveStatus = SaveStatus.idle;
 
   bool get _locked => DateTime.now().isAfter(_deadline);
 
@@ -73,27 +74,26 @@ class _EindstandVoorspellingScreenState
           .collection('eindstand_voorspellingen')
           .doc('${user.uid}_${widget.divisie}')
           .get();
-      final data = prediction.data();
-      final belongsToCurrentSeason =
-          data?['seasonId']?.toString() == SeasonConfig.activeSeasonId;
-      final saved = belongsToCurrentSeason && data?['voorspelling'] is List
-          ? List<String>.from(data!['voorspelling'])
-          : <String>[];
-      final validSaved = saved.length == configuredTeams.length &&
-          saved.toSet().containsAll(configuredTeams);
+      final parsed = parseEindstandPrediction(
+        data: prediction.data(),
+        configuredTeams: configuredTeams,
+        activeSeasonId: SeasonConfig.activeSeasonId,
+      );
 
       if (!mounted) return;
       setState(() {
-        _clubs = validSaved ? saved : configuredTeams;
-        _points = belongsToCurrentSeason
-            ? ((data?['punten'] as num?)?.toInt() ?? 0)
-            : 0;
+        _clubs = parsed.clubs;
+        _saveStatus =
+            parsed.hasValidSavedPrediction ? SaveStatus.saved : SaveStatus.idle;
+        _points = parsed.points;
         _loading = false;
       });
-    } on FirebaseException {
+    } catch (_) {
       if (!mounted) return;
       setState(() {
-        _clubs = [];
+        _clubs = SeasonConfig.teamNamesForDivision(widget.divisie);
+        _saveStatus = SaveStatus.idle;
+        _points = 0;
         _loading = false;
       });
     }
@@ -105,7 +105,7 @@ class _EindstandVoorspellingScreenState
 
     setState(() {
       _saving = true;
-      _saveStatus = _SaveStatus.saving;
+      _saveStatus = SaveStatus.saving;
     });
 
     try {
@@ -122,13 +122,13 @@ class _EindstandVoorspellingScreenState
       if (!mounted) return;
       setState(() {
         _saving = false;
-        _saveStatus = _SaveStatus.saved;
+        _saveStatus = SaveStatus.saved;
       });
     } catch (_) {
       if (!mounted) return;
       setState(() {
         _saving = false;
-        _saveStatus = _SaveStatus.failed;
+        _saveStatus = SaveStatus.failed;
       });
     }
   }
@@ -150,7 +150,7 @@ class _EindstandVoorspellingScreenState
                         constraints: const BoxConstraints(maxWidth: 820),
                         child: Column(
                           children: [
-                            _StatusBar(
+                            PredictionStatusBar(
                               locked: _locked,
                               points: _points,
                               saveStatus: _saveStatus,
@@ -175,7 +175,7 @@ class _EindstandVoorspellingScreenState
                                 },
                                 itemBuilder: (context, index) {
                                   final club = _clubs[index];
-                                  return _ClubRow(
+                                  return PredictionClubRow(
                                     key: ValueKey(club),
                                     index: index,
                                     club: club,
@@ -194,10 +194,11 @@ class _EindstandVoorspellingScreenState
   }
 }
 
-enum _SaveStatus { idle, saving, saved, failed }
+enum SaveStatus { idle, saving, saved, failed }
 
-class _StatusBar extends StatelessWidget {
-  const _StatusBar({
+class PredictionStatusBar extends StatelessWidget {
+  const PredictionStatusBar({
+    super.key,
     required this.locked,
     required this.points,
     required this.saveStatus,
@@ -207,7 +208,7 @@ class _StatusBar extends StatelessWidget {
 
   final bool locked;
   final int points;
-  final _SaveStatus saveStatus;
+  final SaveStatus saveStatus;
   final bool saving;
   final VoidCallback onRetry;
 
@@ -224,27 +225,70 @@ class _StatusBar extends StatelessWidget {
           color: locked ? const Color(0xFFFFCC80) : const Color(0xFFC8E6C9),
         ),
       ),
-      child: Row(
-        children: [
-          Icon(locked ? Icons.lock_outline : Icons.lock_open_rounded),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              locked ? 'Vergrendeld' : 'Open tot en met 31 augustus 2026',
-              style: const TextStyle(fontWeight: FontWeight.w700),
-            ),
-          ),
-          if (points > 0) Text('$points punten'),
-          if (!locked) ...[
-            const SizedBox(width: 12),
-            _SaveStatusIndicator(
-              status: saveStatus,
-              saving: saving,
-              onRetry: onRetry,
-            ),
-          ],
-        ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final leading = _StatusLeading(locked: locked, points: points);
+          final status = _SaveStatusIndicator(
+            status: saveStatus,
+            saving: saving,
+            onRetry: onRetry,
+          );
+
+          // Keep enough room for the complete date on the first line. On
+          // narrower screens the status gets its own line instead of squeezing
+          // the Expanded date text down to a handful of pixels.
+          if (constraints.maxWidth < 600) {
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                leading,
+                if (!locked) ...[
+                  const SizedBox(height: 10),
+                  status,
+                ],
+              ],
+            );
+          }
+
+          return Row(
+            children: [
+              Expanded(child: leading),
+              if (!locked) ...[
+                const SizedBox(width: 16),
+                status,
+              ],
+            ],
+          );
+        },
       ),
+    );
+  }
+}
+
+class _StatusLeading extends StatelessWidget {
+  const _StatusLeading({required this.locked, required this.points});
+
+  final bool locked;
+  final int points;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(locked ? Icons.lock_outline : Icons.lock_open_rounded),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            locked ? 'Vergrendeld' : 'Open tot en met 31 augustus 2026',
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+        ),
+        if (points > 0) ...[
+          const SizedBox(width: 12),
+          Text('$points punten'),
+        ],
+      ],
     );
   }
 }
@@ -256,19 +300,19 @@ class _SaveStatusIndicator extends StatelessWidget {
     required this.onRetry,
   });
 
-  final _SaveStatus status;
+  final SaveStatus status;
   final bool saving;
   final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
     switch (status) {
-      case _SaveStatus.saving:
+      case SaveStatus.saving:
         return const Text(
           'Opslaan...',
           style: TextStyle(fontWeight: FontWeight.w800),
         );
-      case _SaveStatus.saved:
+      case SaveStatus.saved:
         return const Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -277,7 +321,7 @@ class _SaveStatusIndicator extends StatelessWidget {
             Text('Opgeslagen', style: TextStyle(fontWeight: FontWeight.w800)),
           ],
         );
-      case _SaveStatus.failed:
+      case SaveStatus.failed:
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -294,7 +338,7 @@ class _SaveStatusIndicator extends StatelessWidget {
             ),
           ],
         );
-      case _SaveStatus.idle:
+      case SaveStatus.idle:
         return const Text(
           'Sleep clubs om je voorspelling op te slaan',
           style: TextStyle(color: Colors.black54),
@@ -303,8 +347,8 @@ class _SaveStatusIndicator extends StatelessWidget {
   }
 }
 
-class _ClubRow extends StatelessWidget {
-  const _ClubRow({
+class PredictionClubRow extends StatelessWidget {
+  const PredictionClubRow({
     super.key,
     required this.index,
     required this.club,
@@ -345,19 +389,42 @@ class _ClubRow extends StatelessWidget {
           Expanded(
             child: Text(
               club,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(fontWeight: FontWeight.w700),
             ),
           ),
+          const SizedBox(width: 8),
           if (!locked)
-            ReorderableDragStartListener(
+            ReorderableDelayedDragStartListener(
               index: index,
-              child: const Padding(
-                padding: EdgeInsets.all(8),
-                child: Icon(Icons.drag_handle_rounded),
+              child: Semantics(
+                button: true,
+                label: '$club verslepen',
+                child: Container(
+                  key: ValueKey('drag-handle-$club'),
+                  width: 48,
+                  height: 48,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE8F5E9),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFF9BC8A3)),
+                  ),
+                  child: const Icon(
+                    Icons.drag_handle,
+                    size: 28,
+                    color: Color(0xFF153B2A),
+                  ),
+                ),
               ),
             )
           else
-            const Icon(Icons.lock_outline, size: 20),
+            const SizedBox(
+              width: 48,
+              height: 48,
+              child: Icon(Icons.lock_outline, size: 20),
+            ),
         ],
       ),
     );

@@ -1,5 +1,6 @@
 {{flutter_js}}
 {{flutter_build_config}}
 
-// Flutter 3.32: start zonder de verouderde app-shell service worker.
-_flutter.loader.load();
+// Start zonder Flutter app-shell-service-worker. De DerdeDiv-updater haalt eerst
+// de actuele release op en geeft main.dart.js een versiespecifieke URL.
+DerdeDivUpdater.createUpdater().startAndLoad(_flutter);

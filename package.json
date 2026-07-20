@@ -1,6 +1,7 @@
 {
   "scripts": {
-    "test:security": "firebase emulators:exec --only firestore \"node --test test/security/firestore-emulator.test.cjs\""
+    "test:security": "firebase emulators:exec --only firestore \"node --test test/security/firestore-emulator.test.cjs\"",
+    "test:web-update": "node --test test/web_app_update_test.cjs"
   },
   "dependencies": {
     "firebase-admin": "^14.0.0",

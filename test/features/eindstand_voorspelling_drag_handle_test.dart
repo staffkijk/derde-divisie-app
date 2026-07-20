@@ -1,0 +1,90 @@
+import 'package:derde_divisie/features/voorspellen/eindstand_voorspelling_screen.dart';
+import 'package:flutter/gestures.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+void main() {
+  const clubs = [
+    'Ajax Amateurs',
+    'Excelsior Maassluis',
+    'Harkemase Boys met een extra lange clubnaam',
+    'Quick Boys',
+  ];
+
+  Future<List<String>> pumpClubList(
+    WidgetTester tester, {
+    required double width,
+    required TargetPlatform platform,
+  }) async {
+    final order = [...clubs];
+    await tester.binding.setSurfaceSize(Size(width, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(platform: platform),
+        home: Scaffold(
+          body: ReorderableListView.builder(
+            buildDefaultDragHandles: false,
+            itemCount: order.length,
+            onReorder: (oldIndex, newIndex) {
+              if (newIndex > oldIndex) newIndex--;
+              final club = order.removeAt(oldIndex);
+              order.insert(newIndex, club);
+            },
+            itemBuilder: (context, index) => PredictionClubRow(
+              key: ValueKey(order[index]),
+              index: index,
+              club: order[index],
+              locked: false,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    return order;
+  }
+
+  for (final platform in [TargetPlatform.iOS, TargetPlatform.android]) {
+    for (final width in [360.0, 390.0, 412.0]) {
+      testWidgets(
+        'iedere club heeft een zichtbare 48px handle op $platform bij ${width}px',
+        (tester) async {
+          await pumpClubList(tester, width: width, platform: platform);
+
+          expect(find.byIcon(Icons.drag_handle), findsNWidgets(clubs.length));
+          for (final club in clubs) {
+            final handle = find.byKey(ValueKey('drag-handle-$club'));
+            expect(handle, findsOneWidget);
+            expect(tester.getSize(handle), const Size(48, 48));
+            expect(
+              tester.getTopLeft(handle).dx,
+              greaterThan(tester.getTopRight(find.text(club)).dx),
+            );
+            expect(tester.getTopRight(handle).dx, lessThanOrEqualTo(width));
+          }
+          expect(tester.takeException(), isNull);
+        },
+      );
+    }
+  }
+
+  testWidgets('touch slepen via de handle wijzigt de volgorde', (tester) async {
+    final order = await pumpClubList(
+      tester,
+      width: 390,
+      platform: TargetPlatform.iOS,
+    );
+
+    final handle = find.byKey(const ValueKey('drag-handle-Ajax Amateurs'));
+    final gesture = await tester.startGesture(tester.getCenter(handle));
+    await tester.pump(kLongPressTimeout + const Duration(milliseconds: 50));
+    await gesture.moveBy(const Offset(0, 160));
+    await tester.pumpAndSettle();
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    expect(order.first, isNot('Ajax Amateurs'));
+    expect(tester.takeException(), isNull);
+  });
+}
