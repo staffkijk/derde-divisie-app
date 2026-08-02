@@ -1,7 +1,46 @@
+import 'package:derde_divisie/data/config/season_config.dart';
+import 'package:derde_divisie/features/voorspellen/eindstand_prediction_parser.dart';
 import 'package:derde_divisie/features/voorspellen/eindstand_voorspelling_screen.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+Future<void> dragHandle(
+  WidgetTester tester,
+  Finder handle,
+  Offset movement,
+) async {
+  TestGesture? gesture;
+
+  try {
+    gesture = await tester.startGesture(
+      tester.getCenter(handle),
+    );
+
+    await tester.pump(
+      kLongPressTimeout + const Duration(milliseconds: 100),
+    );
+
+    await gesture.moveBy(movement);
+
+    await tester.pump(
+      const Duration(milliseconds: 300),
+    );
+
+    await gesture.up();
+    gesture = null;
+
+    await tester.pump();
+    await tester.pump(
+      const Duration(milliseconds: 500),
+    );
+  } finally {
+    if (gesture != null) {
+      await gesture.cancel();
+      await tester.pump();
+    }
+  }
+}
 
 void main() {
   const clubs = [
@@ -77,17 +116,16 @@ void main() {
     );
 
     final handle = find.byKey(const ValueKey('drag-handle-Ajax Amateurs'));
-    final gesture = await tester.startGesture(tester.getCenter(handle));
-    await tester.pump(kLongPressTimeout + const Duration(milliseconds: 50));
-    await gesture.moveBy(const Offset(0, 160));
-    await tester.pumpAndSettle();
-    await gesture.up();
-    await tester.pumpAndSettle();
+    await dragHandle(tester, handle, const Offset(0, 160));
 
     expect(order.first, isNot('Ajax Amateurs'));
     final reordered = [...order];
     await tester.pump();
-    expect(order, reordered, reason: 'een rebuild mag de lokale volgorde niet resetten');
+    expect(
+      order,
+      reordered,
+      reason: 'een rebuild mag de lokale volgorde niet resetten',
+    );
     expect(tester.takeException(), isNull);
   });
 
@@ -100,14 +138,40 @@ void main() {
     );
 
     final handle = find.byKey(const ValueKey('drag-handle-Ajax Amateurs'));
-    final gesture = await tester.startGesture(tester.getCenter(handle));
-    await tester.pump(kLongPressTimeout + const Duration(milliseconds: 50));
-    await gesture.moveBy(const Offset(0, 300));
-    await tester.pump();
-    await gesture.up();
-    await tester.pumpAndSettle();
+    await dragHandle(tester, handle, const Offset(0, 300));
 
     expect(order.indexOf('Ajax Amateurs'), greaterThan(0));
     expect(order.toSet(), clubs.toSet());
   });
+
+  for (final division in [
+    SeasonConfig.divisionA,
+    SeasonConfig.divisionB,
+  ]) {
+    test('via parser geladen lijst kan worden herschikt in Divisie $division',
+        () {
+      final configuredTeams =
+          SeasonConfig.teamNamesForDivision(division).take(4).toList();
+      final parsed = parseEindstandPrediction(
+        data: {
+          'seasonId': SeasonConfig.activeSeasonId,
+          'voorspelling': configuredTeams,
+        },
+        configuredTeams: configuredTeams,
+        activeSeasonId: SeasonConfig.activeSeasonId,
+      );
+      final originalOrder = List<String>.from(parsed.clubs);
+
+      final reordered = reorderEindstandClubs(
+        parsed.clubs,
+        0,
+        2,
+      );
+
+      expect(reordered, isNot(originalOrder));
+      expect(reordered[1], originalOrder[0]);
+      expect(reordered.toSet(), originalOrder.toSet());
+      expect(parsed.clubs, originalOrder);
+    });
+  }
 }

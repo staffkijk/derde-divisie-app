@@ -2,12 +2,31 @@ import 'dart:developer' as developer;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:derde_divisie/data/config/season_config.dart';
 import 'package:derde_divisie/data/firestore/season_paths.dart';
 import 'package:derde_divisie/features/voorspellen/eindstand_prediction_parser.dart';
 import 'package:derde_divisie/features/voorspellen/latest_save_queue.dart';
+
+@visibleForTesting
+List<String> reorderEindstandClubs(
+  List<String> clubs,
+  int oldIndex,
+  int newIndex,
+) {
+  final updatedClubs = List<String>.from(clubs);
+
+  if (newIndex > oldIndex) {
+    newIndex--;
+  }
+
+  final club = updatedClubs.removeAt(oldIndex);
+  updatedClubs.insert(newIndex, club);
+
+  return updatedClubs;
+}
 
 class EindstandVoorspellingScreen extends StatefulWidget {
   const EindstandVoorspellingScreen({
@@ -115,7 +134,7 @@ class _EindstandVoorspellingScreenState
 
       if (!mounted) return;
       setState(() {
-        _clubs = parsed.clubs;
+        _clubs = List<String>.from(parsed.clubs);
         _saveStatus =
             parsed.hasValidSavedPrediction ? SaveStatus.saved : SaveStatus.idle;
         _points = parsed.points;
@@ -130,7 +149,9 @@ class _EindstandVoorspellingScreenState
       );
       if (!mounted) return;
       setState(() {
-        _clubs = SeasonConfig.teamNamesForDivision(widget.divisie);
+        _clubs = List<String>.from(
+          SeasonConfig.teamNamesForDivision(widget.divisie),
+        );
         _saveStatus = SaveStatus.idle;
         _points = 0;
         _loading = false;
@@ -212,11 +233,15 @@ class _EindstandVoorspellingScreenState
                                     _logReorder('drop genegeerd');
                                     return;
                                   }
+
                                   setState(() {
-                                    if (newIndex > oldIndex) newIndex--;
-                                    final club = _clubs.removeAt(oldIndex);
-                                    _clubs.insert(newIndex, club);
+                                    _clubs = reorderEindstandClubs(
+                                      _clubs,
+                                      oldIndex,
+                                      newIndex,
+                                    );
                                   });
+
                                   _logReorder(
                                     'lokaal toegepast newIndex=$newIndex '
                                     'volgorde=${_clubs.join(' | ')}',
