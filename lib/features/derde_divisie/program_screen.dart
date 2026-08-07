@@ -988,6 +988,10 @@ class _EditMatchDialogState extends State<_EditMatchDialog> {
   late final TextEditingController _timeController;
   late final TextEditingController _homeScoreController;
   late final TextEditingController _awayScoreController;
+  late final TextEditingController _venueNameController;
+  late final TextEditingController _venueAddressController;
+  late final TextEditingController _venuePostalCodeController;
+  late final TextEditingController _venueCityController;
 
   late String _status;
   bool _saving = false;
@@ -1004,6 +1008,12 @@ class _EditMatchDialogState extends State<_EditMatchDialog> {
     _awayScoreController = TextEditingController(
       text: widget.match.awayScore?.toString() ?? '',
     );
+    _venueNameController = TextEditingController(text: widget.match.venueName);
+    _venueAddressController =
+        TextEditingController(text: widget.match.venueAddress);
+    _venuePostalCodeController =
+        TextEditingController(text: widget.match.venuePostalCode);
+    _venueCityController = TextEditingController(text: widget.match.venueCity);
 
     _status = _statuses.contains(widget.match.status)
         ? widget.match.status
@@ -1016,6 +1026,10 @@ class _EditMatchDialogState extends State<_EditMatchDialog> {
     _timeController.dispose();
     _homeScoreController.dispose();
     _awayScoreController.dispose();
+    _venueNameController.dispose();
+    _venueAddressController.dispose();
+    _venuePostalCodeController.dispose();
+    _venueCityController.dispose();
     super.dispose();
   }
 
@@ -1120,6 +1134,40 @@ class _EditMatchDialogState extends State<_EditMatchDialog> {
                   style: TextStyle(color: Color(0xFF667067), fontSize: 12),
                 ),
               ),
+              const SizedBox(height: 18),
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: Text('Afwijkende accommodatie (optioneel)',
+                    style: TextStyle(fontWeight: FontWeight.w800)),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                  controller: _venueNameController,
+                  decoration: const InputDecoration(
+                      labelText: 'Naam accommodatie',
+                      border: OutlineInputBorder())),
+              const SizedBox(height: 10),
+              TextField(
+                  controller: _venueAddressController,
+                  decoration: const InputDecoration(
+                      labelText: 'Straat en huisnummer',
+                      border: OutlineInputBorder())),
+              const SizedBox(height: 10),
+              Row(children: [
+                Expanded(
+                    child: TextField(
+                        controller: _venuePostalCodeController,
+                        decoration: const InputDecoration(
+                            labelText: 'Postcode',
+                            border: OutlineInputBorder()))),
+                const SizedBox(width: 10),
+                Expanded(
+                    child: TextField(
+                        controller: _venueCityController,
+                        decoration: const InputDecoration(
+                            labelText: 'Plaats',
+                            border: OutlineInputBorder()))),
+              ]),
             ],
           ),
         ),
@@ -1182,6 +1230,10 @@ class _EditMatchDialogState extends State<_EditMatchDialog> {
         'scheduledAt': Timestamp.fromDate(scheduledAt),
         'kickoffTimeConfirmed': true,
         'updatedAt': FieldValue.serverTimestamp(),
+        'venueName': _emptyToNull(_venueNameController.text),
+        'venueAddress': _emptyToNull(_venueAddressController.text),
+        'venuePostalCode': _emptyToNull(_venuePostalCodeController.text),
+        'venueCity': _emptyToNull(_venueCityController.text),
       }, SetOptions(merge: true));
 
       final processor = const ResultProcessingService();
@@ -1218,6 +1270,9 @@ class _EditMatchDialogState extends State<_EditMatchDialog> {
     if (trimmed.isEmpty) return null;
     return int.tryParse(trimmed);
   }
+
+  String? _emptyToNull(String value) =>
+      value.trim().isEmpty ? null : value.trim();
 
   bool _validDate(String value) {
     final match = RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(value);
@@ -1306,6 +1361,10 @@ class _MatchDoc {
     required this.status,
     required this.homeScore,
     required this.awayScore,
+    required this.venueName,
+    required this.venueAddress,
+    required this.venuePostalCode,
+    required this.venueCity,
   });
 
   final DocumentReference<Map<String, dynamic>> ref;
@@ -1331,6 +1390,10 @@ class _MatchDoc {
   final String status;
   final int? homeScore;
   final int? awayScore;
+  final String venueName;
+  final String venueAddress;
+  final String venuePostalCode;
+  final String venueCity;
 
   factory _MatchDoc.fromSnapshot(
     QueryDocumentSnapshot<Map<String, dynamic>> doc,
@@ -1370,6 +1433,10 @@ class _MatchDoc {
       status: _string(data['status'], 'scheduled'),
       homeScore: _nullableInt(data['homeScore']),
       awayScore: _nullableInt(data['awayScore']),
+      venueName: _string(data['venueName'], ''),
+      venueAddress: _string(data['venueAddress'], ''),
+      venuePostalCode: _string(data['venuePostalCode'], ''),
+      venueCity: _string(data['venueCity'], ''),
     );
   }
 

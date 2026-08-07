@@ -5,12 +5,41 @@ import * as admin from "firebase-admin";
 import axios from "axios";
 import {BetaAnalyticsDataClient} from "@google-analytics/data";
 import {defineString} from "firebase-functions/params";
+import {buildCalendar, loadCalendarData} from "./calendar";
 
 if (!admin.apps.length) admin.initializeApp();
 const db = admin.firestore();
 const region = "europe-west1";
 const analyticsDataClient = new BetaAnalyticsDataClient();
 const ga4PropertyIdParam = defineString("GA4_PROPERTY_ID");
+
+let calendarCache: {expires: number; data: Awaited<ReturnType<typeof loadCalendarData>>} | null = null;
+
+export const calendarFeed = functions.region(region).https.onRequest(async (req, res): Promise<void> => {
+  try {
+    if (!calendarCache || calendarCache.expires < Date.now()) {
+      calendarCache = {data: await loadCalendarData(db), expires: Date.now() + 5 * 60 * 1000};
+    }
+    const path = req.path
+      .replace(/^\/agenda\//, "")
+      .replace(/^\/|\.ics$/g, "");
+    const teamMatch = /^team\/([^/]+)$/.exec(path);
+    const division = path === "divisie-a" ? "A" : path === "divisie-b" ? "B" : undefined;
+    if (path !== "alles" && !division && !teamMatch) {
+      res.status(404).send("Onbekende agenda-feed");
+      return;
+    }
+    const baseUrl = `${req.protocol}://${req.get("host")}`;
+    const body = buildCalendar({...calendarCache.data, division, teamId: teamMatch?.[1], baseUrl});
+    res.set("Content-Type", "text/calendar; charset=utf-8");
+    res.set("Cache-Control", "public, max-age=300, s-maxage=300, stale-while-revalidate=60");
+    res.set("Content-Disposition", "inline; filename=derdediv-programma.ics");
+    res.status(200).send(body);
+  } catch (error) {
+    console.error("calendarFeed error", error);
+    res.status(500).send("De agenda-feed kon niet worden gemaakt.");
+  }
+});
 
 /* -------------------------------------------------------------------------- */
 /*                        Helper functies voorspellen                         */

@@ -2,6 +2,7 @@
 
 const { initializeApp, applicationDefault, getApps } = require("firebase-admin/app");
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
+const { clubIdForName } = require("./club_ids");
 
 const SEASON_ID = "2026-2027";
 const DRY_RUN = true;
@@ -132,6 +133,7 @@ function standingPayload(team) {
 function teamPayload(team) {
   return {
     teamId: team.teamId,
+    clubId: clubIdForName(team.name),
     name: team.name,
     teamName: team.name,
     division: team.division,

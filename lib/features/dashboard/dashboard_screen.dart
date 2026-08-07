@@ -19,6 +19,7 @@ import 'package:derde_divisie/core/widgets/derde_div_logo.dart';
 import 'package:derde_divisie/core/widgets/team_logo.dart';
 import 'package:derde_divisie/features/derde_divisie/historical_standings_screen.dart';
 import 'package:derde_divisie/features/dashboard/dashboard_match_center.dart';
+import 'package:derde_divisie/features/calendar/calendar_subscription_dialog.dart';
 
 /// ---------------------------
 /// Firestore veldmapping
@@ -911,6 +912,19 @@ class DashboardScreen extends StatelessWidget {
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: Colors.white,
                                 side: const BorderSide(color: Colors.white54),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            FilledButton.icon(
+                              key: const Key('open-calendar-subscription'),
+                              onPressed: () =>
+                                  CalendarSubscriptionDialog.show(context),
+                              icon: const Icon(Icons.calendar_month_outlined),
+                              label:
+                                  const Text('Zet het programma in je agenda'),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: Colors.white,
+                                foregroundColor: const Color(0xFF153B2A),
                               ),
                             ),
                           ],

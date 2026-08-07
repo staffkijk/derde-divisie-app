@@ -10,6 +10,7 @@ const {
   getFirestore,
   FieldValue,
 } = require("firebase-admin/firestore");
+const { clubIdForName } = require("./club_ids");
 
 if (getApps().length === 0) {
   initializeApp({
@@ -180,6 +181,7 @@ function buildTeamDoc(teamName, division, sortOrder) {
     seasonLabel: SEASON_LABEL,
 
     name: teamName,
+    clubId: clubIdForName(teamName),
     displayName: teamName,
     searchName: normalizeForMatch(teamName),
     slug,
