@@ -6,6 +6,7 @@ import axios from "axios";
 import {BetaAnalyticsDataClient} from "@google-analytics/data";
 import {defineString} from "firebase-functions/params";
 import {buildCalendar, loadCalendarData} from "./calendar";
+import {allowsMissingPredictionReminderPush} from "./prediction-reminder-policy";
 
 if (!admin.apps.length) admin.initializeApp();
 const db = admin.firestore();
@@ -257,7 +258,7 @@ export const sendPredictionReminderPushes = functions
 
     for (const user of users.docs) {
       const preferences = user.data().notificationPreferences;
-      if (preferences?.missingPredictionReminders === false) continue;
+      if (!allowsMissingPredictionReminderPush(preferences)) continue;
       const notifications = await user.ref
         .collection("notifications")
         .where("type", "==", "missing_predictions")

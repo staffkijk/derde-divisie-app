@@ -229,22 +229,32 @@ class PredictionReminderService {
     if (uid == null) return null;
     final status = await evaluate(division: division, round: round);
     if (status == null) return null;
-    final id =
-        'missing_predictions_${SeasonConfig.activeSeasonId}_${status.division}_${status.round}';
+    final id = missingPredictionReminderId(
+      seasonId: SeasonConfig.activeSeasonId,
+      division: status.division,
+      round: status.round,
+    );
     final ref = notificationsFor(uid).doc(id);
     if (status.complete || status.expired) {
-      await ref.set({
-        'read': true,
-        'resolved': true,
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+      final existing = await ref.get();
+      if (existing.exists) {
+        await ref.set({
+          'read': true,
+          'resolved': true,
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      }
       return status;
     }
+    final existing = await ref.get();
     await ref.set({
       'type': 'missing_predictions',
       'title': 'Voorspellingen ontbreken',
-      'body':
-          'Je hebt nog ${status.missing} wedstrijden niet voorspeld voor speelronde ${status.round}.',
+      'body': missingPredictionReminderBody(
+        missing: status.missing,
+        division: status.division,
+        round: status.round,
+      ),
       'seasonId': SeasonConfig.activeSeasonId,
       'division': status.division,
       'round': status.round,
@@ -252,7 +262,7 @@ class PredictionReminderService {
       'missingMatchIds': status.missingMatchIds,
       'read': false,
       'resolved': false,
-      'createdAt': FieldValue.serverTimestamp(),
+      if (!existing.exists) 'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
     return status;
@@ -272,6 +282,28 @@ class PredictionReminderService {
     if (dates.isEmpty) return null;
     return dates.reduce((a, b) => a.isBefore(b) ? a : b);
   }
+}
+
+String missingPredictionReminderId({
+  required String seasonId,
+  required String division,
+  required int round,
+}) {
+  final normalizedDivision = SeasonConfig.normalizeDivisionCode(division);
+  return 'missing_predictions_${seasonId}_${normalizedDivision}_$round';
+}
+
+String missingPredictionReminderBody({
+  required int missing,
+  required String division,
+  required int round,
+}) {
+  final normalizedDivision = SeasonConfig.normalizeDivisionCode(division);
+  final divisionLabel = normalizedDivision == 'B'
+      ? 'Derde Divisie B'
+      : 'Derde Divisie A';
+  return 'Je hebt nog $missing wedstrijden niet voorspeld voor '
+      '$divisionLabel, speelronde $round.';
 }
 
 class _ReminderMatch {

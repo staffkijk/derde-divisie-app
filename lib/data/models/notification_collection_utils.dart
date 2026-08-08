@@ -19,11 +19,18 @@ bool isMissingPredictionNotification(UserNotificationRecord notification) {
       notification.id.startsWith('missing_predictions_');
 }
 
+bool isActiveMissingPredictionNotification(
+  UserNotificationRecord notification,
+) =>
+    isMissingPredictionNotification(notification) &&
+    (notification.data['read'] != true ||
+        notification.data['resolved'] != true);
+
 List<String> missingPredictionNotificationIds(
   Iterable<UserNotificationRecord> notifications,
 ) =>
     notifications
-        .where(isMissingPredictionNotification)
+        .where(isActiveMissingPredictionNotification)
         .map((item) => item.id)
         .toList(growable: false);
 

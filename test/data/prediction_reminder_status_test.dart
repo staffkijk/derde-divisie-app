@@ -3,6 +3,43 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:derde_divisie/data/services/prediction_reminder_service.dart';
 
 void main() {
+  test('A reminder noemt Derde Divisie A', () {
+    expect(
+      missingPredictionReminderBody(missing: 9, division: 'A', round: 1),
+      'Je hebt nog 9 wedstrijden niet voorspeld voor Derde Divisie A, speelronde 1.',
+    );
+  });
+
+  test('B reminder noemt Derde Divisie B', () {
+    expect(
+      missingPredictionReminderBody(missing: 9, division: 'B', round: 1),
+      'Je hebt nog 9 wedstrijden niet voorspeld voor Derde Divisie B, speelronde 1.',
+    );
+  });
+
+  test('A en B bestaan naast elkaar met deterministische unieke ids', () {
+    final a = missingPredictionReminderId(
+      seasonId: '2026-2027',
+      division: 'A',
+      round: 1,
+    );
+    final b = missingPredictionReminderId(
+      seasonId: '2026-2027',
+      division: 'B',
+      round: 1,
+    );
+
+    expect(a, isNot(b));
+    expect(
+      missingPredictionReminderId(
+        seasonId: '2026-2027',
+        division: 'A',
+        round: 1,
+      ),
+      a,
+    );
+  });
+
   test('herkent geen voorspellingen ingevuld', () {
     const status = PredictionReminderStatus(
       division: 'A',

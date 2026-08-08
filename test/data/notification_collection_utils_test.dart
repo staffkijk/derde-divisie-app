@@ -62,4 +62,17 @@ void main() {
     final remaining = remindersOnly.where((item) => !removed.contains(item.id));
     expect(unreadNotificationCount(remaining), 0);
   });
+
+  test('reeds gelezen en opgeloste reminders blijven in de historie', () {
+    const history = UserNotificationRecord(
+      id: 'missing_predictions_2025_A_1',
+      data: {
+        'type': 'missing_predictions',
+        'read': true,
+        'resolved': true,
+      },
+    );
+
+    expect(missingPredictionNotificationIds([history]), isEmpty);
+  });
 }

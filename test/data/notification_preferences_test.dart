@@ -3,6 +3,19 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:derde_divisie/data/models/notification_preferences.dart';
 
 void main() {
+  test('registratie legt de gekozen reminder voorkeur expliciet vast', () {
+    expect(
+      initialNotificationPreferences(missingPredictionReminders: false)[
+          'missingPredictionReminders'],
+      isFalse,
+    );
+    expect(
+      initialNotificationPreferences(missingPredictionReminders: true)[
+          'missingPredictionReminders'],
+      isTrue,
+    );
+  });
+
   test('missing field allows missing prediction reminders', () {
     final preferences = NotificationPreferences.fromMap(const {});
 

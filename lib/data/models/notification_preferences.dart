@@ -98,3 +98,10 @@ class NotificationPreferences {
     );
   }
 }
+
+Map<String, dynamic> initialNotificationPreferences({
+  required bool missingPredictionReminders,
+}) =>
+    NotificationPreferences(
+      missingPredictionReminders: missingPredictionReminders,
+    ).toMap();
