@@ -57,3 +57,44 @@ jobs:
 
       - name: Web release build
         run: flutter build web
+
+  firebase-chain-windows:
+    runs-on: windows-latest
+    timeout-minutes: 35
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Java voor Firebase emulators
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.32.5'
+          channel: stable
+          cache: true
+
+      - name: Dependencies
+        run: |
+          npm ci
+          flutter config --enable-windows-desktop
+          flutter pub get
+
+      - name: Firebase uitslagketen tegen emulators
+        shell: powershell
+        run: >
+          npx firebase emulators:exec
+          --project derde-divisie-app
+          --only auth,firestore
+          "node tools/regression/seed_emulator.cjs && flutter test integration_test/firebase_result_processing_test.dart -d windows -r expanded"
