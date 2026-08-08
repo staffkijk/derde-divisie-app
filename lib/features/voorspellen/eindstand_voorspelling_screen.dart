@@ -473,7 +473,7 @@ class PredictionClubRow extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           if (!locked)
-            ReorderableDelayedDragStartListener(
+            ReorderableDragStartListener(
               index: index,
               child: Semantics(
                 button: true,
