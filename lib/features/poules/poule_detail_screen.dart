@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 
 import 'package:derde_divisie/core/design/app_design.dart';
+import 'package:derde_divisie/core/widgets/ranking_app_bar.dart';
 import 'package:derde_divisie/data/config/season_config.dart';
 import 'package:derde_divisie/data/models/poule_prediction_scope.dart';
 import 'package:derde_divisie/data/firestore/season_paths.dart';
@@ -180,8 +181,10 @@ class _PouleDetailScreenState extends State<PouleDetailScreen> {
     final pouleRef = _db.collection('poules').doc(widget.pouleId);
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Poule'),
+      appBar: RankingAppBar(
+        context: context,
+        title: 'Poule',
+        fallbackRoute: poulesOverviewRoute,
         actions: [
           IconButton(
             tooltip: 'Poule verlaten',

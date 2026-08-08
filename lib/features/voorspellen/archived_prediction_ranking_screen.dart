@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:derde_divisie/core/widgets/ranking_app_bar.dart';
 
 class ArchivedPredictionRankingScreen extends StatefulWidget {
   const ArchivedPredictionRankingScreen({
@@ -16,7 +17,6 @@ class ArchivedPredictionRankingScreen extends StatefulWidget {
 
 class _ArchivedPredictionRankingScreenState
     extends State<ArchivedPredictionRankingScreen> {
-  static const Color _darkGreen = Color(0xFF153B2A);
   static const Color _cream = Color(0xFFF3F6F1);
 
   static const List<String> _seasons = [
@@ -118,11 +118,10 @@ class _ArchivedPredictionRankingScreenState
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _cream,
-      appBar: AppBar(
-        title: const Text('Voorspelranking archief'),
-        backgroundColor: _darkGreen,
-        foregroundColor: Colors.white,
-        elevation: 0,
+      appBar: RankingAppBar(
+        context: context,
+        title: 'Voorspelranking archief',
+        fallbackRoute: predictionsRankingsRoute,
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {

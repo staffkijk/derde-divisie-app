@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:derde_divisie/features/profiel/bekijk_profiel_screen.dart';
 import 'package:derde_divisie/features/voorspellen/bekijk_voorspellingen_screen.dart';
+import 'package:derde_divisie/core/widgets/ranking_app_bar.dart';
 
 class RankingScreen extends StatelessWidget {
   const RankingScreen({super.key});
@@ -60,6 +61,12 @@ class RankingScreen extends StatelessWidget {
     final uid = FirebaseAuth.instance.currentUser?.uid;
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF3F6F1),
+      appBar: RankingAppBar(
+        context: context,
+        title: 'Ranglijsten',
+        fallbackRoute: predictionsRankingsRoute,
+      ),
       body: FutureBuilder<QuerySnapshot>(
         future: FirebaseFirestore.instance
             .collection('users')

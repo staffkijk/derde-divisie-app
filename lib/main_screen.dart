@@ -37,7 +37,14 @@ const mainNavigationScreenTypes = <Type>[
 ];
 
 class MainScreen extends StatefulWidget {
-  const MainScreen({super.key});
+  const MainScreen({
+    super.key,
+    this.initialIndex = 0,
+    this.predictionInitialTabIndex = 0,
+  });
+
+  final int initialIndex;
+  final int predictionInitialTabIndex;
 
   @override
   State<MainScreen> createState() => _MainScreenState();
@@ -46,7 +53,7 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   static const _cream = Color(0xFFF3F6F1);
 
-  int _selectedIndex = 0;
+  late int _selectedIndex;
   bool isModerator = false;
   bool _hasMelding = false;
   bool _showAnalyticsConsentBanner = false;
@@ -62,6 +69,7 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void initState() {
     super.initState();
+    _selectedIndex = widget.initialIndex.clamp(0, _navItems.length - 1);
     _checkModeratorStatus();
     _loadRemoteConfig();
 
@@ -156,6 +164,7 @@ class _MainScreenState extends State<MainScreen> {
         PredictionOverviewScreen(
           initialDivision: _predictionDivision,
           initialRound: _predictionRound,
+          initialTabIndex: widget.predictionInitialTabIndex,
         ),
         const PoulesOverzichtScreen(),
         const HistoricalStandingsScreen(),

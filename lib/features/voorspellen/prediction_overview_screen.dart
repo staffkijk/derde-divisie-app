@@ -18,10 +18,12 @@ class PredictionOverviewScreen extends StatefulWidget {
     super.key,
     this.initialDivision,
     this.initialRound,
+    this.initialTabIndex = 0,
   });
 
   final String? initialDivision;
   final int? initialRound;
+  final int initialTabIndex;
 
   @override
   State<PredictionOverviewScreen> createState() =>
@@ -33,6 +35,7 @@ class _PredictionOverviewScreenState extends State<PredictionOverviewScreen> {
   Widget build(BuildContext context) {
     return DefaultTabController(
       length: 4,
+      initialIndex: widget.initialTabIndex.clamp(0, 3),
       child: Scaffold(
         backgroundColor: const Color(0xFFF3F6F1),
         body: SafeArea(
