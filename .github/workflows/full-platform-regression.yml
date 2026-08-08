@@ -1,0 +1,152 @@
+name: DerdeDiv volledige platformregressie
+
+on:
+  workflow_dispatch:
+
+jobs:
+  web-user-flow:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.32.5'
+          channel: stable
+          cache: true
+
+      - name: Chrome
+        uses: browser-actions/setup-chrome@v1
+
+      - name: ChromeDriver
+        uses: nanasess/setup-chromedriver@v2
+
+      - name: Dependencies
+        run: |
+          npm ci
+          flutter pub get
+
+      - name: Start ChromeDriver
+        run: chromedriver --port=4444 > /tmp/chromedriver.log 2>&1 &
+
+      - name: Voorspelling en profiel op web
+        run: >
+          npx firebase emulators:exec
+          --project derde-divisie-app
+          --only auth,firestore
+          "node tools/regression/seed_emulator.cjs && flutter drive --driver=test_driver/integration_test.dart --target=integration_test/user_prediction_profile_test.dart -d chrome"
+
+  android-user-flow:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: KVM toegang
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.32.5'
+          channel: stable
+          cache: true
+
+      - name: Dependencies
+        run: |
+          npm ci
+          flutter pub get
+
+      - name: Voorspelling en profiel op Android
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          script: >-
+            npx firebase emulators:exec --project derde-divisie-app --only auth,firestore
+            "node tools/regression/seed_emulator.cjs && flutter test integration_test/user_prediction_profile_test.dart -d emulator-5554 -r expanded"
+
+  ios-user-flow:
+    runs-on: macos-14
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.32.5'
+          channel: stable
+          cache: true
+
+      - name: Dependencies
+        run: |
+          npm ci
+          flutter pub get
+
+      - name: Start iPhone simulator
+        shell: bash
+        run: |
+          DEVICE_ID=$(xcrun simctl list devices available | grep -m1 'iPhone' | sed -E 's/.*\(([0-9A-Fa-f-]{36})\).*/\1/')
+          if [ -z "$DEVICE_ID" ]; then
+            echo 'Geen iPhone simulator gevonden.'
+            exit 1
+          fi
+          xcrun simctl boot "$DEVICE_ID" || true
+          open -a Simulator
+          xcrun simctl bootstatus "$DEVICE_ID" -b
+          echo "IOS_DEVICE_ID=$DEVICE_ID" >> "$GITHUB_ENV"
+
+      - name: Voorspelling en profiel op iOS
+        shell: bash
+        run: >
+          npx firebase emulators:exec
+          --project derde-divisie-app
+          --only auth,firestore
+          "node tools/regression/seed_emulator.cjs && flutter test integration_test/user_prediction_profile_test.dart -d $IOS_DEVICE_ID -r expanded"
