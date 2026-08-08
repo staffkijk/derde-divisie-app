@@ -42,9 +42,10 @@ dependencies:
   firebase_analytics: ^12.4.5
 
 
-
 dev_dependencies:
   flutter_test:
+    sdk: flutter
+  integration_test:
     sdk: flutter
   flutter_launcher_icons: ^0.14.4
   flutter_lints: ^6.0.0
