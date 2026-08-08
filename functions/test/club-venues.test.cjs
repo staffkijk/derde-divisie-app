@@ -9,7 +9,7 @@ const venueData = JSON.parse(
   fs.readFileSync(path.join(root, 'tools/data/club_venues.json'), 'utf8'),
 );
 
-test('venue data has 36 unique stable IDs and no invented locations', () => {
+test('venue data has 36 unique stable IDs and complete locations', () => {
   const data = venueData;
   assert.equal(data.length, 36);
   assert.equal(new Set(data.map((row) => row.clubId)).size, 36);
@@ -17,9 +17,15 @@ test('venue data has 36 unique stable IDs and no invented locations', () => {
     assert.ok(row.clubId);
     assert.ok(row.name);
     for (const key of ['venueName', 'venueAddress', 'venuePostalCode', 'venueCity']) {
-      assert.equal(row[key], '');
+      assert.ok(String(row[key] || '').trim(), `${row.clubId}.${key} ontbreekt`);
     }
   }
+
+  const acv = data.find((row) => row.clubId === 'acv');
+  assert.equal(acv.venueName, 'Sportpark ICT Specialist');
+  assert.equal(acv.venueAddress, 'Kortbossen 1');
+  assert.equal(acv.venueCity, 'Assen');
+
   assert.ok(data.some((row) => row.clubId === 'vv_zwaluwen'));
   assert.ok(!data.some((row) => /kloetinge/i.test(row.clubId)));
 });
