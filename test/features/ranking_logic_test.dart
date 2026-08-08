@@ -1,4 +1,5 @@
 import 'package:derde_divisie/features/voorspellen/ranking_logic.dart';
+import 'package:derde_divisie/features/voorspellen/user_display_name.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -57,5 +58,48 @@ void main() {
 
   test('globale score vertrouwt niet op een verouderd totalenveld', () {
     expect(bestDivisionScore({'punten_A': 4, 'punten_B': 7, 'totalen': 99}), 7);
+  });
+
+  test('overzicht opent drie verschillende rankingtypes', () {
+    expect(
+      rankingDestinations.map((destination) => destination.type).toList(),
+      [RankingType.global, RankingType.divisionA, RankingType.divisionB],
+    );
+    expect(rankingDestinations.map((destination) => destination.type).toSet(),
+        hasLength(3));
+  });
+
+  test('rankingtypes geven de juiste voorspellingscontext door', () {
+    expect(rankingContextType(RankingType.global), 'algemeen');
+    expect(rankingContextType(RankingType.divisionA), 'A');
+    expect(rankingContextType(RankingType.divisionB), 'B');
+  });
+
+  test('gebruikersnaamhelper resolveert huidige en live legacy velden', () {
+    expect(resolveUserDisplayName({'username': '  Nieuw  '}), 'Nieuw');
+    expect(
+      resolveUserDisplayName({
+        'username': '',
+        'usernameLower': 'bestaandenaam',
+        'usernameKey': 'anderewaarde',
+      }),
+      'bestaandenaam',
+    );
+    expect(resolveUserDisplayName({'usernameKey': 'legacykey'}), 'legacykey');
+    expect(resolveUserDisplayName({}), 'Onbekend');
+  });
+
+  test('sortering gebruikt exact dezelfde opgeloste naam als de weergave', () {
+    final tied = <Map<String, dynamic>>[
+      {'id': 'z', 'usernameLower': 'Zebra'},
+      {'id': 'a', 'username': 'Alpha'},
+    ];
+    final result = sortRanking<Map<String, dynamic>>(
+      tied,
+      type: RankingType.global,
+      dataOf: (user) => user,
+      idOf: (user) => user['id']!,
+    );
+    expect(result.map(resolveUserDisplayName), ['Alpha', 'Zebra']);
   });
 }

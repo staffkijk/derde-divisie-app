@@ -11,6 +11,7 @@ import 'package:derde_divisie/features/derde_divisie/wedstrijden_scherm_derde_di
 import 'package:derde_divisie/features/voorspellen/archived_prediction_ranking_screen.dart';
 import 'package:derde_divisie/features/voorspellen/eindstand_voorspelling_screen.dart';
 import 'package:derde_divisie/features/voorspellen/ranking_screen.dart';
+import 'package:derde_divisie/features/voorspellen/ranking_logic.dart';
 import 'package:derde_divisie/features/voorspellen/voorspel_een_team_screen.dart';
 
 class PredictionOverviewScreen extends StatefulWidget {
@@ -705,11 +706,9 @@ class _RankingLinks extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final links = [
-      const _RankingLink(label: 'Globale ranglijst'),
-      const _RankingLink(label: 'Ranking Divisie A'),
-      const _RankingLink(label: 'Ranking Divisie B'),
-    ];
+    final links = rankingDestinations
+        .map((destination) => _RankingLink(destination: destination))
+        .toList();
 
     return Wrap(
       spacing: 10,
@@ -720,9 +719,9 @@ class _RankingLinks extends StatelessWidget {
 }
 
 class _RankingLink extends StatelessWidget {
-  const _RankingLink({required this.label});
+  const _RankingLink({required this.destination});
 
-  final String label;
+  final RankingDestination destination;
 
   @override
   Widget build(BuildContext context) {
@@ -730,12 +729,12 @@ class _RankingLink extends StatelessWidget {
       onPressed: () {
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (_) => const RankingScreen(),
+            builder: (_) => RankingScreen(type: destination.type),
           ),
         );
       },
       icon: const Icon(Icons.leaderboard_outlined),
-      label: Text(label),
+      label: Text(destination.label),
     );
   }
 }
