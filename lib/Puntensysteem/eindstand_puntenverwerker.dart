@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:derde_divisie/data/firestore/season_paths.dart';
 import 'package:logging/logging.dart';
 
 final Logger _log = Logger('EindstandVerwerker');
@@ -19,8 +20,7 @@ Future<void> verwerkEindstandPunten(String divisieLetter) async {
   final competitieNaam = 'Derde Divisie $divisieLetter';
 
   // 1) Alle matches met uitslag ophalen
-  final matchesSnapshot = await firestore
-      .collection('matches')
+  final matchesSnapshot = await SeasonPaths.currentSeasonMatches
       .where('competitie', isEqualTo: competitieNaam)
       .get();
 

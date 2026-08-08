@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:derde_divisie/features/profiel/bekijk_profiel_screen.dart';
 import 'package:derde_divisie/features/voorspellen/bekijk_voorspellingen_screen.dart';
 import 'package:derde_divisie/core/widgets/ranking_app_bar.dart';
+import 'package:derde_divisie/features/voorspellen/ranking_logic.dart';
 
 class RankingScreen extends StatelessWidget {
   const RankingScreen({super.key});
@@ -67,17 +68,23 @@ class RankingScreen extends StatelessWidget {
         title: 'Ranglijsten',
         fallbackRoute: predictionsRankingsRoute,
       ),
-      body: FutureBuilder<QuerySnapshot>(
-        future: FirebaseFirestore.instance
-            .collection('users')
-            .orderBy('totalen', descending: true)
-            .get(),
+      body: FutureBuilder<QuerySnapshot<Map<String, dynamic>>>(
+        // Firestore orderBy sluit documenten zonder het veld uit. Haal daarom
+        // alle users op en behandel legacy ontbrekende punten als nul.
+        future: FirebaseFirestore.instance.collection('users').get(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          final users = snapshot.data!.docs;
+          final allUsers = snapshot.data!.docs;
+          final users =
+              sortRanking<QueryDocumentSnapshot<Map<String, dynamic>>>(
+            allUsers,
+            type: RankingType.global,
+            dataOf: (user) => user.data(),
+            idOf: (user) => user.id,
+          );
           final indexEigen = users.indexWhere((u) => u.id == uid);
           final eigenUser = indexEigen >= 0 ? users[indexEigen] : null;
 
@@ -90,11 +97,14 @@ class RankingScreen extends StatelessWidget {
               {bool highlight = false, required String contextType}) {
             final data = user.data() as Map<String, dynamic>;
             final username = data['username'] ?? 'Onbekend';
-            final punten = contextType == 'A'
-                ? (data['punten_A'] ?? 0)
-                : contextType == 'B'
-                    ? (data['punten_B'] ?? 0)
-                    : (data['totalen'] ?? 0);
+            final punten = rankingScore(
+              data,
+              contextType == 'A'
+                  ? RankingType.divisionA
+                  : contextType == 'B'
+                      ? RankingType.divisionB
+                      : RankingType.global,
+            );
             final profielfotoUrl = (data['avatarUrl'] ?? '').toString();
             final provider = _avatarProvider(profielfotoUrl);
 
@@ -188,14 +198,15 @@ class RankingScreen extends StatelessWidget {
                 style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 6),
-              FutureBuilder<QuerySnapshot>(
-                future: FirebaseFirestore.instance
-                    .collection('users')
-                    .orderBy('punten_A', descending: true)
-                    .get(),
-                builder: (context, aSnap) {
-                  if (!aSnap.hasData) return const CircularProgressIndicator();
-                  final aUsers = aSnap.data!.docs;
+              Builder(
+                builder: (context) {
+                  final aUsers =
+                      sortRanking<QueryDocumentSnapshot<Map<String, dynamic>>>(
+                    allUsers,
+                    type: RankingType.divisionA,
+                    dataOf: (user) => user.data(),
+                    idOf: (user) => user.id,
+                  );
                   final indexA = aUsers.indexWhere((u) => u.id == uid);
                   final eigenA = indexA >= 0 ? aUsers[indexA] : null;
 
@@ -232,14 +243,15 @@ class RankingScreen extends StatelessWidget {
                 style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 6),
-              FutureBuilder<QuerySnapshot>(
-                future: FirebaseFirestore.instance
-                    .collection('users')
-                    .orderBy('punten_B', descending: true)
-                    .get(),
-                builder: (context, bSnap) {
-                  if (!bSnap.hasData) return const CircularProgressIndicator();
-                  final bUsers = bSnap.data!.docs;
+              Builder(
+                builder: (context) {
+                  final bUsers =
+                      sortRanking<QueryDocumentSnapshot<Map<String, dynamic>>>(
+                    allUsers,
+                    type: RankingType.divisionB,
+                    dataOf: (user) => user.data(),
+                    idOf: (user) => user.id,
+                  );
                   final indexB = bUsers.indexWhere((u) => u.id == uid);
                   final eigenB = indexB >= 0 ? bUsers[indexB] : null;
 

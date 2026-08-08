@@ -1,0 +1,53 @@
+enum RankingType { global, divisionA, divisionB }
+
+const Map<String, int> initialRankingFields = {
+  'punten_A': 0,
+  'punten_B': 0,
+  'totalen': 0,
+};
+
+int rankingInt(Object? value) {
+  if (value is num) return value.toInt();
+  return int.tryParse(value?.toString() ?? '') ?? 0;
+}
+
+int bestDivisionScore(Map<String, dynamic> user) {
+  final a = rankingInt(user['punten_A']);
+  final b = rankingInt(user['punten_B']);
+  return a > b ? a : b;
+}
+
+int rankingScore(Map<String, dynamic> user, RankingType type) {
+  switch (type) {
+    case RankingType.divisionA:
+      return rankingInt(user['punten_A']);
+    case RankingType.divisionB:
+      return rankingInt(user['punten_B']);
+    case RankingType.global:
+      // De productdefinitie is expliciet: de beste score uit A of B. Door dit
+      // af te leiden blijft de UI ook correct als een legacy `totalen` mist.
+      return bestDivisionScore(user);
+  }
+}
+
+List<T> sortRanking<T>(
+  Iterable<T> users, {
+  required RankingType type,
+  required Map<String, dynamic> Function(T user) dataOf,
+  required String Function(T user) idOf,
+}) {
+  final result = users.toList();
+  result.sort((left, right) {
+    final leftData = dataOf(left);
+    final rightData = dataOf(right);
+    final byScore =
+        rankingScore(rightData, type).compareTo(rankingScore(leftData, type));
+    if (byScore != 0) return byScore;
+
+    final leftName = (leftData['username'] ?? '').toString().toLowerCase();
+    final rightName = (rightData['username'] ?? '').toString().toLowerCase();
+    final byName = leftName.compareTo(rightName);
+    return byName != 0 ? byName : idOf(left).compareTo(idOf(right));
+  });
+  return result;
+}

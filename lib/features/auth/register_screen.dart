@@ -6,6 +6,7 @@ import 'package:derde_divisie/features/about/juridisch_scherm.dart';
 import 'package:derde_divisie/data/config/season_config.dart';
 import 'package:derde_divisie/data/services/activity_log_service.dart';
 import 'package:derde_divisie/core/widgets/derde_div_logo.dart';
+import 'package:derde_divisie/features/voorspellen/ranking_logic.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -152,9 +153,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         'notificationPreferences': const {
           'missingPredictionReminders': true,
         },
-        'punten_A': 0,
-        'punten_B': 0,
-        'totalen': 0,
+        ...initialRankingFields,
         'eigenPoules': 0,
         'gejoinedePoules': 0,
         'voorspellingenZichtbaar': true,
