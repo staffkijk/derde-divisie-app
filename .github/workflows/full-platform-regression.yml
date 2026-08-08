@@ -2,6 +2,9 @@ name: DerdeDiv volledige platformregressie
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - codex/full-regression-suite
 
 jobs:
   web-user-flow:
