@@ -6,6 +6,10 @@ on:
       - codex/full-regression-suite
   pull_request:
 
+concurrency:
+  group: derde-div-regression-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   core-regression:
     runs-on: ubuntu-latest
