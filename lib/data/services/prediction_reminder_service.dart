@@ -235,36 +235,59 @@ class PredictionReminderService {
       round: status.round,
     );
     final ref = notificationsFor(uid).doc(id);
-    if (status.complete || status.expired) {
-      final existing = await ref.get();
-      if (existing.exists) {
-        await ref.set({
-          'read': true,
-          'resolved': true,
-          'updatedAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
+    final userRef = _firestore.collection('users').doc(uid);
+    await _firestore.runTransaction((transaction) async {
+      final user = await transaction.get(userRef);
+      final preferences = NotificationPreferences.fromMap(
+        user.data()?['notificationPreferences'] as Map<String, dynamic>?,
+      );
+      final existing = await transaction.get(ref);
+
+      // Recheck at write time so an in-flight sync cannot recreate a reminder
+      // after the user disabled reminders and cleanup completed.
+      if (!preferences.missingPredictionReminders) {
+        if (existing.exists) transaction.delete(ref);
+        return;
       }
-      return status;
-    }
-    final existing = await ref.get();
-    await ref.set({
-      'type': 'missing_predictions',
-      'title': 'Voorspellingen ontbreken',
-      'body': missingPredictionReminderBody(
-        missing: status.missing,
-        division: status.division,
-        round: status.round,
-      ),
-      'seasonId': SeasonConfig.activeSeasonId,
-      'division': status.division,
-      'round': status.round,
-      'missing': status.missing,
-      'missingMatchIds': status.missingMatchIds,
-      'read': false,
-      'resolved': false,
-      if (!existing.exists) 'createdAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
+
+      if (status.complete || status.expired) {
+        if (existing.exists) {
+          transaction.set(
+            ref,
+            {
+              'read': true,
+              'resolved': true,
+              'updatedAt': FieldValue.serverTimestamp(),
+            },
+            SetOptions(merge: true),
+          );
+        }
+        return;
+      }
+
+      transaction.set(
+        ref,
+        {
+          'type': 'missing_predictions',
+          'title': 'Voorspellingen ontbreken',
+          'body': missingPredictionReminderBody(
+            missing: status.missing,
+            division: status.division,
+            round: status.round,
+          ),
+          'seasonId': SeasonConfig.activeSeasonId,
+          'division': status.division,
+          'round': status.round,
+          'missing': status.missing,
+          'missingMatchIds': status.missingMatchIds,
+          'read': false,
+          'resolved': false,
+          if (!existing.exists) 'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
+    });
     return status;
   }
 
@@ -299,9 +322,8 @@ String missingPredictionReminderBody({
   required int round,
 }) {
   final normalizedDivision = SeasonConfig.normalizeDivisionCode(division);
-  final divisionLabel = normalizedDivision == 'B'
-      ? 'Derde Divisie B'
-      : 'Derde Divisie A';
+  final divisionLabel =
+      normalizedDivision == 'B' ? 'Derde Divisie B' : 'Derde Divisie A';
   return 'Je hebt nog $missing wedstrijden niet voorspeld voor '
       '$divisionLabel, speelronde $round.';
 }

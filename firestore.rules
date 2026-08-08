@@ -84,10 +84,17 @@ service cloud.firestore {
           (resource.data.type in [
             'missing_predictions',
             'missing_prediction',
+            'missing-predictions',
+            'missingPrediction',
             'prediction_reminder',
             'prediction_reminders',
+            'prediction-reminder',
+            'predictionReminder',
             'missingPredictions'
-          ] || notificationId.matches('missing_predictions_.*')));
+          ] || notificationId.matches('missing[_-]predictions_.*') ||
+          (resource.data.title == 'Voorspellingen ontbreken' &&
+            resource.data.body is string &&
+            resource.data.body.matches('.*wedstrijd.*niet voorspeld.*speelronde.*'))));
       }
 
       match /fcmTokens/{tokenId} {

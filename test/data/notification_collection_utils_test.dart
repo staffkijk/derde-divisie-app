@@ -46,13 +46,17 @@ void main() {
         data: {},
       ),
       const UserNotificationRecord(
+        id: 'missing-predictions_2025_1',
+        data: {},
+      ),
+      const UserNotificationRecord(
         id: 'real-announcement',
         data: {'type': 'announcement'},
       ),
     ];
 
     final removed = missingPredictionNotificationIds(legacy);
-    expect(removed, hasLength(predictionReminderNotificationTypes.length + 1));
+    expect(removed, hasLength(predictionReminderNotificationTypes.length + 2));
     expect(removed, isNot(contains('real-announcement')));
   });
 
@@ -74,5 +78,39 @@ void main() {
     );
 
     expect(missingPredictionNotificationIds([history]), isEmpty);
+  });
+
+  test('cleanup verwijdert moderne en metadata-arme legacy reminder en badge',
+      () {
+    const existing = [
+      UserNotificationRecord(
+        id: 'missing_predictions_2026-2027_A_1',
+        data: {
+          'type': 'missing_predictions',
+          'division': 'A',
+          'round': 1,
+          'read': false,
+          'resolved': false,
+        },
+      ),
+      UserNotificationRecord(
+        id: 'legacy-random-document-id',
+        data: {
+          'title': 'Voorspellingen ontbreken',
+          'body': 'Je hebt nog 9 wedstrijden niet voorspeld voor speelronde 1.',
+          'read': false,
+        },
+      ),
+    ];
+
+    final removed = missingPredictionNotificationIds(existing).toSet();
+    final remaining = existing.where((item) => !removed.contains(item.id));
+
+    expect(removed, {
+      'missing_predictions_2026-2027_A_1',
+      'legacy-random-document-id',
+    });
+    expect(remaining, isEmpty);
+    expect(unreadNotificationCount(remaining), 0);
   });
 }

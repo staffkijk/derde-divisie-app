@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import 'package:derde_divisie/core/design/app_design.dart';
@@ -58,6 +59,22 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      initialData: FirebaseAuth.instance.currentUser,
+      builder: (context, authSnapshot) {
+        if (authSnapshot.data == null) {
+          return const Scaffold(
+            backgroundColor: AppColors.background,
+            body: SizedBox.shrink(),
+          );
+        }
+        return _buildAuthenticatedCenter();
+      },
+    );
+  }
+
+  Widget _buildAuthenticatedCenter() {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(

@@ -13,6 +13,7 @@ import 'features/derde_divisie/historical_standings_screen.dart';
 import 'features/derde_divisie/unified_program_screen.dart';
 import 'features/media/intro_video_screen.dart';
 import 'features/notifications/notification_center_screen.dart';
+import 'features/notifications/notification_auth_gate.dart';
 import 'features/about/juridisch_scherm.dart';
 import 'package:derde_divisie/features/profiel/profile_screen.dart';
 import 'features/moderator/moderator_dashboard_screen.dart';
@@ -466,11 +467,14 @@ class _MainScreenState extends State<MainScreen> {
                   ),
                   actions: [
                     UpdateLogButton(isAdmin: isModerator),
-                    _NotificationBell(
-                      service: _reminderService,
-                      hasAnnouncement: _hasMelding,
-                      onOpenNotifications: _openNotifications,
-                      onShowAnnouncement: () => _showAnnouncement(loggedIn),
+                    NotificationAuthGate(
+                      loggedIn: loggedIn,
+                      child: _NotificationBell(
+                        service: _reminderService,
+                        hasAnnouncement: _hasMelding,
+                        onOpenNotifications: _openNotifications,
+                        onShowAnnouncement: () => _showAnnouncement(loggedIn),
+                      ),
                     ),
                     IconButton(
                       icon: const Icon(Icons.help_outline),
@@ -1054,11 +1058,14 @@ class _DesktopHeader extends StatelessWidget {
             isAdmin: isModerator,
             iconColor: const Color(0xFF153B2A),
           ),
-          _NotificationBell(
-            service: reminderService,
-            hasAnnouncement: hasMelding,
-            onOpenNotifications: onOpenNotifications,
-            onShowAnnouncement: onShowAnnouncement,
+          NotificationAuthGate(
+            loggedIn: loggedIn,
+            child: _NotificationBell(
+              service: reminderService,
+              hasAnnouncement: hasMelding,
+              onOpenNotifications: onOpenNotifications,
+              onShowAnnouncement: onShowAnnouncement,
+            ),
           ),
           IconButton(
             icon: const Icon(Icons.help_outline),
