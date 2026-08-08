@@ -7,7 +7,7 @@ on:
   pull_request:
 
 concurrency:
-  group: derde-div-regression-${{ github.ref }}
+  group: derde-div-regression-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
