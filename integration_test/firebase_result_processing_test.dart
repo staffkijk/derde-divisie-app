@@ -1,5 +1,3 @@
-import 'dart:io' show Platform;
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -24,9 +22,9 @@ void main() {
       options: DefaultFirebaseOptions.currentPlatform,
     );
 
-    final host = kIsWeb
-        ? 'localhost'
-        : (Platform.isAndroid ? '10.0.2.2' : 'localhost');
+    final host = defaultTargetPlatform == TargetPlatform.android
+        ? '10.0.2.2'
+        : 'localhost';
 
     db = FirebaseFirestore.instance;
     auth = FirebaseAuth.instance;
