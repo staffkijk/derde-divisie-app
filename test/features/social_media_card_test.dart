@@ -4,93 +4,265 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:derde_divisie/core/widgets/match_status_badge.dart';
 import 'package:derde_divisie/features/moderator/social_media_card_screen.dart';
 
-void main() {
-  testWidgets('rendert negen wedstrijden in desktoppreview', (tester) async {
-    await tester.binding.setSurfaceSize(const Size(1300, 760));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    final matches = List.generate(
-      9,
-      (index) => SocialCardMatch(
-        id: '$index',
-        division: 'A',
-        round: 1,
-        homeTeam: 'Thuisclub $index',
-        awayTeam: 'Uitclub $index',
-        kickoffTime: '15:00',
-        status: MatchStatus.scheduled,
-        data: {
-          'division': 'A',
-          'round': 1,
-          'date': '2026-08-15',
-          'kickoffTime': '15:00',
-          'roundMatchIndex': index,
-        },
-      ),
-    );
+SocialCardMatch match(
+  int index, {
+  String division = 'A',
+  int round = 1,
+  String? home,
+  String? away,
+  int? homeScore,
+  int? awayScore,
+}) {
+  return SocialCardMatch(
+    id: 'match-$index-$division-$round',
+    division: division,
+    round: round,
+    homeTeam: home ?? 'Thuisclub $index',
+    awayTeam: away ?? 'Uitclub $index',
+    kickoffTime: '15:00',
+    status: MatchStatus.scheduled,
+    homeScore: homeScore,
+    awayScore: awayScore,
+    data: {
+      'division': division,
+      'round': round,
+      'date': '2026-08-15',
+      'kickoffTime': '15:00',
+      'roundMatchIndex': index,
+    },
+  );
+}
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: SocialMediaMatchCard(
-            divisionName: 'Derde Divisie A',
-            round: 1,
-            mode: SocialCardMode.program,
-            matches: matches,
-            tweetText: 'Programma speelronde 1',
-          ),
+SocialStanding standing(int index, String division) {
+  return SocialStanding(
+    division: division,
+    name: index == 0 ? 'Excelsior Maassluis' : 'Club $index',
+    position: index + 1,
+    played: 4,
+    wins: 2,
+    draws: 1,
+    losses: 1,
+    goalsFor: 8,
+    goalsAgainst: 5,
+    goalDifference: 3,
+    points: 7,
+  );
+}
+
+SocialCardData data({
+  List<SocialCardMatch>? matches,
+  List<SocialStanding>? standings,
+  PredictionSummary summary = const PredictionSummary(),
+}) {
+  return SocialCardData(
+    matches: matches ?? List.generate(9, match),
+    standings: standings ?? List.generate(18, (index) => standing(index, 'A')),
+    predictionSummary: summary,
+  );
+}
+
+Widget canvas({
+  SocialCardMode mode = SocialCardMode.program,
+  SocialCardData? value,
+}) {
+  return MaterialApp(
+    home: Scaffold(
+      body: OverflowBox(
+        minWidth: socialExportSize.width,
+        maxWidth: socialExportSize.width,
+        minHeight: socialExportSize.height,
+        maxHeight: socialExportSize.height,
+        child: SocialMediaExportCanvas(
+          divisionName: 'Derde Divisie A',
+          round: 1,
+          mode: mode,
+          data: value ?? data(),
         ),
       ),
-    );
+    ),
+  );
+}
 
-    expect(find.text('Programma'), findsOneWidget);
-    expect(
-        find.textContaining('Derde Divisie A - speelronde 1'), findsOneWidget);
-    expect(find.text('Thuisclub 0'), findsOneWidget);
-    expect(find.text('Uitclub 8'), findsOneWidget);
+void main() {
+  group('vaste exportcanvas', () {
+    for (final width in [360.0, 390.0, 412.0, 1300.0]) {
+      testWidgets('blijft 1080x1350 bij viewport $width', (tester) async {
+        await tester.binding.setSurfaceSize(Size(width, 1600));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        await tester.pumpWidget(canvas());
+        final size = tester.getSize(
+          find.byKey(const ValueKey('social-export-canvas')),
+        );
+        expect(size, socialExportSize);
+        expect(tester.takeException(), isNull);
+      });
+    }
   });
 
-  testWidgets('toont uitgestelde en afgelaste wedstrijden', (tester) async {
-    await tester.binding.setSurfaceSize(const Size(1300, 760));
+  testWidgets('programma bevat alle negen wedstrijden en volledige stand',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1300, 1450));
     addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(canvas());
+    expect(find.text('PROGRAMMA'), findsOneWidget);
+    for (var i = 0; i < 9; i++) {
+      expect(find.text('Thuisclub $i'), findsOneWidget);
+      expect(find.text('Uitclub $i'), findsOneWidget);
+    }
+    expect(find.text('STAND'), findsOneWidget);
+    expect(find.text('Club 17'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('uitslagen toont scores en lange namen op een regel',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1300, 1450));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    const names = [
+      'Excelsior Maassluis',
+      'Harkemase Boys',
+      "Blauw Geel'38/Jumbo",
+      "DVS'33 Ermelo",
+    ];
     final matches = List.generate(
       9,
-      (index) => SocialCardMatch(
-        id: '$index',
-        division: 'B',
-        round: 4,
-        homeTeam: 'Thuis $index',
-        awayTeam: 'Uit $index',
-        kickoffTime: '14:30',
-        status: index == 0
-            ? MatchStatus.postponed
-            : index == 1
-                ? MatchStatus.cancelled
-                : MatchStatus.scheduled,
-        data: {
-          'division': 'B',
-          'round': 4,
-          'date': '2026-09-12',
-          'kickoffTime': '14:30',
-          'roundMatchIndex': index,
-        },
+      (index) => match(
+        index,
+        home: names[index % names.length],
+        away: names[(index + 1) % names.length],
+        homeScore: index % 4,
+        awayScore: (index + 1) % 3,
       ),
     );
-
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: SocialMediaMatchCard(
-            divisionName: 'Derde Divisie B',
-            round: 4,
-            mode: SocialCardMode.program,
-            matches: matches,
-            tweetText: 'Programma speelronde 4',
-          ),
+      canvas(mode: SocialCardMode.results, value: data(matches: matches)),
+    );
+    expect(find.text('UITSLAGEN'), findsOneWidget);
+    expect(find.text('0 - 1'), findsWidgets);
+    for (final name in names) {
+      final widgets = tester.widgetList<Text>(
+        find.byKey(ValueKey('team-$name')),
+      );
+      expect(widgets, isNotEmpty);
+      for (final text in widgets) {
+        expect(text.maxLines, 1);
+        expect(text.softWrap, isFalse);
+        expect(text.overflow, TextOverflow.ellipsis);
+      }
+    }
+    expect(tester.takeException(), isNull);
+  });
+
+  test('filtert strikt op divisie en speelronde', () {
+    final matches = [
+      match(0, division: 'A', round: 1),
+      match(1, division: 'B', round: 1),
+      match(2, division: 'A', round: 2),
+    ];
+    final a = filterSocialMatches(matches, division: 'A', round: 1);
+    final b = filterSocialMatches(matches, division: 'B', round: 1);
+    expect(a.map((entry) => entry.id), ['match-0-A-1']);
+    expect(b.map((entry) => entry.id), ['match-1-B-1']);
+  });
+
+  test('weekwinnaars gebruiken opgeslagen rondepunten en delen de winst', () {
+    final users = [
+      const RankingUser('u1', {
+        'username': 'Ada',
+        'punten_A': 8,
+        'punten_B': 14,
+      }),
+      const RankingUser('u2', {
+        'username': 'Bram',
+        'punten_A': 14,
+        'punten_B': 2,
+      }),
+      const RankingUser('u3', {
+        'username': 'Cato',
+        'punten_A': 20,
+      }),
+    ];
+    final summary = buildPredictionSummary(
+      users: users,
+      roundMatchIds: {'m1', 'm2'},
+      predictions: const [
+        {'wedstrijdId': 'm1', 'gebruikerId': 'u1', 'punten': 3},
+        {'wedstrijdId': 'm2', 'gebruikerId': 'u1', 'punten': 1},
+        {'matchId': 'm1', 'userId': 'u2', 'punten': 4},
+        {'wedstrijdId': 'andere-ronde', 'gebruikerId': 'u3', 'punten': 9},
+      ],
+    );
+    expect(summary.weekWinners.map((entry) => entry.name), ['Ada', 'Bram']);
+    expect(summary.weekWinners.first.score, 4);
+    expect(
+      summary.globalTop.map((entry) => entry.name),
+      ['Cato', 'Ada', 'Bram'],
+    );
+  });
+
+  testWidgets('voorspelpoule rendert weekwinnaar en top 5', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1300, 1450));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final summary = PredictionSummary(
+      weekWinners: const [PredictionRankEntry('1', 'Ada', 12)],
+      globalTop: List.generate(
+        5,
+        (index) => PredictionRankEntry(
+          '$index',
+          'Speler $index',
+          30 - index,
         ),
       ),
     );
+    await tester.pumpWidget(
+      canvas(
+        mode: SocialCardMode.predictions,
+        value: data(summary: summary),
+      ),
+    );
+    expect(find.text('VOORSPELPOULE'), findsOneWidget);
+    expect(find.text('WEEKWINNAAR'), findsOneWidget);
+    expect(find.text('Ada'), findsOneWidget);
+    expect(find.text('Speler 4'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 
-    expect(find.text('Uitgesteld'), findsOneWidget);
-    expect(find.text('Afgelast'), findsOneWidget);
+  for (final width in [360.0, 390.0, 412.0]) {
+    testWidgets('preview heeft geen overflow op $width px', (tester) async {
+      await tester.binding.setSurfaceSize(Size(width, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: SocialMediaPreview(
+                child: SocialMediaExportCanvas(
+                  divisionName: 'Derde Divisie A',
+                  round: 1,
+                  mode: SocialCardMode.program,
+                  data: data(),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  test('bestandsnamen en PNG-extensie zijn stabiel', () {
+    expect(
+      socialFileName(SocialCardMode.program, 'A', 1),
+      'derdediv_programma_A_speelronde_1.png',
+    );
+    expect(
+      socialFileName(SocialCardMode.results, 'B', 4),
+      'derdediv_uitslagen_B_speelronde_4.png',
+    );
+    expect(
+      socialFileName(SocialCardMode.predictions, 'A', 3),
+      'derdediv_voorspelpoule_speelronde_3.png',
+    );
   });
 }
