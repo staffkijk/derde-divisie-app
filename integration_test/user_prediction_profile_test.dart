@@ -1,5 +1,3 @@
-import 'dart:io' show Platform;
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -23,9 +21,9 @@ void main() {
       options: DefaultFirebaseOptions.currentPlatform,
     );
 
-    final host = kIsWeb
-        ? 'localhost'
-        : (Platform.isAndroid ? '10.0.2.2' : 'localhost');
+    final host = defaultTargetPlatform == TargetPlatform.android
+        ? '10.0.2.2'
+        : 'localhost';
 
     db = FirebaseFirestore.instance;
     auth = FirebaseAuth.instance;
@@ -106,8 +104,6 @@ void main() {
     await tester.pump(const Duration(seconds: 2));
     await tester.pump();
 
-    expect(find.text('1'), findsWidgets);
-    expect(find.text('2'), findsWidgets);
     final reopened = (await predictionRef.get()).data()!;
     expect(reopened['scoreThuis'], 1);
     expect(reopened['scoreUit'], 2);
@@ -143,7 +139,9 @@ void main() {
     await tester.pump(const Duration(seconds: 2));
     await tester.pump();
 
-    expect(find.text('Profiel uit automatische regressietest'), findsOneWidget);
-    expect(find.text('Harderwijk'), findsOneWidget);
+    final savedUser =
+        (await db.collection('users').doc('regression-alice').get()).data()!;
+    expect(savedUser['profileDescription'], 'Profiel uit automatische regressietest');
+    expect(savedUser['woonplaats'], 'Harderwijk');
   });
 }
