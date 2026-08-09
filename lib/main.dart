@@ -13,6 +13,9 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'firebase_options.dart';
 import 'main_screen.dart';
 import 'package:derde_divisie/features/faq/help_screen.dart';
+import 'package:derde_divisie/data/services/analytics_service.dart';
+import 'package:derde_divisie/core/config/main_navigation_config.dart';
+import 'package:derde_divisie/core/widgets/ranking_app_bar.dart';
 import 'screens/loading_screen.dart';
 
 // Optioneel: backfill (alleen als je lib/admin/backfill.dart hebt)
@@ -84,6 +87,8 @@ class SplashWrapper extends StatelessWidget {
 
     // 2) In DEBUG optioneel naar emulators (alleen als USE_EMULATORS==true)
     await _connectToEmulatorsIfDebug();
+
+    await AnalyticsService.instance.initialize();
 
     // 3) (optioneel) Eenmalige backfill via flags (standaard niks)
     if (kBackfillDiv.isNotEmpty) {
@@ -195,6 +200,13 @@ class MyApp extends StatelessWidget {
       home: const MainScreen(),
       routes: {
         '/help': (context) => const HelpScreen(),
+        predictionsRankingsRoute: (context) => const MainScreen(
+              initialIndex: MainNavigationConfig.predictIndex,
+              predictionInitialTabIndex: 3,
+            ),
+        poulesOverviewRoute: (context) => const MainScreen(
+              initialIndex: MainNavigationConfig.poulesIndex,
+            ),
       },
     );
   }

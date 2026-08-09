@@ -6,6 +6,8 @@ import 'package:logging/logging.dart';
 import 'package:derde_divisie/data/config/season_config.dart';
 import 'package:derde_divisie/core/utils/gemeenten.dart';
 import 'package:derde_divisie/data/services/activity_log_service.dart';
+import 'package:derde_divisie/data/services/analytics_service.dart';
+import 'package:derde_divisie/features/notifications/prediction_reminder_preferences_panel.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -37,6 +39,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   bool voorspellingenZichtbaar = true;
   bool allowEmailSharingWithPouleOwner = false;
+  bool analyticsEnabled = false;
   bool _usernameChanged = false;
   bool isLoading = true;
   bool isSaving = false;
@@ -89,6 +92,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       final doc = await userDocRef.get();
       final data = doc.data();
+      await AnalyticsService.instance.initialize();
 
       if (!mounted) return;
 
@@ -106,6 +110,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             data?['voorspellingenZichtbaar'] as bool? ?? true;
         allowEmailSharingWithPouleOwner =
             data?['allowEmailSharingWithPouleOwner'] as bool? ?? false;
+        analyticsEnabled = AnalyticsService.instance.collectionEnabled;
         _usernameChanged = data?['usernameChanged'] as bool? ?? false;
 
         _descController.text = profileDescription ?? '';
@@ -231,6 +236,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
           entityType: 'team',
           entityId: selectedTeam?.id,
         );
+        await AnalyticsService.instance.trackFavoriteClubSelected(
+          team: selectedTeam?.id ?? 'none',
+          division: selectedTeam?.division,
+          source: 'profile',
+        );
       }
 
       if (!mounted) return;
@@ -264,6 +274,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       );
     }
+  }
+
+  Widget _notificationPreferencesSection() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _softGreen,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: _borderGreen),
+      ),
+      child: const PredictionReminderPreferencesPanel(),
+    );
   }
 
   void _showAvatarSelection() {
@@ -1056,6 +1078,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
           const SizedBox(height: 14),
+          _notificationPreferencesSection(),
+          const SizedBox(height: 14),
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -1100,6 +1124,55 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     setState(() {
                       allowEmailSharingWithPouleOwner = value;
                     });
+                  },
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: _softGreen,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: _borderGreen),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.analytics_outlined,
+                  color: _darkGreen,
+                ),
+                const SizedBox(width: 14),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Google Analytics',
+                        style: TextStyle(
+                          color: _textDark,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      SizedBox(height: 3),
+                      Text(
+                        'Meet gebruik van schermen en functies. Geen e-mailadres, naam, gebruikersnaam of vrije tekst.',
+                        style: TextStyle(
+                          color: _textMuted,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Switch(
+                  value: analyticsEnabled,
+                  activeColor: _green,
+                  onChanged: (value) async {
+                    setState(() => analyticsEnabled = value);
+                    await AnalyticsService.instance.setConsent(value);
                   },
                 ),
               ],

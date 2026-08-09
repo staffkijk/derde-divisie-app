@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 enum MainNavigationDestination {
   home,
-  introfilm,
   divisionA,
   divisionB,
   program,
@@ -10,6 +9,29 @@ enum MainNavigationDestination {
   poules,
   history,
   profile,
+}
+
+extension MainNavigationDestinationAnalytics on MainNavigationDestination {
+  String get analyticsName {
+    switch (this) {
+      case MainNavigationDestination.home:
+        return 'home';
+      case MainNavigationDestination.divisionA:
+        return 'division_a';
+      case MainNavigationDestination.divisionB:
+        return 'division_b';
+      case MainNavigationDestination.program:
+        return 'program';
+      case MainNavigationDestination.predict:
+        return 'predictions';
+      case MainNavigationDestination.poules:
+        return 'pools';
+      case MainNavigationDestination.history:
+        return 'history';
+      case MainNavigationDestination.profile:
+        return 'profile';
+    }
+  }
 }
 
 class MainNavigationItemConfig {
@@ -28,20 +50,21 @@ class MainNavigationItemConfig {
     required this.selectedIcon,
     required this.protected,
   });
+
+  String get analyticsScreenName => destination.analyticsName;
 }
 
 class MainNavigationConfig {
   const MainNavigationConfig._();
 
   static const homeIndex = 0;
-  static const introfilmIndex = 1;
-  static const divisionAIndex = 2;
-  static const divisionBIndex = 3;
-  static const programIndex = 4;
-  static const predictIndex = 5;
-  static const poulesIndex = 6;
-  static const historyIndex = 7;
-  static const profileIndex = 8;
+  static const divisionAIndex = 1;
+  static const divisionBIndex = 2;
+  static const programIndex = 3;
+  static const predictIndex = 4;
+  static const poulesIndex = 5;
+  static const historyIndex = 6;
+  static const profileIndex = 7;
 
   static const items = [
     MainNavigationItemConfig(
@@ -50,14 +73,6 @@ class MainNavigationConfig {
       shortLabel: 'Home',
       icon: Icons.home_outlined,
       selectedIcon: Icons.home,
-      protected: false,
-    ),
-    MainNavigationItemConfig(
-      destination: MainNavigationDestination.introfilm,
-      label: 'Introfilm',
-      shortLabel: 'Introfilm',
-      icon: Icons.ondemand_video_outlined,
-      selectedIcon: Icons.ondemand_video_rounded,
       protected: false,
     ),
     MainNavigationItemConfig(

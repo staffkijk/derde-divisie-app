@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:derde_divisie/core/design/app_design.dart';
 import 'package:derde_divisie/data/firestore/season_paths.dart';
@@ -10,9 +11,96 @@ import 'package:derde_divisie/loggboek/update_log_screen.dart';
 import 'package:derde_divisie/loggboek/update_service.dart';
 import 'package:derde_divisie/features/moderator/activity_log_screen.dart';
 import 'package:derde_divisie/features/moderator/moderator_export_screen.dart';
+import 'package:derde_divisie/features/moderator/social_media_card_screen.dart';
 
-class ModeratorDashboardScreen extends StatelessWidget {
-  const ModeratorDashboardScreen({super.key});
+class ModeratorDashboardScreen extends StatefulWidget {
+  const ModeratorDashboardScreen({
+    super.key,
+    this.moderatorStatusLoader,
+    this.moderatorContentBuilder,
+  });
+
+  final Future<bool> Function()? moderatorStatusLoader;
+  final WidgetBuilder? moderatorContentBuilder;
+
+  @override
+  State<ModeratorDashboardScreen> createState() =>
+      _ModeratorDashboardScreenState();
+}
+
+class _ModeratorDashboardScreenState extends State<ModeratorDashboardScreen> {
+  late final Future<bool> _accessFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _accessFuture = widget.moderatorStatusLoader?.call() ?? _loadAccess();
+  }
+
+  Future<bool> _loadAccess() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return false;
+
+    final doc =
+        await FirebaseFirestore.instance.collection('users').doc(uid).get();
+    final data = doc.data();
+    return data?['ismoderator'] == true || data?['isModerator'] == true;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<bool>(
+      future: _accessFuture,
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        if (snapshot.data != true) {
+          return Scaffold(
+            appBar: AppBar(title: const Text('Moderator dashboard')),
+            body: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 520),
+                child: const AppCard(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.lock_outline,
+                        color: AppColors.danger,
+                        size: 42,
+                      ),
+                      SizedBox(height: AppSpacing.sm),
+                      Text(
+                        'Geen toegang',
+                        style: AppTextStyles.sectionTitle,
+                      ),
+                      SizedBox(height: AppSpacing.xs),
+                      Text(
+                        'Je account heeft geen moderatorrechten.',
+                        textAlign: TextAlign.center,
+                        style: AppTextStyles.bodyMuted,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        }
+
+        return widget.moderatorContentBuilder?.call(context) ??
+            const _ModeratorDashboardContent();
+      },
+    );
+  }
+}
+
+class _ModeratorDashboardContent extends StatelessWidget {
+  const _ModeratorDashboardContent();
 
   @override
   Widget build(BuildContext context) {
@@ -28,6 +116,12 @@ class ModeratorDashboardScreen extends StatelessWidget {
         title: 'Uitslagen invoeren',
         description: 'Voer wedstrijduitslagen in en verwerk standen.',
         screen: const ModeratorMenuScreen(),
+      ),
+      _ModeratorTool(
+        icon: Icons.image_outlined,
+        title: 'Sociale media',
+        description: 'Maak programma- en uitslagenkaarten voor X.',
+        screen: const SocialMediaCardScreen(),
       ),
       _ModeratorTool(
         icon: Icons.event_note_outlined,

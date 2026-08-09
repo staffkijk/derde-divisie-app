@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:derde_divisie/features/voorspellen/user_display_name.dart';
 
 class BekijkVoorspellingenScreen extends StatefulWidget {
   final String userId;
@@ -53,7 +54,7 @@ class _BekijkVoorspellingenScreenState
         .get();
     final data = doc.data();
     if (data != null) {
-      gebruikersnaam = data['username'] ?? 'Gebruiker';
+      gebruikersnaam = resolveUserDisplayName(data, fallback: 'Gebruiker');
       voorspellingenZichtbaar = data['voorspellingenZichtbaar'] ?? true;
     }
   }

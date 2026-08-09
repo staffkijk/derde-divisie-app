@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import 'package:derde_divisie/data/services/analytics_service.dart';
 import 'join_gesloten_poule_screen.dart';
 
 class ZoekPouleScreen extends StatefulWidget {
@@ -117,6 +118,11 @@ class _ZoekPouleScreenState extends State<ZoekPouleScreen> {
         rol: 'deelnemer',
         voorspellingenZichtbaarVoorDeadline: false,
         syncEnabled: true, // ← pas desnoods aan naar false
+      );
+
+      await AnalyticsService.instance.trackPouleJoined(
+        source: 'poule_search',
+        public: true,
       );
 
       if (!mounted) return;

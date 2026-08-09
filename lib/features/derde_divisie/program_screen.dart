@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import '../../data/config/team_logo_assets.dart';
 import '../../data/config/season_config.dart';
 import '../../data/firestore/season_paths.dart';
+import '../../data/services/analytics_service.dart';
 import '../../data/services/division_data_service.dart';
 import '../../core/utils/match_formatters.dart';
 import '../moderator/result_processing_service.dart';
@@ -525,15 +526,52 @@ class _MatchRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final compact = MediaQuery.sizeOf(context).width < 720;
 
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: compact ? 12 : 18,
-        vertical: compact ? 12 : 7,
+    return InkWell(
+      onTap: () => _openMatch(context),
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: compact ? 12 : 18,
+          vertical: compact ? 12 : 7,
+        ),
+        decoration: const BoxDecoration(
+          border: Border(bottom: BorderSide(color: _border)),
+        ),
+        child: compact ? _buildCompact(context) : _buildWide(context),
       ),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: _border)),
+    );
+  }
+
+  Future<void> _openMatch(BuildContext context) async {
+    await AnalyticsService.instance.trackMatchOpened(
+      matchId: match.id,
+      division: match.division,
+      round: match.round,
+      source: 'program',
+    );
+    if (!context.mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('${match.homeTeam} - ${match.awayTeam}'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Speelronde ${match.round}'),
+            if (match.date.isNotEmpty) Text('Datum: ${match.date}'),
+            if (match.kickoffTime.isNotEmpty)
+              Text('Tijd: ${match.kickoffTime}'),
+            Text(
+                'Status: ${_StatusBadge._statusConfig(match.status).label.isEmpty ? 'Gepland' : _StatusBadge._statusConfig(match.status).label}'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Sluiten'),
+          ),
+        ],
       ),
-      child: compact ? _buildCompact(context) : _buildWide(context),
     );
   }
 
@@ -830,6 +868,7 @@ class _StatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final config = _statusConfig(status);
+    if (config.label.isEmpty) return const SizedBox.shrink();
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
@@ -852,16 +891,16 @@ class _StatusBadge extends StatelessWidget {
   static _StatusConfig _statusConfig(String status) {
     switch (status) {
       case 'finished':
-        return _StatusConfig('Afgelopen', const Color(0xFF2F8F3B));
+        return _StatusConfig('', const Color(0xFF2F8F3B));
       case 'postponed':
-        return _StatusConfig('In te halen', Colors.blueGrey.shade700);
+        return _StatusConfig('Uitgesteld', Colors.blueGrey.shade700);
       case 'cancelled':
         return _StatusConfig('Afgelast', Colors.red.shade700);
       case 'abandoned':
         return _StatusConfig('Gestaakt', Colors.red.shade700);
       case 'scheduled':
       default:
-        return _StatusConfig('Gepland', const Color(0xFF153B2A));
+        return _StatusConfig('', const Color(0xFF153B2A));
     }
   }
 }
@@ -949,6 +988,10 @@ class _EditMatchDialogState extends State<_EditMatchDialog> {
   late final TextEditingController _timeController;
   late final TextEditingController _homeScoreController;
   late final TextEditingController _awayScoreController;
+  late final TextEditingController _venueNameController;
+  late final TextEditingController _venueAddressController;
+  late final TextEditingController _venuePostalCodeController;
+  late final TextEditingController _venueCityController;
 
   late String _status;
   bool _saving = false;
@@ -965,6 +1008,12 @@ class _EditMatchDialogState extends State<_EditMatchDialog> {
     _awayScoreController = TextEditingController(
       text: widget.match.awayScore?.toString() ?? '',
     );
+    _venueNameController = TextEditingController(text: widget.match.venueName);
+    _venueAddressController =
+        TextEditingController(text: widget.match.venueAddress);
+    _venuePostalCodeController =
+        TextEditingController(text: widget.match.venuePostalCode);
+    _venueCityController = TextEditingController(text: widget.match.venueCity);
 
     _status = _statuses.contains(widget.match.status)
         ? widget.match.status
@@ -977,6 +1026,10 @@ class _EditMatchDialogState extends State<_EditMatchDialog> {
     _timeController.dispose();
     _homeScoreController.dispose();
     _awayScoreController.dispose();
+    _venueNameController.dispose();
+    _venueAddressController.dispose();
+    _venuePostalCodeController.dispose();
+    _venueCityController.dispose();
     super.dispose();
   }
 
@@ -1081,6 +1134,40 @@ class _EditMatchDialogState extends State<_EditMatchDialog> {
                   style: TextStyle(color: Color(0xFF667067), fontSize: 12),
                 ),
               ),
+              const SizedBox(height: 18),
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: Text('Afwijkende accommodatie (optioneel)',
+                    style: TextStyle(fontWeight: FontWeight.w800)),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                  controller: _venueNameController,
+                  decoration: const InputDecoration(
+                      labelText: 'Naam accommodatie',
+                      border: OutlineInputBorder())),
+              const SizedBox(height: 10),
+              TextField(
+                  controller: _venueAddressController,
+                  decoration: const InputDecoration(
+                      labelText: 'Straat en huisnummer',
+                      border: OutlineInputBorder())),
+              const SizedBox(height: 10),
+              Row(children: [
+                Expanded(
+                    child: TextField(
+                        controller: _venuePostalCodeController,
+                        decoration: const InputDecoration(
+                            labelText: 'Postcode',
+                            border: OutlineInputBorder()))),
+                const SizedBox(width: 10),
+                Expanded(
+                    child: TextField(
+                        controller: _venueCityController,
+                        decoration: const InputDecoration(
+                            labelText: 'Plaats',
+                            border: OutlineInputBorder()))),
+              ]),
             ],
           ),
         ),
@@ -1143,6 +1230,10 @@ class _EditMatchDialogState extends State<_EditMatchDialog> {
         'scheduledAt': Timestamp.fromDate(scheduledAt),
         'kickoffTimeConfirmed': true,
         'updatedAt': FieldValue.serverTimestamp(),
+        'venueName': _emptyToNull(_venueNameController.text),
+        'venueAddress': _emptyToNull(_venueAddressController.text),
+        'venuePostalCode': _emptyToNull(_venuePostalCodeController.text),
+        'venueCity': _emptyToNull(_venueCityController.text),
       }, SetOptions(merge: true));
 
       final processor = const ResultProcessingService();
@@ -1158,22 +1249,11 @@ class _EditMatchDialogState extends State<_EditMatchDialog> {
           homeTeamSlug: widget.match.homeTeamSlug,
           awayTeamSlug: widget.match.awayTeamSlug,
         );
-      } else if (_status == 'postponed' ||
-          _status == 'cancelled' ||
-          _status == 'abandoned') {
-        await processor.saveWithoutScore(
+      } else {
+        await processor.clearResultAndSetStatus(
           matchRef: widget.match.ref,
           status: _status,
         );
-      } else {
-        await widget.match.ref.set({
-          'status': 'scheduled',
-          'homeScore': FieldValue.delete(),
-          'awayScore': FieldValue.delete(),
-          'resultConfirmed': false,
-          'processed': false,
-          'verwerkt': false,
-        }, SetOptions(merge: true));
       }
 
       if (mounted) Navigator.of(context).pop(true);
@@ -1190,6 +1270,9 @@ class _EditMatchDialogState extends State<_EditMatchDialog> {
     if (trimmed.isEmpty) return null;
     return int.tryParse(trimmed);
   }
+
+  String? _emptyToNull(String value) =>
+      value.trim().isEmpty ? null : value.trim();
 
   bool _validDate(String value) {
     final match = RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(value);
@@ -1278,6 +1361,10 @@ class _MatchDoc {
     required this.status,
     required this.homeScore,
     required this.awayScore,
+    required this.venueName,
+    required this.venueAddress,
+    required this.venuePostalCode,
+    required this.venueCity,
   });
 
   final DocumentReference<Map<String, dynamic>> ref;
@@ -1303,6 +1390,10 @@ class _MatchDoc {
   final String status;
   final int? homeScore;
   final int? awayScore;
+  final String venueName;
+  final String venueAddress;
+  final String venuePostalCode;
+  final String venueCity;
 
   factory _MatchDoc.fromSnapshot(
     QueryDocumentSnapshot<Map<String, dynamic>> doc,
@@ -1342,6 +1433,10 @@ class _MatchDoc {
       status: _string(data['status'], 'scheduled'),
       homeScore: _nullableInt(data['homeScore']),
       awayScore: _nullableInt(data['awayScore']),
+      venueName: _string(data['venueName'], ''),
+      venueAddress: _string(data['venueAddress'], ''),
+      venuePostalCode: _string(data['venuePostalCode'], ''),
+      venueCity: _string(data['venueCity'], ''),
     );
   }
 

@@ -29,11 +29,11 @@ extension MatchStatusPresentation on MatchStatus {
   String get label {
     switch (this) {
       case MatchStatus.scheduled:
-        return 'Gepland';
+        return '';
       case MatchStatus.finished:
-        return 'Afgelopen';
+        return '';
       case MatchStatus.postponed:
-        return 'In te halen';
+        return 'Uitgesteld';
       case MatchStatus.cancelled:
         return 'Afgelast';
       case MatchStatus.abandoned:
@@ -87,6 +87,10 @@ class MatchStatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (status == MatchStatus.scheduled || status == MatchStatus.finished) {
+      return const SizedBox.shrink();
+    }
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(

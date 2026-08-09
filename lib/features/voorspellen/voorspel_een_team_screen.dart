@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:derde_divisie/data/services/activity_log_service.dart';
+import 'package:derde_divisie/data/services/analytics_service.dart';
 
 import 'package:derde_divisie/data/config/season_config.dart';
 import 'package:derde_divisie/data/firestore/season_paths.dart';
@@ -175,6 +176,12 @@ class _VoorspelEenTeamScreenState extends State<VoorspelEenTeamScreen> {
       entityType: 'match',
       entityId: match.id,
       metadata: {'scope': 'team'},
+    );
+    await AnalyticsService.instance.trackPredictionSaved(
+      division: SeasonConfig.normalizeDivisionCode(widget.competition),
+      round: match.round,
+      matchId: match.id,
+      source: 'team_predictions',
     );
   }
 

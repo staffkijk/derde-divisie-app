@@ -3,17 +3,23 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
+import 'package:derde_divisie/core/design/app_design.dart';
 import 'package:derde_divisie/data/config/season_config.dart';
 import 'package:derde_divisie/data/firestore/season_paths.dart';
-import 'package:derde_divisie/core/config/main_navigation_config.dart';
+import 'package:derde_divisie/data/services/analytics_service.dart';
+import 'package:derde_divisie/data/services/prediction_reminder_service.dart';
 import 'package:derde_divisie/core/widgets/derde_div_logo.dart';
+import 'package:derde_divisie/core/widgets/team_logo.dart';
 import 'package:derde_divisie/features/derde_divisie/historical_standings_screen.dart';
 import 'package:derde_divisie/features/dashboard/dashboard_match_center.dart';
+import 'package:derde_divisie/features/calendar/calendar_subscription_dialog.dart';
 
 /// ---------------------------
 /// Firestore veldmapping
@@ -163,6 +169,54 @@ class _Stats {
   });
 }
 
+class _HomePredictionReminder extends StatelessWidget {
+  const _HomePredictionReminder({required this.onOpenPredict});
+
+  final VoidCallback? onOpenPredict;
+
+  Future<PredictionReminderStatus?> _load() async {
+    if (FirebaseAuth.instance.currentUser == null) return null;
+    final service = PredictionReminderService();
+    final a = await service.syncMissingPredictionNotification(division: 'A');
+    if (a != null && !a.complete && !a.expired && a.missing > 0) return a;
+    final b = await service.syncMissingPredictionNotification(division: 'B');
+    if (b != null && !b.complete && !b.expired && b.missing > 0) return b;
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<PredictionReminderStatus?>(
+      future: _load(),
+      builder: (context, snapshot) {
+        final status = snapshot.data;
+        if (status == null) return const SizedBox(height: 24);
+        return Padding(
+          padding: const EdgeInsets.only(top: 16),
+          child: AppCard(
+            child: ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(
+                Icons.edit_notifications_outlined,
+                color: AppColors.primary,
+              ),
+              title: Text(
+                'Je hebt nog ${status.missing} wedstrijden niet voorspeld voor speelronde ${status.round}.',
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+              subtitle: Text(
+                'Divisie ${status.division} - ${status.predicted} van ${status.totalRequired} ingevuld.',
+              ),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: onOpenPredict,
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
 _Stats _computeStats(List<_M> ms) {
   final played =
       ms.where((m) => m.played && m.sh != null && m.sa != null).toList();
@@ -267,15 +321,12 @@ class _RotatingLogoState extends State<RotatingLogo> {
         SizedBox(
           width: 120,
           height: 120,
-          child: Image.asset(
-            team.logoPath,
-            fit: BoxFit.contain,
-            errorBuilder: (_, __, ___) => Image.asset(
-              SeasonConfig.defaultTeamLogoPath,
-              fit: BoxFit.contain,
-              errorBuilder: (_, __, ___) =>
-                  const Icon(Icons.shield_outlined, size: 64),
-            ),
+          child: TeamLogo(
+            teamName: team.listLabel,
+            teamSlug: team.id,
+            assetPath: team.logoPath,
+            size: 120,
+            padding: 0,
           ),
         ),
         const SizedBox(height: 8),
@@ -324,6 +375,126 @@ class DashboardScreen extends StatelessWidget {
         const SnackBar(content: Text('Kon link niet openen')),
       );
     }
+  }
+
+  Future<void> _showShareMenu(BuildContext context) async {
+    const url = 'https://derdediv.nl/';
+    const text =
+        'Volg de Derde Divisie, bekijk het programma en voorspel de uitslagen op DerdeDiv.';
+    const fullText = '$text $url';
+
+    Future<void> track(String source) =>
+        AnalyticsService.instance.trackShareClicked(source: source);
+
+    Future<void> openEncoded(String source, String target) async {
+      await track(source);
+      await _openUrl(context, target);
+    }
+
+    final pageContext = context;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+          child: Wrap(
+            runSpacing: 6,
+            children: [
+              const ListTile(
+                title: Text(
+                  'Delen',
+                  style: TextStyle(fontWeight: FontWeight.w900),
+                ),
+                subtitle: Text(fullText),
+              ),
+              ListTile(
+                leading: const Icon(Icons.chat_outlined),
+                title: const Text('WhatsApp'),
+                onTap: () {
+                  Navigator.pop(context);
+                  openEncoded(
+                    'whatsapp',
+                    'https://wa.me/?text=${Uri.encodeComponent(fullText)}',
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.facebook_outlined),
+                title: const Text('Facebook'),
+                onTap: () {
+                  Navigator.pop(context);
+                  openEncoded(
+                    'facebook',
+                    'https://www.facebook.com/sharer/sharer.php?u=${Uri.encodeComponent(url)}',
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.alternate_email_rounded),
+                title: const Text('X / Twitter'),
+                onTap: () {
+                  Navigator.pop(context);
+                  openEncoded(
+                    'x',
+                    'https://twitter.com/intent/tweet?text=${Uri.encodeComponent(text)}&url=${Uri.encodeComponent(url)}',
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.email_outlined),
+                title: const Text('E-mail'),
+                onTap: () {
+                  Navigator.pop(context);
+                  openEncoded(
+                    'email',
+                    'mailto:?subject=${Uri.encodeComponent('DerdeDiv')}&body=${Uri.encodeComponent(fullText)}',
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.link_rounded),
+                title: const Text('Kopieer link'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  await track('copy_link');
+                  await Clipboard.setData(const ClipboardData(text: url));
+                  if (!pageContext.mounted) return;
+                  ScaffoldMessenger.of(pageContext).showSnackBar(
+                    const SnackBar(content: Text('Link gekopieerd')),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_camera_outlined),
+                title: const Text('Kopieer voor Instagram'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  await track('instagram_copy');
+                  await Clipboard.setData(const ClipboardData(text: fullText));
+                  if (!pageContext.mounted) return;
+                  ScaffoldMessenger.of(pageContext).showSnackBar(
+                    const SnackBar(
+                      content: Text('Tekst gekopieerd voor Instagram'),
+                    ),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.ios_share_outlined),
+                title: const Text('Meer delen'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  await track('native_share');
+                  await Share.share(fullText, subject: 'DerdeDiv');
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   String _fmtDate(Timestamp ts) =>
@@ -481,18 +652,12 @@ class DashboardScreen extends StatelessWidget {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Expanded(
-                              child: Image.asset(
-                                team.logoPath,
-                                fit: BoxFit.contain,
-                                errorBuilder: (_, __, ___) => Image.asset(
-                                  SeasonConfig.defaultTeamLogoPath,
-                                  fit: BoxFit.contain,
-                                  errorBuilder: (_, __, ___) => const Icon(
-                                    Icons.shield_outlined,
-                                    size: 42,
-                                    color: Color(0xFF2E7D32),
-                                  ),
-                                ),
+                              child: TeamLogo(
+                                teamName: team.listLabel,
+                                teamSlug: team.id,
+                                assetPath: team.logoPath,
+                                size: 72,
+                                padding: 0,
                               ),
                             ),
                             const SizedBox(height: 8),
@@ -712,7 +877,10 @@ class DashboardScreen extends StatelessWidget {
                     children: [
                       Container(
                         width: double.infinity,
-                        padding: const EdgeInsets.all(24),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 16,
+                        ),
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
                             colors: [Color(0xFF153B2A), Color(0xFF2F8F3B)],
@@ -726,22 +894,19 @@ class DashboardScreen extends StatelessWidget {
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 color: Colors.white,
-                                fontSize: 28,
+                                fontSize: 24,
                                 fontWeight: FontWeight.w900,
                               ),
                             ),
-                            const SizedBox(height: 8),
+                            const SizedBox(height: 4),
                             const Text(
                               'Standen, programma, uitslagen en voorspellingen voor de Derde Divisie.',
                               textAlign: TextAlign.center,
                               style: TextStyle(color: Colors.white70),
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 10),
                             OutlinedButton.icon(
-                              onPressed: () => Share.share(
-                                'Doe mee met de Derde Divisie Voorspelpoule op DerdeDiv!',
-                                subject: 'Daag je vrienden uit',
-                              ),
+                              onPressed: () => _showShareMenu(context),
                               icon: const Icon(Icons.ios_share_outlined),
                               label: const Text('Daag je vrienden uit'),
                               style: OutlinedButton.styleFrom(
@@ -749,9 +914,23 @@ class DashboardScreen extends StatelessWidget {
                                 side: const BorderSide(color: Colors.white54),
                               ),
                             ),
+                            const SizedBox(height: 8),
+                            FilledButton.icon(
+                              key: const Key('open-calendar-subscription'),
+                              onPressed: () =>
+                                  CalendarSubscriptionDialog.show(context),
+                              icon: const Icon(Icons.calendar_month_outlined),
+                              label:
+                                  const Text('Zet het programma in je agenda'),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: Colors.white,
+                                foregroundColor: const Color(0xFF153B2A),
+                              ),
+                            ),
                           ],
                         ),
                       ),
+                      _HomePredictionReminder(onOpenPredict: onOpenPredict),
                       const SizedBox.shrink(),
                       const SizedBox.shrink(),
                       const SizedBox.shrink(),
@@ -764,6 +943,8 @@ class DashboardScreen extends StatelessWidget {
                                 'Voorspel uitslagen, daag je vrienden uit en klim in de ranglijst.\n'
                                 '👉 Download de app of volg @Derde_Div op X!';
 
+                            await AnalyticsService.instance
+                                .trackShareClicked(source: 'home_hidden');
                             await Share.share(
                               message,
                               subject: 'Daag je vrienden uit!',
@@ -991,20 +1172,14 @@ class _DashboardIntrofilmCardState extends State<_DashboardIntrofilmCard> {
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Icon(
-                                      MainNavigationConfig
-                                          .items[MainNavigationConfig
-                                              .introfilmIndex]
-                                          .selectedIcon,
+                                      Icons.ondemand_video_rounded,
                                       color: Colors.white,
                                       size: 17,
                                     ),
                                     const SizedBox(width: 6),
-                                    Text(
-                                      MainNavigationConfig
-                                          .items[MainNavigationConfig
-                                              .introfilmIndex]
-                                          .label,
-                                      style: const TextStyle(
+                                    const Text(
+                                      'Introfilm',
+                                      style: TextStyle(
                                         color: Colors.white,
                                         fontWeight: FontWeight.w800,
                                         fontSize: 12,

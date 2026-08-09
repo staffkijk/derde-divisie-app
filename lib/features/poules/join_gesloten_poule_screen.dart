@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import 'package:derde_divisie/data/services/analytics_service.dart';
+
 class JoinGeslotenPouleScreen extends StatefulWidget {
   const JoinGeslotenPouleScreen({super.key});
 
@@ -152,6 +154,10 @@ class _JoinGeslotenPouleScreenState extends State<JoinGeslotenPouleScreen> {
       });
 
       await batch.commit();
+      await AnalyticsService.instance.trackPouleJoined(
+        source: 'closed_poule',
+        public: false,
+      );
 
       if (!mounted) return;
       Navigator.pop(context);

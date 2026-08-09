@@ -1,7 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-import 'package:derde_divisie/Puntensysteem/puntenverwerker.dart';
+import 'package:derde_divisie/Puntensysteem/puntenverwerker.dart'
+    show draaiVoorspellingenVoorWedstrijdTerug;
+import 'package:derde_divisie/data/config/season_config.dart';
+import 'package:derde_divisie/features/moderator/general_prediction_points_service.dart';
 import 'package:derde_divisie/features/moderator/periodestand_service.dart';
 import 'package:derde_divisie/features/moderator/standen_service.dart';
 import 'package:derde_divisie/data/services/activity_log_service.dart';
@@ -61,11 +64,11 @@ class ResultProcessingService {
     try {
       await StandenService().herberekenStandVoorDivisie(division);
       await PeriodestandService().herberekenAllePeriodesVoorDivisie(division);
-      await verwerkVoorspellingenVoorWedstrijd(
-        matchRef.id,
-        homeScore,
-        awayScore,
-        division == 'B' ? 'punten_B' : 'punten_A',
+      await const GeneralPredictionPointsService().processMatch(
+        matchId: matchRef.id,
+        homeScore: homeScore,
+        awayScore: awayScore,
+        userPointsField: division == 'B' ? 'punten_B' : 'punten_A',
       );
       await matchRef.set(
         {
@@ -109,20 +112,83 @@ class ResultProcessingService {
         status != 'abandoned') {
       throw ArgumentError.value(status, 'status');
     }
-    return matchRef.set(
+    return clearResultAndSetStatus(matchRef: matchRef, status: status);
+  }
+
+  Future<void> clearResultAndSetStatus({
+    required DocumentReference<Map<String, dynamic>> matchRef,
+    required String status,
+  }) async {
+    if (!_nonFinishedStatuses.contains(status)) {
+      throw ArgumentError.value(status, 'status');
+    }
+
+    final before = await matchRef.get();
+    final oldData = before.data() ?? {};
+    final division = _divisionFromMatch(oldData);
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final oldStatus = (oldData['status'] ?? '').toString();
+    final wasProcessed =
+        oldData['processed'] == true || oldData['verwerkt'] == true;
+    final hadScore = oldData['homeScore'] != null ||
+        oldData['awayScore'] != null ||
+        oldData['uitslagThuis'] != null ||
+        oldData['uitslagUit'] != null;
+
+    await matchRef.set(
       {
         'homeScore': FieldValue.delete(),
         'awayScore': FieldValue.delete(),
         'uitslagThuis': FieldValue.delete(),
         'uitslagUit': FieldValue.delete(),
+        'vorigeUitslagThuis': FieldValue.delete(),
+        'vorigeUitslagUit': FieldValue.delete(),
         'status': status,
         'resultConfirmed': false,
         'processed': false,
         'verwerkt': false,
+        'processedAt': FieldValue.delete(),
         'processingError': FieldValue.delete(),
         'updatedAt': FieldValue.serverTimestamp(),
+        if (uid != null) 'updatedBy': uid,
       },
       SetOptions(merge: true),
     );
+
+    await StandenService().herberekenStandVoorDivisie(division);
+    await PeriodestandService().herberekenAllePeriodesVoorDivisie(division);
+    await draaiVoorspellingenVoorWedstrijdTerug(
+      matchRef.id,
+      division == 'B' ? 'punten_B' : 'punten_A',
+    );
+
+    await ActivityLogService().log(
+      eventType: ActivityEventType.resultProcessed,
+      entityType: 'match',
+      entityId: matchRef.id,
+      metadata: {
+        'division': division,
+        'status': status,
+        'oldStatus': oldStatus,
+        'wasProcessed': wasProcessed,
+        'hadScore': hadScore,
+      },
+    );
+  }
+
+  static const _nonFinishedStatuses = {
+    'scheduled',
+    'postponed',
+    'cancelled',
+    'abandoned',
+  };
+
+  String _divisionFromMatch(Map<String, dynamic> data) {
+    final raw =
+        (data['division'] ?? data['divisie'] ?? data['competitie'] ?? '')
+            .toString();
+    final normalized = SeasonConfig.normalizeDivisionCode(raw);
+    if (normalized == 'A' || normalized == 'B') return normalized;
+    throw StateError('Divisie kan niet worden bepaald voor wedstrijd.');
   }
 }

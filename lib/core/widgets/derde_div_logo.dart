@@ -52,6 +52,8 @@ class DerdeDivLogo extends StatelessWidget {
           width: width,
           height: height,
           fit: BoxFit.contain,
+          filterQuality: FilterQuality.high,
+          isAntiAlias: true,
           semanticLabel: semanticLabel,
         );
       },

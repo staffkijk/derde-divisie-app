@@ -6,6 +6,7 @@ import 'package:derde_divisie/core/design/app_design.dart';
 import 'package:derde_divisie/core/utils/match_formatters.dart';
 import 'package:derde_divisie/core/widgets/match_rows.dart';
 import 'package:derde_divisie/core/widgets/match_status_badge.dart';
+import 'package:derde_divisie/core/widgets/team_logo.dart';
 import 'package:derde_divisie/data/config/season_config.dart';
 import 'package:derde_divisie/data/firestore/season_paths.dart';
 import 'package:derde_divisie/data/services/division_data_service.dart';
@@ -99,7 +100,6 @@ class DashboardMatchCenter extends StatelessWidget {
           ),
         if (showHero) const SizedBox(height: AppSpacing.md),
         _FavoriteAndActions(
-          onOpenProgram: onOpenProgram,
           onOpenPredict: onOpenPredict,
           onOpenProfile: onOpenProfile,
         ),
@@ -260,162 +260,146 @@ class _MatchesPanel extends StatelessWidget {
 
 class _FavoriteAndActions extends StatelessWidget {
   const _FavoriteAndActions({
-    required this.onOpenProgram,
     required this.onOpenPredict,
     required this.onOpenProfile,
   });
 
-  final VoidCallback onOpenProgram;
   final VoidCallback onOpenPredict;
   final VoidCallback onOpenProfile;
 
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SizedBox(
-            width: double.infinity,
-            child: user == null
-                ? const Text(
-                    'Log in om je favoriete club en persoonlijke voorspelstatus te zien.',
-                    style: AppTextStyles.bodyMuted,
-                  )
-                : FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-                    future: FirebaseFirestore.instance
-                        .collection('users')
-                        .doc(user.uid)
-                        .get(),
-                    builder: (context, snapshot) {
-                      final data = snapshot.data?.data();
-                      final favoriteName = (data?['favoriteTeamName'] ??
-                              data?['favorieteClub'] ??
-                              '')
-                          .toString();
-                      final team = SeasonConfig.teamById(
-                            (data?['favoriteTeamSlug'] ?? '').toString(),
-                          ) ??
-                          SeasonConfig.teamByName(favoriteName);
-                      if (team == null) {
-                        return InkWell(
-                          onTap: onOpenProfile,
-                          child: const Row(
-                            children: [
-                              Icon(
-                                Icons.add_circle_outline,
-                                color: AppColors.primary,
-                              ),
-                              SizedBox(width: AppSpacing.sm),
-                              Expanded(
-                                child: Text(
-                                  'Kies je favoriete club voor een persoonlijker wedstrijdcentrum.',
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }
-                      return Row(
+    if (user == null) return const SizedBox.shrink();
+    return FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      future:
+          FirebaseFirestore.instance.collection('users').doc(user.uid).get(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) return const SizedBox.shrink();
+        if (!snapshot.hasData) {
+          return const SizedBox(
+            height: 64,
+            child: Center(
+              child: SizedBox.square(
+                dimension: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+          );
+        }
+        final data = snapshot.data?.data();
+        final favoriteName =
+            (data?['favoriteTeamName'] ?? data?['favorieteClub'] ?? '')
+                .toString();
+        final team = SeasonConfig.teamById(
+              (data?['favoriteTeamSlug'] ?? '').toString(),
+            ) ??
+            SeasonConfig.teamByName(favoriteName);
+        if (team == null) {
+          return AppCard(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: InkWell(
+              onTap: onOpenProfile,
+              child: const Row(
+                children: [
+                  Icon(Icons.add_circle_outline, color: AppColors.primary),
+                  SizedBox(width: AppSpacing.sm),
+                  Expanded(child: Text('Kies je favoriete club')),
+                ],
+              ),
+            ),
+          );
+        }
+
+        void openClub() => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => ClubDetailScreen(
+                  teamSlug: team.id,
+                  teamName: team.label,
+                ),
+              ),
+            );
+
+        return AppCard(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final mobile = constraints.maxWidth < 650;
+              final info = Expanded(
+                child: mobile
+                    ? Column(
+                        mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Image.asset(
-                            team.logoPath,
-                            width: 54,
-                            height: 54,
-                            errorBuilder: (_, __, ___) => const Icon(
-                              Icons.shield_outlined,
-                              size: 48,
-                              color: AppColors.primary,
-                            ),
+                          Text(
+                            '${team.label} · ${SeasonConfig.divisionName(team.division)}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontWeight: FontWeight.w700),
                           ),
-                          const SizedBox(width: AppSpacing.sm),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Jouw favoriete club',
-                                  style: TextStyle(
-                                    color: AppColors.textMuted,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                                Text(
-                                  team.label,
-                                  style: AppTextStyles.sectionTitle,
-                                ),
-                                Text(
-                                  SeasonConfig.divisionName(team.division),
-                                  style: AppTextStyles.bodyMuted,
-                                ),
-                                const SizedBox(height: AppSpacing.sm),
-                                _FavoriteMatchSummary(team: team),
-                                const SizedBox(height: AppSpacing.sm),
-                                Wrap(
-                                  spacing: AppSpacing.xs,
-                                  runSpacing: AppSpacing.xs,
-                                  children: [
-                                    OutlinedButton.icon(
-                                      onPressed: () =>
-                                          Navigator.of(context).push(
-                                        MaterialPageRoute(
-                                          builder: (_) => ClubDetailScreen(
-                                            teamSlug: team.id,
-                                            teamName: team.label,
-                                          ),
-                                        ),
-                                      ),
-                                      icon: const Icon(
-                                        Icons.shield_outlined,
-                                        size: 18,
-                                      ),
-                                      label: const Text('Clubpagina'),
-                                    ),
-                                    FilledButton.icon(
-                                      onPressed: onOpenPredict,
-                                      icon: const Icon(
-                                        Icons.edit_calendar_outlined,
-                                        size: 18,
-                                      ),
-                                      label: const Text('Voorspellen'),
-                                    ),
-                                    TextButton(
-                                      onPressed: onOpenProfile,
-                                      child: const Text('Wijzig club'),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
+                          _FavoriteMatchSummary(team: team),
                         ],
-                      );
+                      )
+                    : Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              '${team.label} · ${SeasonConfig.divisionName(team.division)}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 10),
+                            child: Text('|', style: AppTextStyles.bodyMuted),
+                          ),
+                          Expanded(child: _FavoriteMatchSummary(team: team)),
+                        ],
+                      ),
+              );
+              return Row(
+                children: [
+                  TeamLogo(teamSlug: team.id, teamName: team.label, size: 36),
+                  const SizedBox(width: 10),
+                  info,
+                  if (!mobile) ...[
+                    const SizedBox(width: 10),
+                    OutlinedButton(
+                      onPressed: openClub,
+                      child: const Text('Clubpagina'),
+                    ),
+                    const SizedBox(width: 6),
+                    FilledButton(
+                      onPressed: onOpenPredict,
+                      child: const Text('Voorspellen'),
+                    ),
+                  ],
+                  PopupMenuButton<String>(
+                    tooltip: 'Meer acties',
+                    onSelected: (value) {
+                      if (value == 'club') openClub();
+                      if (value == 'predict') onOpenPredict();
+                      if (value == 'change') onOpenProfile();
                     },
+                    itemBuilder: (_) => [
+                      if (mobile)
+                        const PopupMenuItem(
+                            value: 'club', child: Text('Clubpagina')),
+                      if (mobile)
+                        const PopupMenuItem(
+                            value: 'predict', child: Text('Voorspellen')),
+                      const PopupMenuItem(
+                          value: 'change', child: Text('Wijzig club')),
+                    ],
                   ),
+                ],
+              );
+            },
           ),
-          const SizedBox(height: AppSpacing.md),
-          Wrap(
-            spacing: AppSpacing.xs,
-            runSpacing: AppSpacing.xs,
-            children: [
-              OutlinedButton(
-                onPressed: onOpenProfile,
-                child: const Text('Profiel'),
-              ),
-              OutlinedButton(
-                onPressed: onOpenProgram,
-                child: const Text('Programma'),
-              ),
-              FilledButton(
-                onPressed: onOpenPredict,
-                child: const Text('Voorspellen'),
-              ),
-            ],
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
@@ -445,27 +429,11 @@ class _FavoriteMatchSummary extends StatelessWidget {
             )
             .toList()
           ..sort((a, b) => MatchDateTimeFormatter.compare(a.data, b.data));
-        final results = matches
-            .where((match) => match.status == MatchStatus.finished)
-            .toList()
-          ..sort((a, b) => MatchDateTimeFormatter.compare(b.data, a.data));
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _line(
-              'Volgende',
-              upcoming.isEmpty
-                  ? 'Geen komende wedstrijd gevonden'
-                  : _description(upcoming.first),
-            ),
-            const SizedBox(height: AppSpacing.xxs),
-            _line(
-              'Laatste',
-              results.isEmpty
-                  ? 'Nog geen uitslag'
-                  : _description(results.first),
-            ),
-          ],
+        return _line(
+          'Volgende',
+          upcoming.isEmpty
+              ? 'Geen komende wedstrijd'
+              : _description(upcoming.first),
         );
       },
     );

@@ -16,20 +16,15 @@ void main() {
       );
       expect(
         MediaConfig.introVideo20262027Url.toString(),
-        contains('videos%2Fderdediv_intro_2026_2027_web.mp4'),
+        contains('videos%2Fderdediv_intro_2026_2027_web_v2.mp4'),
       );
     });
   });
 
   group('MainNavigationConfig', () {
-    test('plaatst Introfilm direct na Home en houdt bestaande indices stabiel',
-        () {
+    test('houdt menu-indexen stabiel zonder Introfilm-menuitem', () {
       expect(MainNavigationConfig.items[MainNavigationConfig.homeIndex].label,
           'Home');
-      expect(
-        MainNavigationConfig.items[MainNavigationConfig.introfilmIndex].label,
-        'Introfilm',
-      );
       expect(
         MainNavigationConfig.items[MainNavigationConfig.divisionAIndex].label,
         'Derde Divisie A',
@@ -46,18 +41,16 @@ void main() {
         MainNavigationConfig.items[MainNavigationConfig.profileIndex].label,
         'Profiel',
       );
+      expect(
+        MainNavigationConfig.items.map((item) => item.label),
+        isNot(contains('Introfilm')),
+      );
     });
 
-    test('maakt Introfilm publiek en koppelt index 1 aan IntroVideoScreen', () {
-      final introItem =
-          MainNavigationConfig.items[MainNavigationConfig.introfilmIndex];
-
-      expect(introItem.destination, MainNavigationDestination.introfilm);
-      expect(introItem.protected, isFalse);
-      expect(introItem.selectedIcon, Icons.ondemand_video_rounded);
+    test('houdt schermmapping gelijk aan menu-items', () {
       expect(
-        mainNavigationScreenTypes[MainNavigationConfig.introfilmIndex],
-        IntroVideoScreen,
+        mainNavigationScreenTypes[MainNavigationConfig.homeIndex],
+        isNot(IntroVideoScreen),
       );
       expect(
         mainNavigationScreenTypes.length,

@@ -191,7 +191,10 @@ class _ModeratorMenuScreenState extends State<ModeratorMenuScreen> {
 
   Future<void> _setStatus(_MatchDoc match, String status) async {
     try {
-      await _processor.saveWithoutScore(matchRef: match.ref, status: status);
+      await _processor.clearResultAndSetStatus(
+        matchRef: match.ref,
+        status: status,
+      );
       _homeControllerFor(match).clear();
       _awayControllerFor(match).clear();
       if (mounted) {
@@ -239,16 +242,10 @@ class _ModeratorMenuScreenState extends State<ModeratorMenuScreen> {
     if (confirmed != true) return;
 
     try {
-      await match.ref.set({
-        'homeScore': FieldValue.delete(),
-        'awayScore': FieldValue.delete(),
-        'uitslagThuis': FieldValue.delete(),
-        'uitslagUit': FieldValue.delete(),
-        'status': 'scheduled',
-        'resultConfirmed': false,
-        'verwerkt': false,
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+      await _processor.clearResultAndSetStatus(
+        matchRef: match.ref,
+        status: 'scheduled',
+      );
 
       _homeControllers[match.id]?.text = '';
       _awayControllers[match.id]?.text = '';
@@ -856,6 +853,7 @@ class _StatusPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final label = _statusLabel(status);
     final color = _statusColor(status);
+    if (label.isEmpty) return const SizedBox.shrink();
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
@@ -878,16 +876,16 @@ class _StatusPill extends StatelessWidget {
   String _statusLabel(String value) {
     switch (value) {
       case 'finished':
-        return 'Afgelopen';
+        return '';
       case 'postponed':
-        return 'In te halen';
+        return 'Uitgesteld';
       case 'cancelled':
         return 'Afgelast';
       case 'abandoned':
         return 'Gestaakt';
       case 'scheduled':
       default:
-        return 'Gepland';
+        return '';
     }
   }
 

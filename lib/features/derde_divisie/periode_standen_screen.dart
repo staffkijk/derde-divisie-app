@@ -5,6 +5,11 @@ import 'package:logging/logging.dart';
 import 'package:derde_divisie/data/config/season_config.dart';
 
 final Logger _log = Logger('PeriodeStanden');
+const _darkGreen = Color(0xFF153B2A);
+const _primaryGreen = Color(0xFF2F8F3B);
+const _background = Color(0xFFF3F6F1);
+const _border = Color(0xFFE3EADF);
+const _textMuted = Color(0xFF5F6D64);
 
 class PeriodeStandenScreen extends StatelessWidget {
   const PeriodeStandenScreen({super.key});
@@ -14,14 +19,15 @@ class PeriodeStandenScreen extends StatelessWidget {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
-        backgroundColor: const Color(0xFFF5F7F4),
+        backgroundColor: _background,
         appBar: AppBar(
-          backgroundColor: Colors.green,
+          backgroundColor: _darkGreen,
           foregroundColor: Colors.white,
-          elevation: 1,
+          elevation: 0,
           title: const Text('Periodestanden'),
           bottom: const TabBar(
-            indicatorColor: Colors.white,
+            indicatorColor: _primaryGreen,
+            indicatorWeight: 3,
             labelColor: Colors.white,
             unselectedLabelColor: Colors.white70,
             tabs: [
@@ -120,8 +126,8 @@ class _HeaderCard extends StatelessWidget {
       color: Colors.white,
       surfaceTintColor: Colors.white,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
-        side: BorderSide(color: Colors.grey.shade200),
+        borderRadius: BorderRadius.circular(8),
+        side: const BorderSide(color: _border),
       ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
@@ -131,12 +137,12 @@ class _HeaderCard extends StatelessWidget {
               width: 42,
               height: 42,
               decoration: BoxDecoration(
-                color: Colors.green.shade50,
-                borderRadius: BorderRadius.circular(14),
+                color: const Color(0xFFE8F5E9),
+                borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(
+              child: const Icon(
                 Icons.leaderboard_outlined,
-                color: Colors.green.shade700,
+                color: _primaryGreen,
               ),
             ),
             const SizedBox(width: 14),
@@ -156,7 +162,7 @@ class _HeaderCard extends StatelessWidget {
                     subtitle,
                     style: TextStyle(
                       fontSize: 13,
-                      color: Colors.grey.shade700,
+                      color: _textMuted,
                     ),
                   ),
                 ],
@@ -185,8 +191,8 @@ class _PeriodSelector extends StatelessWidget {
       color: Colors.white,
       surfaceTintColor: Colors.white,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
-        side: BorderSide(color: Colors.grey.shade200),
+        borderRadius: BorderRadius.circular(8),
+        side: const BorderSide(color: _border),
       ),
       child: Padding(
         padding: const EdgeInsets.all(8),
@@ -208,15 +214,15 @@ class _PeriodSelector extends StatelessWidget {
                       horizontal: 10,
                     ),
                     decoration: BoxDecoration(
-                      color: selected ? Colors.green : Colors.transparent,
-                      borderRadius: BorderRadius.circular(14),
+                      color: selected ? _primaryGreen : Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       'Periode $period',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontWeight: FontWeight.w700,
-                        color: selected ? Colors.white : Colors.grey.shade800,
+                        color: selected ? Colors.white : _darkGreen,
                       ),
                     ),
                   ),
@@ -249,8 +255,8 @@ class _PeriodeStandCard extends StatelessWidget {
       color: Colors.white,
       surfaceTintColor: Colors.white,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
-        side: BorderSide(color: Colors.grey.shade200),
+        borderRadius: BorderRadius.circular(8),
+        side: const BorderSide(color: _border),
       ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
@@ -542,7 +548,7 @@ class _TableTitle extends StatelessWidget {
         Text(
           SeasonConfig.activeSeasonLabel,
           style: TextStyle(
-            color: Colors.grey.shade600,
+            color: _textMuted,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -595,7 +601,7 @@ class _StandTable extends StatelessWidget {
 
                 return DataRow(
                   color: isLeader
-                      ? WidgetStateProperty.all(Colors.green.shade50)
+                      ? WidgetStateProperty.all(const Color(0xFFE8F5E9))
                       : null,
                   cells: [
                     DataCell(
@@ -695,7 +701,7 @@ class _EmptyState extends StatelessWidget {
               Icon(
                 Icons.event_note_outlined,
                 size: 48,
-                color: Colors.green.shade600,
+                color: _primaryGreen,
               ),
               const SizedBox(height: 14),
               Text(
@@ -712,7 +718,7 @@ class _EmptyState extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   height: 1.35,
-                  color: Colors.grey.shade700,
+                  color: _textMuted,
                 ),
               ),
             ],

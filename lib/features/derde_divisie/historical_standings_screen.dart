@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:derde_divisie/data/services/analytics_service.dart';
 import 'stand_derde_divisie_screen.dart';
 
 class HistoricalStandingsScreen extends StatefulWidget {
@@ -28,6 +29,17 @@ class _HistoricalStandingsScreenState extends State<HistoricalStandingsScreen> {
         ? widget.initialSeason
         : kArchiefSeizoenen.first;
     _division = widget.initialDivision == 'B' ? 'B' : 'A';
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _trackHistoryViewed(source: 'history_screen');
+    });
+  }
+
+  void _trackHistoryViewed({required String source}) {
+    AnalyticsService.instance.trackHistoryViewed(
+      division: _division,
+      season: _season,
+      source: source,
+    );
   }
 
   @override
@@ -83,6 +95,7 @@ class _HistoricalStandingsScreenState extends State<HistoricalStandingsScreen> {
                             onChanged: (value) {
                               if (value != null) {
                                 setState(() => _season = value);
+                                _trackHistoryViewed(source: 'season_filter');
                               }
                             },
                           ),
@@ -95,6 +108,7 @@ class _HistoricalStandingsScreenState extends State<HistoricalStandingsScreen> {
                           selected: {_division},
                           onSelectionChanged: (selection) {
                             setState(() => _division = selection.first);
+                            _trackHistoryViewed(source: 'division_filter');
                           },
                         ),
                       ],
