@@ -130,11 +130,18 @@ jobs:
 
   ios-user-flow:
     needs: web-user-flow
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 45
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Gebruik Xcode 26.2
+        shell: bash
+        run: |
+          sudo xcode-select -s /Applications/Xcode_26.2.app/Contents/Developer
+          xcodebuild -version
+          swift --version
 
       - name: Java
         uses: actions/setup-java@v4
