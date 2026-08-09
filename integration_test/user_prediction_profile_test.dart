@@ -114,10 +114,8 @@ void main() {
     await tester.pump(const Duration(seconds: 2));
     await tester.pump();
 
-    final descriptionField = find.byWidgetPredicate(
-      (widget) =>
-          widget is TextFormField && widget.minLines == 3 && widget.maxLines == 5,
-    );
+    final descriptionField =
+        find.widgetWithText(TextFormField, 'Profielbeschrijving');
     final cityField = find.widgetWithText(TextFormField, 'Woonplaats');
 
     expect(descriptionField, findsOneWidget);
