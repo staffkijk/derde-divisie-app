@@ -18,9 +18,13 @@ void main() {
   late FirebaseAuth auth;
 
   setUpAll(() async {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
+    // Android/iOS can already have a native [DEFAULT] Firebase app through
+    // their platform configuration. Web still needs explicit Dart init.
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+    }
     await initializeDateFormatting('nl');
 
     final host = defaultTargetPlatform == TargetPlatform.android
