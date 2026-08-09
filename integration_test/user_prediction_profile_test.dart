@@ -11,6 +11,18 @@ import 'package:derde_divisie/features/derde_divisie/wedstrijden_scherm_derde_di
 import 'package:derde_divisie/features/profiel/profile_screen.dart';
 import 'package:derde_divisie/firebase_options.dart';
 
+Future<void> _pumpUntilFound(
+  WidgetTester tester,
+  Finder finder, {
+  Duration timeout = const Duration(seconds: 20),
+}) async {
+  final deadline = DateTime.now().add(timeout);
+
+  while (finder.evaluate().isEmpty && DateTime.now().isBefore(deadline)) {
+    await tester.pump(const Duration(milliseconds: 250));
+  }
+}
+
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
@@ -46,6 +58,25 @@ void main() {
       email: 'alice@regression.test',
       password: 'Regression123!',
     );
+
+    // Bewijs eerst dat deze device-run werkelijk tegen dezelfde gezaaide
+    // Firebase-emulator praat. Zo onderscheiden we connectiviteitsfouten van
+    // langzamere UI-opbouw op echte mobiele runners.
+    expect(auth.currentUser?.uid, 'regression-alice');
+
+    final userFixture =
+        await db.collection('users').doc('regression-alice').get();
+    expect(userFixture.exists, isTrue);
+    expect(userFixture.data()?['username'], 'Alice Regression');
+
+    final matchFixture = await db
+        .collection('seasons')
+        .doc('2026-2027')
+        .collection('matches')
+        .doc('A_REGRESSION_01')
+        .get();
+    expect(matchFixture.exists, isTrue);
+    expect(matchFixture.data()?['homeTeamName'], 'ACV');
   });
 
   tearDownAll(() async {
@@ -65,9 +96,7 @@ void main() {
       ),
     );
 
-    await tester.pump(const Duration(seconds: 2));
-    await tester.pump();
-
+    await _pumpUntilFound(tester, find.text('ACV'));
     expect(find.text('ACV'), findsWidgets);
     expect(find.text('ADO20'), findsWidgets);
 
@@ -114,8 +143,7 @@ void main() {
         ),
       ),
     );
-    await tester.pump(const Duration(seconds: 2));
-    await tester.pump();
+    await _pumpUntilFound(tester, find.text('ACV'));
 
     final reopened = (await predictionRef.get()).data()!;
     expect(reopened['scoreThuis'], 1);
@@ -124,13 +152,12 @@ void main() {
 
   testWidgets('profiel opslaan blijft na opnieuw openen bewaard', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: ProfileScreen()));
-    await tester.pump(const Duration(seconds: 2));
-    await tester.pump();
 
     final descriptionField =
         find.widgetWithText(TextFormField, 'Profielbeschrijving');
     final cityField = find.widgetWithText(TextFormField, 'Woonplaats');
 
+    await _pumpUntilFound(tester, descriptionField);
     expect(descriptionField, findsOneWidget);
     expect(cityField, findsOneWidget);
 
@@ -160,8 +187,11 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pumpAndSettle();
     await tester.pumpWidget(const MaterialApp(home: ProfileScreen()));
-    await tester.pump(const Duration(seconds: 2));
-    await tester.pump();
+
+    final reopenedDescriptionField =
+        find.widgetWithText(TextFormField, 'Profielbeschrijving');
+    await _pumpUntilFound(tester, reopenedDescriptionField);
+    expect(reopenedDescriptionField, findsOneWidget);
 
     final savedUser =
         (await db.collection('users').doc('regression-alice').get()).data()!;
