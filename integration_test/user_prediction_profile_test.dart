@@ -23,6 +23,18 @@ Future<void> _pumpUntilFound(
   }
 }
 
+Future<void> _tapScoreChoice(
+  WidgetTester tester,
+  String label,
+) async {
+  final choice = find.widgetWithText(ChoiceChip, label);
+  expect(choice, findsOneWidget);
+  await tester.ensureVisible(choice);
+  await tester.pumpAndSettle();
+  await tester.tap(choice);
+  await tester.pumpAndSettle();
+}
+
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
@@ -108,8 +120,7 @@ void main() {
     await tester.tap(homeScore);
     await tester.pumpAndSettle();
     expect(find.text('Kies uitslag'), findsOneWidget);
-    await tester.tap(find.text('2-1'));
-    await tester.pumpAndSettle();
+    await _tapScoreChoice(tester, '2-1');
     await tester.pump(const Duration(milliseconds: 500));
 
     final predictionRef =
@@ -123,8 +134,8 @@ void main() {
 
     await tester.tap(homeScore);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('1-2'));
-    await tester.pumpAndSettle();
+    expect(find.text('Kies uitslag'), findsOneWidget);
+    await _tapScoreChoice(tester, '1-2');
     await tester.pump(const Duration(milliseconds: 500));
 
     prediction = (await predictionRef.get()).data();
