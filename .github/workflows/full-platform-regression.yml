@@ -2,9 +2,6 @@ name: DerdeDiv volledige platformregressie
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - codex/full-regression-suite
 
 concurrency:
   group: derde-div-platform-${{ github.ref_name }}
