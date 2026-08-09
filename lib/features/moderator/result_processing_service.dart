@@ -1,8 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-import 'package:derde_divisie/Puntensysteem/puntenverwerker.dart';
+import 'package:derde_divisie/Puntensysteem/puntenverwerker.dart'
+    show draaiVoorspellingenVoorWedstrijdTerug;
 import 'package:derde_divisie/data/config/season_config.dart';
+import 'package:derde_divisie/features/moderator/general_prediction_points_service.dart';
 import 'package:derde_divisie/features/moderator/periodestand_service.dart';
 import 'package:derde_divisie/features/moderator/standen_service.dart';
 import 'package:derde_divisie/data/services/activity_log_service.dart';
@@ -62,11 +64,11 @@ class ResultProcessingService {
     try {
       await StandenService().herberekenStandVoorDivisie(division);
       await PeriodestandService().herberekenAllePeriodesVoorDivisie(division);
-      await verwerkVoorspellingenVoorWedstrijd(
-        matchRef.id,
-        homeScore,
-        awayScore,
-        division == 'B' ? 'punten_B' : 'punten_A',
+      await const GeneralPredictionPointsService().processMatch(
+        matchId: matchRef.id,
+        homeScore: homeScore,
+        awayScore: awayScore,
+        userPointsField: division == 'B' ? 'punten_B' : 'punten_A',
       );
       await matchRef.set(
         {

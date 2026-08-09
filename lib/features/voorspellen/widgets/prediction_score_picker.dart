@@ -237,62 +237,64 @@ class _PredictionScoreSheetState extends State<_PredictionScoreSheet> {
           },
           child: Padding(
             padding: EdgeInsets.fromLTRB(18, 4, 18, 18 + bottom),
-            child: AnimatedSize(
-              duration: const Duration(milliseconds: 160),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Text('Kies uitslag', style: AppTextStyles.sectionTitle),
-                  const SizedBox(height: AppSpacing.sm),
-                  Wrap(
-                    spacing: AppSpacing.sm,
-                    runSpacing: AppSpacing.sm,
-                    children: [
-                      for (final group
-                          in PredictionScorePicker.quickScoreGroups)
-                        _ScoreGroup(
-                          group: group,
-                          selectedHome: widget.selectedHome,
-                          selectedAway: widget.selectedAway,
+            child: SingleChildScrollView(
+              child: AnimatedSize(
+                duration: const Duration(milliseconds: 160),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text('Kies uitslag', style: AppTextStyles.sectionTitle),
+                    const SizedBox(height: AppSpacing.sm),
+                    Wrap(
+                      spacing: AppSpacing.sm,
+                      runSpacing: AppSpacing.sm,
+                      children: [
+                        for (final group
+                            in PredictionScorePicker.quickScoreGroups)
+                          _ScoreGroup(
+                            group: group,
+                            selectedHome: widget.selectedHome,
+                            selectedAway: widget.selectedAway,
+                          ),
+                        ActionChip(
+                          avatar: const Icon(Icons.edit_outlined, size: 17),
+                          label: const Text('Anders'),
+                          onPressed: () => setState(() => _manual = !_manual),
                         ),
-                      ActionChip(
-                        avatar: const Icon(Icons.edit_outlined, size: 17),
-                        label: const Text('Anders'),
-                        onPressed: () => setState(() => _manual = !_manual),
+                      ],
+                    ),
+                    if (_manual) ...[
+                      const SizedBox(height: AppSpacing.md),
+                      Form(
+                        key: _formKey,
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: _ManualScoreField(
+                                controller: _homeController,
+                                label: 'Thuis',
+                              ),
+                            ),
+                            const SizedBox(width: AppSpacing.sm),
+                            Expanded(
+                              child: _ManualScoreField(
+                                controller: _awayController,
+                                label: 'Uit',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      FilledButton.icon(
+                        onPressed: _submitManual,
+                        icon: const Icon(Icons.check_outlined),
+                        label: const Text('Toepassen'),
                       ),
                     ],
-                  ),
-                  if (_manual) ...[
-                    const SizedBox(height: AppSpacing.md),
-                    Form(
-                      key: _formKey,
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: _ManualScoreField(
-                              controller: _homeController,
-                              label: 'Thuis',
-                            ),
-                          ),
-                          const SizedBox(width: AppSpacing.sm),
-                          Expanded(
-                            child: _ManualScoreField(
-                              controller: _awayController,
-                              label: 'Uit',
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    FilledButton.icon(
-                      onPressed: _submitManual,
-                      icon: const Icon(Icons.check_outlined),
-                      label: const Text('Toepassen'),
-                    ),
                   ],
-                ],
+                ),
               ),
             ),
           ),

@@ -23,7 +23,8 @@ android {
 
     defaultConfig {
         applicationId = "com.example.derde_divisie"
-        minSdk = flutter.minSdkVersion
+        // FlutterFire/Firebase vereist voor de huidige pluginset minimaal Android API 23.
+        minSdk = 23
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName

@@ -153,19 +153,32 @@ class _PredictionReminderPreferencesPanelState
                 const SizedBox(height: 12),
                 DropdownButtonFormField<NotificationTeamScope>(
                   value: _preferences.teamScope,
+                  isExpanded: true,
                   decoration: const InputDecoration(labelText: 'Teamvoorkeur'),
                   items: const [
                     DropdownMenuItem(
                       value: NotificationTeamScope.all,
-                      child: Text('Alle teams / alle wedstrijden'),
+                      child: Text(
+                        'Alle teams / alle wedstrijden',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                     DropdownMenuItem(
                       value: NotificationTeamScope.favorite,
-                      child: Text('Alleen favoriete club'),
+                      child: Text(
+                        'Alleen favoriete club',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                     DropdownMenuItem(
                       value: NotificationTeamScope.selected,
-                      child: Text('Specifieke geselecteerde teams'),
+                      child: Text(
+                        'Specifieke geselecteerde teams',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ],
                   onChanged: (value) {
