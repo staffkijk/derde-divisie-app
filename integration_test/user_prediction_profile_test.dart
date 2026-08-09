@@ -49,9 +49,11 @@ void main() {
       (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
-        home: WedstrijdenSchermDerdeDivisieA(
-          divisie: 'A',
-          initialRound: 1,
+        home: Scaffold(
+          body: WedstrijdenSchermDerdeDivisieA(
+            divisie: 'A',
+            initialRound: 1,
+          ),
         ),
       ),
     );
@@ -97,9 +99,11 @@ void main() {
     await tester.pumpAndSettle();
     await tester.pumpWidget(
       const MaterialApp(
-        home: WedstrijdenSchermDerdeDivisieA(
-          divisie: 'A',
-          initialRound: 1,
+        home: Scaffold(
+          body: WedstrijdenSchermDerdeDivisieA(
+            divisie: 'A',
+            initialRound: 1,
+          ),
         ),
       ),
     );
@@ -123,8 +127,17 @@ void main() {
     expect(descriptionField, findsOneWidget);
     expect(cityField, findsOneWidget);
 
-    await tester.enterText(descriptionField, 'Profiel uit automatische regressietest');
+    await tester.enterText(
+      descriptionField,
+      'Profiel uit automatische regressietest',
+    );
     await tester.enterText(cityField, 'Harderwijk');
+    await tester.pumpAndSettle();
+
+    final citySuggestion = find.text('Harderwijk');
+    expect(citySuggestion, findsWidgets);
+    await tester.tap(citySuggestion.last);
+    await tester.pumpAndSettle();
 
     final saveButton = find.text('Opslaan');
     expect(saveButton, findsOneWidget);
