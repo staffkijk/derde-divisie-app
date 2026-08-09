@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 import 'package:derde_divisie/features/derde_divisie/wedstrijden_scherm_derde_divisie_a.dart';
 import 'package:derde_divisie/features/profiel/profile_screen.dart';
@@ -20,6 +21,7 @@ void main() {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+    await initializeDateFormatting('nl');
 
     final host = defaultTargetPlatform == TargetPlatform.android
         ? '10.0.2.2'
@@ -123,7 +125,12 @@ void main() {
 
     await tester.enterText(descriptionField, 'Profiel uit automatische regressietest');
     await tester.enterText(cityField, 'Harderwijk');
-    await tester.tap(find.widgetWithText(FilledButton, 'Opslaan'));
+
+    final saveButton = find.text('Opslaan');
+    expect(saveButton, findsOneWidget);
+    await tester.ensureVisible(saveButton);
+    await tester.pumpAndSettle();
+    await tester.tap(saveButton);
     await tester.pump(const Duration(seconds: 1));
 
     final user = (await db.collection('users').doc('regression-alice').get()).data()!;
