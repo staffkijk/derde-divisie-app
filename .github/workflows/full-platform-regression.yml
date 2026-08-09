@@ -6,8 +6,32 @@ on:
     branches:
       - codex/full-regression-suite
 
+concurrency:
+  group: derde-div-platform-${{ github.ref_name }}
+  cancel-in-progress: true
+
 jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.32.5'
+          channel: stable
+          cache: true
+
+      - name: Controleer platformtest statisch
+        run: |
+          flutter pub get
+          flutter analyze integration_test/user_prediction_profile_test.dart
+
   web-user-flow:
+    needs: preflight
     runs-on: ubuntu-latest
     timeout-minutes: 35
 
@@ -49,12 +73,14 @@ jobs:
 
       - name: Voorspelling en profiel op web
         run: >
+          xvfb-run -a
           npx firebase emulators:exec
           --project derde-divisie-app
           --only auth,firestore
           "node tools/regression/seed_emulator.cjs && flutter drive --driver=test_driver/integration_test.dart --target=integration_test/user_prediction_profile_test.dart -d chrome"
 
   android-user-flow:
+    needs: web-user-flow
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
@@ -103,6 +129,7 @@ jobs:
             "node tools/regression/seed_emulator.cjs && flutter test integration_test/user_prediction_profile_test.dart -d emulator-5554 -r expanded"
 
   ios-user-flow:
+    needs: web-user-flow
     runs-on: macos-14
     timeout-minutes: 45
 
