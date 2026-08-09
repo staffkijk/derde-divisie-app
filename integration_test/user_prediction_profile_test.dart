@@ -18,9 +18,12 @@ void main() {
   late FirebaseAuth auth;
 
   setUpAll(() async {
-    // Android/iOS can already have a native [DEFAULT] Firebase app through
-    // their platform configuration. Web still needs explicit Dart init.
-    if (Firebase.apps.isEmpty) {
+    // Android heeft een native default app via google-services.json. Die moet
+    // door FlutterFire worden opgehaald in plaats van opnieuw aangemaakt.
+    // Web en iOS gebruiken de door FlutterFire CLI gegenereerde Dart-opties.
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      await Firebase.initializeApp();
+    } else {
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
