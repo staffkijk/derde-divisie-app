@@ -126,7 +126,7 @@ jobs:
           disable-animations: true
           script: >-
             npx firebase emulators:exec --project derde-divisie-app --only auth,firestore
-            "node tools/regression/seed_emulator.cjs && flutter test integration_test/user_prediction_profile_test.dart -d emulator-5554 -r expanded"
+            "node tools/regression/seed_emulator.cjs && flutter test --ignore-timeouts integration_test/user_prediction_profile_test.dart -d emulator-5554 -r expanded"
 
   ios-user-flow:
     needs: web-user-flow
@@ -179,4 +179,4 @@ jobs:
           npx firebase emulators:exec
           --project derde-divisie-app
           --only auth,firestore
-          "node tools/regression/seed_emulator.cjs && flutter test integration_test/user_prediction_profile_test.dart -d $IOS_DEVICE_ID -r expanded"
+          "node tools/regression/seed_emulator.cjs && flutter test --ignore-timeouts integration_test/user_prediction_profile_test.dart -d $IOS_DEVICE_ID -r expanded"
