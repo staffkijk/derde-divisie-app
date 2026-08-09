@@ -2,6 +2,7 @@
 
 const { initializeApp, getApps, applicationDefault } = require("firebase-admin/app");
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
+const { clubIdForName } = require("./club_ids");
 
 const PROJECT_ID = "derde-divisie-app";
 const SEASON_ID = "2026-2027";
@@ -114,6 +115,7 @@ function buildTeamRows() {
 
     return {
       teamId,
+      clubId: clubIdForName(name),
       name,
       displayName: name,
       searchName: name.toLowerCase(),

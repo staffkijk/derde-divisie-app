@@ -1,6 +1,6 @@
 {
-  "name": "Derde Divisie",
-  "short_name": "Derde Divisie",
+  "name": "DerdeDiv",
+  "short_name": "DerdeDiv",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
@@ -11,23 +11,23 @@
   "prefer_related_applications": false,
   "icons": [
     {
-      "src": "icons/Icon-192.png",
+      "src": "icons/derdediv-192-v2.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "icons/Icon-512.png",
+      "src": "icons/derdediv-512-v2.png",
       "sizes": "512x512",
       "type": "image/png"
     },
     {
-      "src": "icons/Icon-maskable-192.png",
+      "src": "icons/derdediv-maskable-192-v2.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "icons/Icon-maskable-512.png",
+      "src": "icons/derdediv-maskable-512-v2.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"

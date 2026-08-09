@@ -30,7 +30,7 @@ class _AdminSyncToolsScreenState extends State<AdminSyncToolsScreen> {
         .get();
 
     final data = snap.data() ?? {};
-    return data['isModerator'] == true || data['role'] == 'moderator';
+    return data['ismoderator'] == true;
   }
 
   Future<void> _run({required bool dryRun}) async {
@@ -41,7 +41,8 @@ class _AdminSyncToolsScreenState extends State<AdminSyncToolsScreen> {
     });
 
     try {
-      final res = await SyncMigrations.ensureSyncFlagsForAllParticipants(dryRun: dryRun);
+      final res = await SyncMigrations.ensureSyncFlagsForAllParticipants(
+          dryRun: dryRun);
 
       setState(() {
         _log = 'Klaar ${dryRun ? "(dry-run)" : ""}:\n'
@@ -51,14 +52,15 @@ class _AdminSyncToolsScreenState extends State<AdminSyncToolsScreen> {
       });
 
       if (!dryRun) {
-        await FirebaseFirestore.instance
-            .doc('maintenance/migrations')
-            .set({'syncFlagsV1_lastRun': FieldValue.serverTimestamp()}, SetOptions(merge: true));
+        await FirebaseFirestore.instance.doc('maintenance/migrations').set(
+            {'syncFlagsV1_lastRun': FieldValue.serverTimestamp()},
+            SetOptions(merge: true));
       }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(dryRun ? 'Dry-run klaar' : 'Migration uitgevoerd')),
+          SnackBar(
+              content: Text(dryRun ? 'Dry-run klaar' : 'Migration uitgevoerd')),
         );
       }
     } catch (e) {
@@ -79,7 +81,8 @@ class _AdminSyncToolsScreenState extends State<AdminSyncToolsScreen> {
       future: _isModerator(),
       builder: (context, snap) {
         if (snap.connectionState != ConnectionState.done) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+          return const Scaffold(
+              body: Center(child: CircularProgressIndicator()));
         }
         if (snap.data != true) {
           return const Scaffold(body: Center(child: Text('Geen toegang')));
@@ -91,7 +94,8 @@ class _AdminSyncToolsScreenState extends State<AdminSyncToolsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('1) Zet sync-vlag op alle bestaande deelnemers (standaard UIT).'),
+                const Text(
+                    '1) Zet sync-vlag op alle bestaande deelnemers (standaard UIT).'),
                 const SizedBox(height: 12),
                 Wrap(spacing: 12, children: [
                   ElevatedButton(

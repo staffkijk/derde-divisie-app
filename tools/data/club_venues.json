@@ -1,0 +1,290 @@
+[
+    {
+        "clubId":  "acv",
+        "name":  "ACV",
+        "venueName":  "Sportpark ICT Specialist",
+        "venueAddress":  "Kortbossen 1",
+        "venuePostalCode":  "9405 BM",
+        "venueCity":  "Assen"
+    },
+    {
+        "clubId":  "ado20",
+        "name":  "ADO \u002720",
+        "venueName":  "Sportpark De Vlotter",
+        "venueAddress":  "Oosterweg 4C",
+        "venuePostalCode":  "1968 KN",
+        "venueCity":  "Heemskerk"
+    },
+    {
+        "clubId":  "blauw_geel_38",
+        "name":  "Blauw Geel\u002738/JUMBO",
+        "venueName":  "Pr. Willem Alexander Sportpark",
+        "venueAddress":  "Pr. W. Alexander Sportpark 24",
+        "venuePostalCode":  "5461 XL",
+        "venueCity":  "Veghel"
+    },
+    {
+        "clubId":  "dvs33_ermelo",
+        "name":  "DVS\u002733 Ermelo",
+        "venueName":  "Sportpark DVS \u002733",
+        "venueAddress":  "Sportlaan 27",
+        "venuePostalCode":  "3851 CA",
+        "venueCity":  "Ermelo"
+    },
+    {
+        "clubId":  "evv_echt",
+        "name":  "EVV Echt",
+        "venueName":  "Sportpark In de Bandert",
+        "venueAddress":  "Sportpad 4",
+        "venuePostalCode":  "6101 LJ",
+        "venueCity":  "Echt"
+    },
+    {
+        "clubId":  "excelsior31",
+        "name":  "Excelsior\u002731",
+        "venueName":  "Sportpark de Koerbelt",
+        "venueAddress":  "Arend Baanstraat 102a",
+        "venuePostalCode":  "7461 DX",
+        "venueCity":  "Rijssen"
+    },
+    {
+        "clubId":  "excelsior_maassluis",
+        "name":  "Excelsior Maassluis",
+        "venueName":  "Sportpark Dijkpolder",
+        "venueAddress":  "Lavendelstraat 2",
+        "venuePostalCode":  "3142 NC",
+        "venueCity":  "Maassluis"
+    },
+    {
+        "clubId":  "fc_lisse",
+        "name":  "FC Lisse",
+        "venueName":  "Sportpark Ter Specke",
+        "venueAddress":  "Spekkelaan 1",
+        "venuePostalCode":  "2161 GH",
+        "venueCity":  "Lisse"
+    },
+    {
+        "clubId":  "fc_rijnvogels",
+        "name":  "FC Rijnvogels",
+        "venueName":  "Sportpark de Kooltuin",
+        "venueAddress":  "1e Mientlaan 10",
+        "venuePostalCode":  "2223 LG",
+        "venueCity":  "Katwijk aan den Rijn"
+    },
+    {
+        "clubId":  "harkemase_boys",
+        "name":  "Harkemase Boys",
+        "venueName":  "Sportpark De Bosk",
+        "venueAddress":  "De Bosk 20",
+        "venuePostalCode":  "9281 NR",
+        "venueCity":  "Harkema"
+    },
+    {
+        "clubId":  "hvv_hollandia",
+        "name":  "HVV Hollandia",
+        "venueName":  "Sportpark Juliana",
+        "venueAddress":  "Nieuwe Wal 2",
+        "venuePostalCode":  "1621 MB",
+        "venueCity":  "Hoorn"
+    },
+    {
+        "clubId":  "vpv_purmersteijn",
+        "name":  "VPV Purmersteijn",
+        "venueName":  "Sportpark Purmersteijn",
+        "venueAddress":  "Van IJsendijkstraat 140",
+        "venuePostalCode":  "1442 CS",
+        "venueCity":  "Purmerend"
+    },
+    {
+        "clubId":  "rbc",
+        "name":  "RBC",
+        "venueName":  "Atik Stadion",
+        "venueAddress":  "Borchwerf 4",
+        "venuePostalCode":  "4704 RG",
+        "venueCity":  "Roosendaal"
+    },
+    {
+        "clubId":  "rksv_groene_ster",
+        "name":  "RKSV Groene Ster",
+        "venueName":  "Sportpark Pronsebroek",
+        "venueAddress":  "Hei Grindelweg 66",
+        "venuePostalCode":  "6413 BS",
+        "venueCity":  "Heerlerheide"
+    },
+    {
+        "clubId":  "sc_genemuiden",
+        "name":  "SC Genemuiden",
+        "venueName":  "Sportpark de Wetering",
+        "venueAddress":  "Sportlaan 2B",
+        "venuePostalCode":  "8281 CM",
+        "venueCity":  "Genemuiden"
+    },
+    {
+        "clubId":  "sportlust46",
+        "name":  "Sportlust\u002746",
+        "venueName":  "Sportpark Cromwijck",
+        "venueAddress":  "Waardsedijk 31",
+        "venuePostalCode":  "3448 HV",
+        "venueCity":  "Woerden"
+    },
+    {
+        "clubId":  "sv_poortugaal",
+        "name":  "SV Poortugaal",
+        "venueName":  "Sportpark Polder Albrandswaard",
+        "venueAddress":  "Albrandswaardseweg 84a",
+        "venuePostalCode":  "3172 XC",
+        "venueCity":  "Poortugaal"
+    },
+    {
+        "clubId":  "sv_tec",
+        "name":  "SV TEC",
+        "venueName":  "Sportpark De Lok",
+        "venueAddress":  "Laan van Westroijen 5",
+        "venuePostalCode":  "4003 AX",
+        "venueCity":  "Tiel"
+    },
+    {
+        "clubId":  "svzw",
+        "name":  "SVZW",
+        "venueName":  "Sportpark het Lageveld",
+        "venueAddress":  "2e Lageveldsweg 6-D",
+        "venuePostalCode":  "7641 PC",
+        "venueCity":  "Wierden"
+    },
+    {
+        "clubId":  "togb",
+        "name":  "TOGB",
+        "venueName":  "Sportpark Het Hoge Land",
+        "venueAddress":  "Het Hoge Land 23",
+        "venuePostalCode":  "2652 EA",
+        "venueCity":  "Berkel en Rodenrijs"
+    },
+    {
+        "clubId":  "udi19",
+        "name":  "UDI\u002719",
+        "venueName":  "Sportpark Parkzicht",
+        "venueAddress":  "Parklaan 4",
+        "venuePostalCode":  "5404 NH",
+        "venueCity":  "Uden"
+    },
+    {
+        "clubId":  "usv_hercules",
+        "name":  "USV Hercules",
+        "venueName":  "Sportpark Voordorp",
+        "venueAddress":  "Voorveldselaan 2",
+        "venuePostalCode":  "3573 PV",
+        "venueCity":  "Utrecht"
+    },
+    {
+        "clubId":  "vv_achilles_veen",
+        "name":  "Achilles Veen",
+        "venueName":  "Sportpark De Hanen Weide",
+        "venueAddress":  "Groeneweg 4",
+        "venuePostalCode":  "4264 RN",
+        "venueCity":  "Veen"
+    },
+    {
+        "clubId":  "vv_dongen",
+        "name":  "VV Dongen",
+        "venueName":  "Sportpark De Biezen",
+        "venueAddress":  "Min. Goselinglaan 1a",
+        "venuePostalCode":  "5103 BH",
+        "venueCity":  "Dongen"
+    },
+    {
+        "clubId":  "vv_dovo",
+        "name":  "DOVO",
+        "venueName":  "Sportpark Panhuis",
+        "venueAddress":  "Verlengde Sportlaan 5",
+        "venuePostalCode":  "3905 AE",
+        "venueCity":  "Veenendaal"
+    },
+    {
+        "clubId":  "vv_eemdijk",
+        "name":  "VV Eemdijk",
+        "venueName":  "Sportpark De Vinken",
+        "venueAddress":  "De Kronkels 12",
+        "venuePostalCode":  "3752 LM",
+        "venueCity":  "Bunschoten-Spakenburg"
+    },
+    {
+        "clubId":  "vv_gemert",
+        "name":  "VV Gemert",
+        "venueName":  "Sportpark Molenbroek",
+        "venueAddress":  "Sportlaan 9",
+        "venuePostalCode":  "5421 SK",
+        "venueCity":  "Gemert"
+    },
+    {
+        "clubId":  "vv_goes",
+        "name":  "VV GOES",
+        "venueName":  "Sportpark Het Schenge",
+        "venueAddress":  "Geldeloozepad 5",
+        "venuePostalCode":  "4463 AJ",
+        "venueCity":  "Goes"
+    },
+    {
+        "clubId":  "vv_hoogeveen",
+        "name":  "VV Hoogeveen",
+        "venueName":  "Sportpark Bentinckspark",
+        "venueAddress":  "Sportveldenweg 1",
+        "venuePostalCode":  "7902 NX",
+        "venueCity":  "Hoogeveen"
+    },
+    {
+        "clubId":  "vv_noordwijk",
+        "name":  "VV Noordwijk",
+        "venueName":  "Sportpark Duinwetering",
+        "venueAddress":  "Duinwetering 105",
+        "venuePostalCode":  "2203 HM",
+        "venueCity":  "Noordwijk"
+    },
+    {
+        "clubId":  "vv_scherpenzeel",
+        "name":  "VV Scherpenzeel",
+        "venueName":  "Sportpark De Bree-Oost",
+        "venueAddress":  "Eikenlaan 6",
+        "venuePostalCode":  "3925 VK",
+        "venueCity":  "Scherpenzeel"
+    },
+    {
+        "clubId":  "vv_sparta_nijkerk",
+        "name":  "Sparta Nijkerk",
+        "venueName":  "Sportpark De Ebbenhorst",
+        "venueAddress":  "Nachtegaalsteeg 1",
+        "venuePostalCode":  "3862 WJ",
+        "venueCity":  "Nijkerk"
+    },
+    {
+        "clubId":  "vv_staphorst",
+        "name":  "VV Staphorst",
+        "venueName":  "Sportpark Het Noorderslag",
+        "venueAddress":  "Parallelweg 27",
+        "venuePostalCode":  "7951 AT",
+        "venueCity":  "Staphorst"
+    },
+    {
+        "clubId":  "vv_una",
+        "name":  "UNA",
+        "venueName":  "Sportpark Zeelst",
+        "venueAddress":  "Sportlaan 3",
+        "venuePostalCode":  "5502 ED",
+        "venueCity":  "Veldhoven"
+    },
+    {
+        "clubId":  "vv_zwaluwen",
+        "name":  "VV Zwaluwen",
+        "venueName":  "Sportpark Zwaluwen",
+        "venueAddress":  "Zwaluwenlaan 500",
+        "venuePostalCode":  "3136 VH",
+        "venueCity":  "Vlaardingen"
+    },
+    {
+        "clubId":  "vvsb",
+        "name":  "VVSB",
+        "venueName":  "Sportpark De Boekhorst",
+        "venueAddress":  "Dr. Schaepmanlaan 2",
+        "venuePostalCode":  "2211 XS",
+        "venueCity":  "Noordwijkerhout"
+    }
+]

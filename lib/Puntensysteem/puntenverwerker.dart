@@ -3,9 +3,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:developer' as developer;
 
 import 'package:derde_divisie/data/services/poule_service.dart';
+import 'package:derde_divisie/data/firestore/season_paths.dart';
 import 'package:derde_divisie/features/moderator/periodestand_service.dart';
+import 'package:derde_divisie/features/moderator/standen_service.dart';
+import 'package:derde_divisie/Puntensysteem/punten_rollback.dart';
 // Alleen de puntentelling binnenhalen, niet de gelijknamige corrigeer/verwerk-helpers
-import 'package:derde_divisie/Puntensysteem/puntenlogica.dart' show berekenPunten;
+import 'package:derde_divisie/Puntensysteem/puntenlogica.dart'
+    show berekenPunten;
 
 final firestore = FirebaseFirestore.instance;
 final PouleService _pouleService = PouleService();
@@ -72,7 +76,8 @@ Future<void> _incrementPouleDeelnemerPuntenSafe({
         {'punten': FieldValue.increment(delta)},
         SetOptions(merge: true),
       );
-      developer.log('👍 increment (docId) poule=$pouleId uid=$uid delta=$delta');
+      developer
+          .log('👍 increment (docId) poule=$pouleId uid=$uid delta=$delta');
       return;
     }
 
@@ -90,7 +95,8 @@ Future<void> _incrementPouleDeelnemerPuntenSafe({
         {'punten': FieldValue.increment(delta)},
         SetOptions(merge: true),
       );
-      developer.log('👍 increment (userId lookup) poule=$pouleId uid=$uid delta=$delta');
+      developer.log(
+          '👍 increment (userId lookup) poule=$pouleId uid=$uid delta=$delta');
       return;
     }
 
@@ -99,7 +105,8 @@ Future<void> _incrementPouleDeelnemerPuntenSafe({
       {'punten': FieldValue.increment(delta), 'userId': uid},
       SetOptions(merge: true),
     );
-    developer.log('🆕 deelnemer-doc aangemaakt poule=$pouleId uid=$uid delta=$delta');
+    developer.log(
+        '🆕 deelnemer-doc aangemaakt poule=$pouleId uid=$uid delta=$delta');
   } catch (e, st) {
     developer.log(
       '❌ increment deelnemers faalde poule=$pouleId uid=$uid delta=$delta',
@@ -111,20 +118,70 @@ Future<void> _incrementPouleDeelnemerPuntenSafe({
 
 /// ===== Poule helpers (generiek voor alle varianten) =====
 
-Future<List<QueryDocumentSnapshot<Map<String, dynamic>>>> _findPouleDocsForMatch(
+Future<List<QueryDocumentSnapshot<Map<String, dynamic>>>>
+    _findPouleDocsForMatch(
   String collectie,
   String wedstrijdId,
 ) async {
-  // Probeer eerst matchId (poule-collecties), dan wedstrijdId (soms gebruikt)
-  var snap =
-      await firestore.collection(collectie).where('matchId', isEqualTo: wedstrijdId).get();
-  if (snap.docs.isNotEmpty) return snap.docs;
+  final docsByPath = <String, QueryDocumentSnapshot<Map<String, dynamic>>>{};
 
-  snap = await firestore
+  final matchIdSnap = await firestore
+      .collection(collectie)
+      .where('matchId', isEqualTo: wedstrijdId)
+      .get();
+  for (final doc in matchIdSnap.docs) {
+    docsByPath[doc.reference.path] = doc;
+  }
+
+  final wedstrijdIdSnap = await firestore
       .collection(collectie)
       .where('wedstrijdId', isEqualTo: wedstrijdId)
       .get();
-  return snap.docs;
+  for (final doc in wedstrijdIdSnap.docs) {
+    docsByPath[doc.reference.path] = doc;
+  }
+
+  return docsByPath.values.toList();
+}
+
+Future<List<QueryDocumentSnapshot<Map<String, dynamic>>>>
+    _findPredictionDocsForMatch(
+  String wedstrijdId,
+) async {
+  final docsByPath = <String, QueryDocumentSnapshot<Map<String, dynamic>>>{};
+
+  Future<void> addDocs(
+    QuerySnapshot<Map<String, dynamic>> snap,
+  ) async {
+    for (final doc in snap.docs) {
+      docsByPath[doc.reference.path] = doc;
+    }
+  }
+
+  await addDocs(
+    await SeasonPaths.currentSeasonPredictions
+        .where('wedstrijdId', isEqualTo: wedstrijdId)
+        .get(),
+  );
+  await addDocs(
+    await SeasonPaths.currentSeasonPredictions
+        .where('matchId', isEqualTo: wedstrijdId)
+        .get(),
+  );
+  await addDocs(
+    await firestore
+        .collection('voorspellingen')
+        .where('wedstrijdId', isEqualTo: wedstrijdId)
+        .get(),
+  );
+  await addDocs(
+    await firestore
+        .collection('voorspellingen')
+        .where('matchId', isEqualTo: wedstrijdId)
+        .get(),
+  );
+
+  return docsByPath.values.toList();
 }
 
 /// Fallback-verwerking voor een poule-collectie (met dedupe + deadline)
@@ -141,18 +198,21 @@ Future<void> _verwerkPouleCollectieVoorWedstrijd({
   // Deadline bepalen uit match (12:00 op wedstrijddag), indien datum bekend
   DateTime? deadline;
   try {
-    final matchDoc = await firestore.collection('matches').doc(wedstrijdId).get();
+    final matchDoc =
+        await SeasonPaths.currentSeasonMatches.doc(wedstrijdId).get();
     final matchData = matchDoc.data();
-    final Timestamp? ts =
-        (matchData?['timestamp'] as Timestamp?) ?? (matchData?['datum'] as Timestamp?);
+    final Timestamp? ts = (matchData?['timestamp'] as Timestamp?) ??
+        (matchData?['datum'] as Timestamp?);
     if (ts != null) {
       final d = ts.toDate();
       deadline = DateTime(d.year, d.month, d.day, 12);
     } else {
-      developer.log('[$collectie] ⚠️ geen datum/timestamp voor match=$wedstrijdId → geen deadline-check');
+      developer.log(
+          '[$collectie] ⚠️ geen datum/timestamp voor match=$wedstrijdId → geen deadline-check');
     }
   } catch (e) {
-    developer.log('[$collectie] ⚠️ kon match/$wedstrijdId niet lezen voor deadline: $e');
+    developer.log(
+        '[$collectie] ⚠️ kon match/$wedstrijdId niet lezen voor deadline: $e');
   }
 
   // DEDUPE: per user de nieuwste (<= deadline) voorspelling kiezen
@@ -163,7 +223,8 @@ Future<void> _verwerkPouleCollectieVoorWedstrijd({
 
   for (final d in docs) {
     final m = d.data();
-    final uid = (m['gebruikerId'] ?? m['userId'] ?? m['uid'] ?? '').toString().trim();
+    final uid =
+        (m['gebruikerId'] ?? m['userId'] ?? m['uid'] ?? '').toString().trim();
     if (uid.isEmpty) {
       skippedMissingUid++;
       continue;
@@ -172,14 +233,13 @@ Future<void> _verwerkPouleCollectieVoorWedstrijd({
     final int ts = t?.millisecondsSinceEpoch ?? 0;
 
     // Deadline-handhaving (alleen als bekend)
-if (deadline != null) {
-  final dt = t?.toDate();
-  if (dt == null || dt.isAfter(deadline)) {
-    skippedAfterDeadline++;
-    continue;
-  }
-}
-
+    if (deadline != null) {
+      final dt = t?.toDate();
+      if (dt == null || dt.isAfter(deadline)) {
+        skippedAfterDeadline++;
+        continue;
+      }
+    }
 
     if (!keep.containsKey(uid) || ts >= (keepTs[uid] ?? -1)) {
       keep[uid] = d;
@@ -187,7 +247,8 @@ if (deadline != null) {
     }
   }
 
-  final int dupes = docs.length - keep.length - skippedAfterDeadline - skippedMissingUid;
+  final int dupes =
+      docs.length - keep.length - skippedAfterDeadline - skippedMissingUid;
   if (dupes > 0 || skippedAfterDeadline > 0 || skippedMissingUid > 0) {
     developer.log(
       '[$collectie] dedupe: dupes=$dupes, naDeadline=$skippedAfterDeadline, missingUid=$skippedMissingUid (match=$wedstrijdId)',
@@ -267,7 +328,8 @@ if (deadline != null) {
       }, SetOptions(merge: true));
       processed++;
     } catch (e, st) {
-      developer.log('❌ set punten op voorspelling faalde ($collectie)', error: e, stackTrace: st);
+      developer.log('❌ set punten op voorspelling faalde ($collectie)',
+          error: e, stackTrace: st);
       continue; // zonder update op de voorspelling geen bijschrijving doen
     }
 
@@ -294,8 +356,8 @@ Future<void> _verwerkAllePouleCollectiesVoorWedstrijd({
 }) async {
   const collecties = [
     'poule_voorspellingen', // Derde Divisie B
-    'poule_predictions',    // Derde Divisie A
-    'predictions',          // 1-team poules
+    'poule_predictions', // Derde Divisie A
+    'predictions', // 1-team poules
   ];
   for (final c in collecties) {
     try {
@@ -312,12 +374,95 @@ Future<void> _verwerkAllePouleCollectiesVoorWedstrijd({
   }
 }
 
+Future<void> draaiVoorspellingenVoorWedstrijdTerug(
+  String wedstrijdId,
+  String veldnaam,
+) async {
+  developer
+      .log('[Rollback] Start voorspellingen terugdraaien voor $wedstrijdId');
+
+  final voorspellingen = await _findPredictionDocsForMatch(wedstrijdId);
+  int predictionUpdates = 0;
+  int userUpdates = 0;
+
+  for (final doc in voorspellingen) {
+    final data = doc.data();
+    final rollback = rollbackProcessedPrediction(data);
+    final gebruikerId = (data['gebruikerId'] ?? data['userId'] ?? data['uid'])
+        ?.toString()
+        .trim();
+
+    if (rollback.pointsDelta != 0 &&
+        gebruikerId != null &&
+        gebruikerId.isNotEmpty) {
+      final userRef = firestore.collection('users').doc(gebruikerId);
+      await userRef.set(
+        {veldnaam: FieldValue.increment(rollback.pointsDelta)},
+        SetOptions(merge: true),
+      );
+      await _updateTotalenVoorUserRef(userRef);
+      userUpdates++;
+    }
+
+    await doc.reference.set({
+      'punten': rollback.nextPoints,
+      'verwerkt': rollback.nextProcessed,
+      'verwerktVoorUitslag': FieldValue.delete(),
+    }, SetOptions(merge: true));
+    predictionUpdates++;
+  }
+
+  const pouleCollecties = [
+    'poule_voorspellingen',
+    'poule_predictions',
+    'predictions',
+  ];
+  int poulePredictionUpdates = 0;
+  int pouleParticipantUpdates = 0;
+
+  for (final collectie in pouleCollecties) {
+    final docs = await _findPouleDocsForMatch(collectie, wedstrijdId);
+    for (final doc in docs) {
+      final data = doc.data();
+      final rollback = rollbackProcessedPrediction(data);
+      final pouleId =
+          (data['pouleId'] ?? data['poule'] ?? '').toString().trim();
+      final uid = (data['gebruikerId'] ?? data['userId'] ?? data['uid'] ?? '')
+          .toString()
+          .trim();
+
+      if (rollback.pointsDelta != 0 && pouleId.isNotEmpty && uid.isNotEmpty) {
+        await _incrementPouleDeelnemerPuntenSafe(
+          pouleId: pouleId,
+          uid: uid,
+          delta: rollback.pointsDelta,
+        );
+        pouleParticipantUpdates++;
+      }
+
+      await doc.reference.set({
+        'punten': rollback.nextPoints,
+        'verwerkt': rollback.nextProcessed,
+        'verwerktVoorUitslag': FieldValue.delete(),
+      }, SetOptions(merge: true));
+      poulePredictionUpdates++;
+    }
+  }
+
+  developer.log(
+    '[Rollback] Klaar voor $wedstrijdId: AB=$predictionUpdates, '
+    'users=$userUpdates, poule=$poulePredictionUpdates, '
+    'deelnemers=$pouleParticipantUpdates',
+  );
+}
+
 /// ===== Hoofdverwerker =====
 
 Future<void> verwerkUitslagVoorWedstrijd(String wedstrijdId) async {
   developer.log('[UitslagVerwerking] ▶️ Start verwerking van $wedstrijdId');
 
-  final matchDoc = await firestore.collection('matches').doc(wedstrijdId).get();
+  final matchDoc =
+      await SeasonPaths.currentSeasonMatches.doc(wedstrijdId).get();
   if (!matchDoc.exists) {
     developer.log('⚠️ Wedstrijd $wedstrijdId niet gevonden in Firestore');
     return;
@@ -349,24 +494,32 @@ Future<void> verwerkUitslagVoorWedstrijd(String wedstrijdId) async {
 
   // Correctie oude uitslag (stand + periodestanden)
   if (uitslagThuis != vorigeThuis || uitslagUit != vorigeUit) {
-    developer.log('🔁 Vorige uitslag wordt gecorrigeerd: $vorigeThuis-$vorigeUit');
+    developer
+        .log('🔁 Vorige uitslag wordt gecorrigeerd: $vorigeThuis-$vorigeUit');
     await corrigeerStand(thuisTeam, vorigeThuis, vorigeUit);
     await corrigeerStand(uitTeam, vorigeUit, vorigeThuis);
-    await corrigeerPeriodestand(thuisTeam, vorigeThuis, vorigeUit, wedstrijdNummer, competitie);
-    await corrigeerPeriodestand(uitTeam, vorigeUit, vorigeThuis, wedstrijdNummer, competitie);
+    await corrigeerPeriodestand(
+        thuisTeam, vorigeThuis, vorigeUit, wedstrijdNummer, competitie);
+    await corrigeerPeriodestand(
+        uitTeam, vorigeUit, vorigeThuis, wedstrijdNummer, competitie);
   }
 
   // Nieuwe uitslag verwerken (stand + periodestanden)
   await verwerkStand(thuisTeam, uitslagThuis, uitslagUit, competitie);
   await verwerkStand(uitTeam, uitslagUit, uitslagThuis, competitie);
-  await updatePeriodestand(thuisTeam, uitslagThuis, uitslagUit, wedstrijdNummer, competitie);
-  await updatePeriodestand(uitTeam, uitslagUit, uitslagThuis, wedstrijdNummer, competitie);
+  await updatePeriodestand(
+      thuisTeam, uitslagThuis, uitslagUit, wedstrijdNummer, competitie);
+  await updatePeriodestand(
+      uitTeam, uitslagUit, uitslagThuis, wedstrijdNummer, competitie);
 
-  await firestore.collection('matches').doc(wedstrijdId).update({
+  await SeasonPaths.currentSeasonMatches.doc(wedstrijdId).update({
     'vorigeUitslagThuis': uitslagThuis,
     'vorigeUitslagUit': uitslagUit,
     'verwerkt': true,
   });
+  await StandenService().herberekenStandVoorDivisie(
+    competitie.contains('B') ? 'B' : 'A',
+  );
 
   developer.log('✅ Uitslag opgeslagen bij wedstrijd $wedstrijdId');
 
@@ -417,11 +570,11 @@ Future<void> verwerkVoorspellingenVoorWedstrijd(
   String veldnaam,
 ) async {
   final wedstrijdSnapshot =
-      await firestore.collection('matches').doc(wedstrijdId).get();
+      await SeasonPaths.currentSeasonMatches.doc(wedstrijdId).get();
   final matchData = wedstrijdSnapshot.data();
 
   // Ondersteun zowel 'timestamp' als 'datum' (beide Firestore Timestamp)
-  final Timestamp? ts =
+  final Timestamp? ts = (matchData?['scheduledAt'] as Timestamp?) ??
       (matchData?['timestamp'] as Timestamp?) ??
       (matchData?['datum'] as Timestamp?);
 
@@ -436,10 +589,23 @@ Future<void> verwerkVoorspellingenVoorWedstrijd(
   }
 
   // Bij jou is wedstrijdId het doc-id zoals 'A1'/'B12'
-  final voorspellingenSnapshot = await firestore
-      .collection('voorspellingen')
+  var voorspellingenSnapshot = await SeasonPaths.currentSeasonPredictions
       .where('wedstrijdId', isEqualTo: wedstrijdId)
       .get();
+  if (voorspellingenSnapshot.docs.isEmpty) {
+    voorspellingenSnapshot = await SeasonPaths.currentSeasonPredictions
+        .where('matchId', isEqualTo: wedstrijdId)
+        .get();
+  }
+  if (voorspellingenSnapshot.docs.isEmpty) {
+    // Backward compatible: de huidige voorspel-UI schrijft nog naar de
+    // bestaande centrale rootcollectie. Deze fallback blijft nodig tot de
+    // gecontroleerde season-migratie is afgerond.
+    voorspellingenSnapshot = await firestore
+        .collection('voorspellingen')
+        .where('wedstrijdId', isEqualTo: wedstrijdId)
+        .get();
+  }
 
   final nieuweUitslag = '$uitslagThuis-$uitslagUit';
 
@@ -454,7 +620,8 @@ Future<void> verwerkVoorspellingenVoorWedstrijd(
     // Deadline-handhaving alleen als we een datum hebben
     if (deadline != null) {
       if (invulMoment == null || invulMoment.isAfter(deadline)) {
-        developer.log('[AB] skip (na deadline) uid=$gebruikerId match=$wedstrijdId');
+        developer
+            .log('[AB] skip (na deadline) uid=$gebruikerId match=$wedstrijdId');
         continue;
       }
     }
@@ -471,10 +638,12 @@ Future<void> verwerkVoorspellingenVoorWedstrijd(
     if (alVerwerkt && vorigePunten != 0 && gebruikerId != null) {
       try {
         final userRef = firestore.collection('users').doc(gebruikerId);
-        await userRef.set({veldnaam: FieldValue.increment(-vorigePunten)}, SetOptions(merge: true));
+        await userRef.set({veldnaam: FieldValue.increment(-vorigePunten)},
+            SetOptions(merge: true));
         await _updateTotalenVoorUserRef(userRef);
       } catch (e, st) {
-        developer.log('❌ aftrek users-$veldnaam faalde', error: e, stackTrace: st);
+        developer.log('❌ aftrek users-$veldnaam faalde',
+            error: e, stackTrace: st);
       }
     }
 
@@ -495,7 +664,8 @@ Future<void> verwerkVoorspellingenVoorWedstrijd(
       }, SetOptions(merge: true));
       processed++;
     } catch (e, st) {
-      developer.log('❌ set punten op AB-voorspelling faalde', error: e, stackTrace: st);
+      developer.log('❌ set punten op AB-voorspelling faalde',
+          error: e, stackTrace: st);
       continue;
     }
 
@@ -503,11 +673,13 @@ Future<void> verwerkVoorspellingenVoorWedstrijd(
     if (gebruikerId != null) {
       try {
         final userRef = firestore.collection('users').doc(gebruikerId);
-        await userRef.set({veldnaam: FieldValue.increment(punten)}, SetOptions(merge: true));
+        await userRef.set(
+            {veldnaam: FieldValue.increment(punten)}, SetOptions(merge: true));
         await _updateTotalenVoorUserRef(userRef);
         userUpdates++;
       } catch (e, st) {
-        developer.log('❌ bijschrijven users-$veldnaam faalde', error: e, stackTrace: st);
+        developer.log('❌ bijschrijven users-$veldnaam faalde',
+            error: e, stackTrace: st);
       }
     }
 
@@ -517,7 +689,8 @@ Future<void> verwerkVoorspellingenVoorWedstrijd(
     );
   }
 
-  developer.log('[AB] klaar: voorspellingen bijgewerkt=$processed, user-updates=$userUpdates (match=$wedstrijdId)');
+  developer.log(
+      '[AB] klaar: voorspellingen bijgewerkt=$processed, user-updates=$userUpdates (match=$wedstrijdId)');
 }
 
 /// ===== Standen en periode-standen =====
@@ -563,7 +736,8 @@ Future<void> corrigeerStand(String team, int scoreVoor, int scoreTegen) async {
   });
 }
 
-Future<void> verwerkStand(String team, int scoreVoor, int scoreTegen, String competitie) async {
+Future<void> verwerkStand(
+    String team, int scoreVoor, int scoreTegen, String competitie) async {
   final docRef = firestore.collection('standen').doc(_safeDocId(team));
   final doc = await docRef.get();
 
@@ -613,7 +787,8 @@ Future<void> verwerkStand(String team, int scoreVoor, int scoreTegen, String com
     'punten': punten,
   }, SetOptions(merge: true));
 
-  developer.log('[Stand] ➕ $team krijgt $scoreVoor-$scoreTegen toegevoegd in competitie $competitie');
+  developer.log(
+      '[Stand] ➕ $team krijgt $scoreVoor-$scoreTegen toegevoegd in competitie $competitie');
 }
 
 Future<void> updatePeriodestand(
@@ -637,7 +812,13 @@ Future<void> updatePeriodestand(
       .doc(_safeDocId(team));
   final doc = await docRef.get();
 
-  int gespeeld = 0, gewonnen = 0, gelijk = 0, verloren = 0, voor = 0, tegen = 0, punten = 0;
+  int gespeeld = 0,
+      gewonnen = 0,
+      gelijk = 0,
+      verloren = 0,
+      voor = 0,
+      tegen = 0,
+      punten = 0;
   if (doc.exists) {
     final data = doc.data()!;
     gespeeld = data['gespeeld'] ?? 0;
@@ -758,8 +939,10 @@ Future<void> resetWedstrijd(String wedstrijdId) async {
   if (thuisScore != null && uitScore != null) {
     await corrigeerStand(thuis, thuisScore, uitScore);
     await corrigeerStand(uit, uitScore, thuisScore);
-    await corrigeerPeriodestand(thuis, thuisScore, uitScore, wedstrijdNummer, competitie);
-    await corrigeerPeriodestand(uit, uitScore, thuisScore, wedstrijdNummer, competitie);
+    await corrigeerPeriodestand(
+        thuis, thuisScore, uitScore, wedstrijdNummer, competitie);
+    await corrigeerPeriodestand(
+        uit, uitScore, thuisScore, wedstrijdNummer, competitie);
   }
 
   // 2) Wedstrijd leegmaken
@@ -785,7 +968,8 @@ Future<void> resetWedstrijd(String wedstrijdId) async {
 
       if (gebruikerId != null && punten != 0) {
         final userRef = firestore.collection('users').doc(gebruikerId);
-        await userRef.set({veldnaam: FieldValue.increment(-punten)}, SetOptions(merge: true));
+        await userRef.set(
+            {veldnaam: FieldValue.increment(-punten)}, SetOptions(merge: true));
         await _updateTotalenVoorUserRef(userRef); // totalen direct herberekenen
       }
 
@@ -853,10 +1037,10 @@ Future<void> resetWedstrijd(String wedstrijdId) async {
   }
 
   // 3) Gebruikerspunten resetten (algemeen + alle poulevormen)
-  await resetAlgemeneVoorspellingen();                // algemene A/B
-  await resetPouleCollectie('poule_predictions');     // poule DDA
-  await resetPouleCollectie('poule_voorspellingen');  // poule DDB
-  await resetPouleCollectie('predictions');           // poule één-team
+  await resetAlgemeneVoorspellingen(); // algemene A/B
+  await resetPouleCollectie('poule_predictions'); // poule DDA
+  await resetPouleCollectie('poule_voorspellingen'); // poule DDB
+  await resetPouleCollectie('predictions'); // poule één-team
 
   developer.log('[Reset] ✅ Wedstrijd $wedstrijdId volledig gereset');
 }

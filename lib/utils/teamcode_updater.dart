@@ -57,7 +57,7 @@ Future<void> voegTeamcodesToeAanWedstrijden() async {
 
     if (homeCode == null || awayCode == null) {
       _log.info('✅ Alles verwerkt');
-('⚠️ Niet gevonden in mapping bij wedstrijd ${doc.id}:');
+      ('⚠️ Niet gevonden in mapping bij wedstrijd ${doc.id}:');
       if (homeCode == null) _log.info('  → thuisteam: "$thuisteam"');
       if (awayCode == null) _log.info('  → uitteam: "$uitteam"');
       continue; // skip deze wedstrijd
@@ -69,9 +69,9 @@ Future<void> voegTeamcodesToeAanWedstrijden() async {
     });
 
     _log.info('✅ Alles verwerkt');
-('✅ Bijgewerkt: ${doc.id} → $homeCode vs $awayCode');
+    ('✅ Bijgewerkt: ${doc.id} → $homeCode vs $awayCode');
   }
 
   _log.info('✅ Alles verwerkt');
-('🎉 Alle bekende wedstrijden zijn bijgewerkt.');
+  ('🎉 Alle bekende wedstrijden zijn bijgewerkt.');
 }

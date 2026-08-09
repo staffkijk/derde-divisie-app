@@ -3,6 +3,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:derde_divisie/core/utils/gemeenten.dart';
 import 'package:derde_divisie/features/about/juridisch_scherm.dart';
+import 'package:derde_divisie/data/config/season_config.dart';
+import 'package:derde_divisie/data/models/notification_preferences.dart';
+import 'package:derde_divisie/data/services/activity_log_service.dart';
+import 'package:derde_divisie/core/widgets/derde_div_logo.dart';
+import 'package:derde_divisie/features/voorspellen/ranking_logic.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -29,6 +34,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   String errorMessage = '';
   bool isLoading = false;
   bool akkoordMetVoorwaarden = false; // ✅ nieuw veld voor checkbox
+  bool missingPredictionReminders = true;
 
   // Gemeentenlijst (voor autocomplete)
   late final Set<String> _gemeentenLower =
@@ -43,14 +49,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   ];
 
   // Clubs
-  final List<String> clubs = [
+  late final List<String> clubs = [
     'Geen voorkeur',
-    'ADO\'20', 'ASWH', 'Blauw Geel\'38', 'DOVO', 'DVS\'33 Ermelo', 'Eemdijk',
-    'Excelsior\'31', 'FC Lisse', 'Gemert', 'Goes', 'Groene Ster', 'Harkemase Boys',
-    'Hercules', 'Hoogeveen', 'HSC\'21', 'Huizen', 'Kloetinge', 'Noordwijk', 'RBC',
-    'Rijnvogels', 'Rohda Raalte', 'SC Genemuiden', 'Scherpenzeel', 'Scheveningen',
-    'Sparta Nijkerk', 'Sportlust\'46', 'Staphorst', 'SteDoCo', 'sv Meerssen',
-    'TEC', 'TOGB', 'UDI\'19', 'UNA', 'Urk', 'VVSB', 'Zwaluwen'
+    ...SeasonConfig.teamsInListOrder.map((team) => team.label),
   ];
 
   // Avatars (clublogo's + bal)
@@ -109,7 +110,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!akkoordMetVoorwaarden) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Je moet akkoord gaan met de voorwaarden om verder te gaan.'),
+          content: Text(
+              'Je moet akkoord gaan met de voorwaarden om verder te gaan.'),
           backgroundColor: Colors.red,
         ),
       );
@@ -122,8 +124,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     });
 
     try {
-      final userCredential = await FirebaseAuth.instance
-          .createUserWithEmailAndPassword(
+      final userCredential =
+          await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: emailController.text.trim(),
         password: passwordController.text.trim(),
       );
@@ -136,20 +138,30 @@ class _RegisterScreenState extends State<RegisterScreen> {
           .set({
         'username': usernameController.text.trim(),
         'email': emailController.text.trim(),
-        'isModerator': false,
+        'ismoderator': false,
         'heeftGebruikersnaamGewijzigd': false,
         'avatarUrl': geselecteerdeAvatar ?? 'assets/images/profiel_bal.png',
         'woonplaats': canoniekGemeente,
         'favorieteCompetitie': geselecteerdeCompetitie,
         'favorieteClub': geselecteerdeClub,
-        'punten_A': 0,
-        'punten_B': 0,
-        'totalen': 0,
+        if (geselecteerdeClub != null &&
+            geselecteerdeClub != 'Geen voorkeur') ...{
+          'favoriteTeamSlug': SeasonConfig.teamByName(geselecteerdeClub!)?.id,
+          'favoriteTeamName': geselecteerdeClub,
+          'favoriteDivision':
+              SeasonConfig.teamByName(geselecteerdeClub!)?.division,
+        },
+        'allowEmailSharingWithPouleOwner': false,
+        'notificationPreferences': initialNotificationPreferences(
+          missingPredictionReminders: missingPredictionReminders,
+        ),
+        ...initialRankingFields,
         'eigenPoules': 0,
         'gejoinedePoules': 0,
         'voorspellingenZichtbaar': true,
         'aangemaaktOp': FieldValue.serverTimestamp(),
       });
+      await ActivityLogService().log(eventType: ActivityEventType.register);
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -159,7 +171,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
     } on FirebaseAuthException catch (e) {
       setState(() => errorMessage = e.message ?? 'Onbekende fout');
     } finally {
-      setState(() => isLoading = false);
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
     }
   }
 
@@ -174,10 +188,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
+      backgroundColor: const Color(0xFFF3F6F1),
       appBar: AppBar(
         title: const Text('Account aanmaken'),
-        backgroundColor: Colors.green.shade700,
+        backgroundColor: const Color(0xFF153B2A),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
@@ -188,10 +202,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Center(
-                child: Image.asset(
-                  'assets/derde_divisie_logo_icon.png',
-                  height: 90,
-                ),
+                child: const DerdeDivLogo.full(height: 90),
               ),
               const SizedBox(height: 16),
               const Text(
@@ -209,8 +220,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   prefixIcon: Icon(Icons.person),
                   border: OutlineInputBorder(),
                 ),
-                validator: (value) =>
-                    value == null || value.trim().isEmpty ? 'Verplicht veld' : null,
+                validator: (value) => value == null || value.trim().isEmpty
+                    ? 'Verplicht veld'
+                    : null,
               ),
               const SizedBox(height: 16),
 
@@ -243,8 +255,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   prefixIcon: Icon(Icons.lock),
                   border: OutlineInputBorder(),
                 ),
-                validator: (value) =>
-                    value == null || value.length < 6 ? 'Minimaal 6 tekens' : null,
+                validator: (value) => value == null || value.length < 6
+                    ? 'Minimaal 6 tekens'
+                    : null,
               ),
               const SizedBox(height: 16),
 
@@ -256,7 +269,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   return nederlandseGemeenten
                       .where((g) => g.toLowerCase().contains(input));
                 },
-                onSelected: (selection) => woonplaatsController.text = selection,
+                onSelected: (selection) =>
+                    woonplaatsController.text = selection,
                 fieldViewBuilder:
                     (context, controller, focusNode, onEditingComplete) {
                   controller.text = woonplaatsController.text;
@@ -315,36 +329,54 @@ class _RegisterScreenState extends State<RegisterScreen> {
               const SizedBox(height: 8),
 
               // ✅ Horizontale avatarselectie
-              SizedBox(
-                height: 95,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: avatars.length,
-                  itemBuilder: (context, index) {
-                    final path = avatars[index];
-                    final isSelected = path == geselecteerdeAvatar;
-                    return GestureDetector(
-                      onTap: () => setState(() => geselecteerdeAvatar = path),
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 8),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color:
-                                isSelected ? Colors.green : Colors.grey.shade300,
-                            width: isSelected ? 3 : 1,
-                          ),
-                        ),
-                        child: CircleAvatar(
-                          radius: 40,
-                          backgroundImage: AssetImage(path),
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: avatars.length,
+                gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                  maxCrossAxisExtent: 92,
+                  mainAxisSpacing: 10,
+                  crossAxisSpacing: 10,
+                ),
+                itemBuilder: (context, index) {
+                  final path = avatars[index];
+                  final isSelected = path == geselecteerdeAvatar;
+                  return GestureDetector(
+                    onTap: () => setState(() => geselecteerdeAvatar = path),
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color:
+                              isSelected ? Colors.green : Colors.grey.shade300,
+                          width: isSelected ? 3 : 1,
                         ),
                       ),
-                    );
-                  },
-                ),
+                      child: CircleAvatar(
+                        radius: 32,
+                        backgroundImage: AssetImage(path),
+                      ),
+                    ),
+                  );
+                },
               ),
               const SizedBox(height: 24),
+
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text(
+                  'Herinner mij aan ontbrekende voorspellingen',
+                ),
+                subtitle: const Text(
+                  'Ontvang een melding als je voor een komende speelronde nog niet alles hebt voorspeld.',
+                ),
+                value: missingPredictionReminders,
+                onChanged: (value) => setState(
+                  () => missingPredictionReminders = value,
+                ),
+              ),
+              const SizedBox(height: 8),
 
               // ✅ Checkbox voor akkoord
               Row(
@@ -372,8 +404,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           text: 'Ik ga akkoord met de ',
                           children: [
                             TextSpan(
-                              text:
-                                  'Privacyverklaring en Gebruiksvoorwaarden',
+                              text: 'Privacyverklaring en Gebruiksvoorwaarden',
                               style: TextStyle(
                                 decoration: TextDecoration.underline,
                                 color: Colors.blue,

@@ -2,61 +2,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 
+import 'package:derde_divisie/data/config/season_config.dart';
+
 final Logger _log = Logger('PeriodeStanden');
-
-const List<String> clubsDivisieA = [
-  'DOVO',
-  'Eemdijk',
-  'Scherpenzeel',
-  'Staphorst',
-  'DVS33 Ermelo',
-  'Sparta Nijkerk',
-  'TEC',
-  'Urk',
-  'Hoogeveen',
-  'HSC21',
-  'Sportlust46',
-  'Excelsior31',
-  'Hercules',
-  'SC Genemuiden',
-  'Huizen',
-  'Harkemase Boys',
-  'Rohda Raalte',
-  'ADO20',
-];
-
-const List<String> clubsDivisieB = [
-  'Noordwijk',
-  'Scheveningen',
-  'SteDoCo',
-  'Zwaluwen',
-  'Kloetinge',
-  'RBC',
-  'Groene Ster',
-  'Rijnvogels',
-  'UNA',
-  'ASWH',
-  'UDI19',
-  'TOGB',
-  'FC Lisse',
-  'Gemert',
-  'sv Meerssen',
-  'Blauw Geel38 JUMBO',
-  'Goes',
-  'VVSB',
-];
-
-String _normClubKey(String value) {
-  return value
-      .toUpperCase()
-      .replaceAll('’', '')
-      .replaceAll("'", '')
-      .replaceAll(' ', '')
-      .replaceAll('/', '')
-      .replaceAll('.', '')
-      .replaceAll('-', '')
-      .trim();
-}
+const _darkGreen = Color(0xFF153B2A);
+const _primaryGreen = Color(0xFF2F8F3B);
+const _background = Color(0xFFF3F6F1);
+const _border = Color(0xFFE3EADF);
+const _textMuted = Color(0xFF5F6D64);
 
 class PeriodeStandenScreen extends StatelessWidget {
   const PeriodeStandenScreen({super.key});
@@ -66,13 +19,15 @@ class PeriodeStandenScreen extends StatelessWidget {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
+        backgroundColor: _background,
         appBar: AppBar(
-          backgroundColor: Colors.green,
+          backgroundColor: _darkGreen,
           foregroundColor: Colors.white,
-          elevation: 1,
+          elevation: 0,
           title: const Text('Periodestanden'),
           bottom: const TabBar(
-            indicatorColor: Colors.white,
+            indicatorColor: _primaryGreen,
+            indicatorWeight: 3,
             labelColor: Colors.white,
             unselectedLabelColor: Colors.white70,
             tabs: [
@@ -83,8 +38,8 @@ class PeriodeStandenScreen extends StatelessWidget {
         ),
         body: const TabBarView(
           children: [
-            PeriodeTabView(divisieLetter: 'A'),
-            PeriodeTabView(divisieLetter: 'B'),
+            _PeriodeDivisionView(division: SeasonConfig.divisionA),
+            _PeriodeDivisionView(division: SeasonConfig.divisionB),
           ],
         ),
       ),
@@ -92,257 +47,728 @@ class PeriodeStandenScreen extends StatelessWidget {
   }
 }
 
-class PeriodeTabView extends StatelessWidget {
-  final String divisieLetter;
-
-  const PeriodeTabView({
-    super.key,
-    required this.divisieLetter,
+class _PeriodeDivisionView extends StatefulWidget {
+  const _PeriodeDivisionView({
+    required this.division,
   });
+
+  final String division;
+
+  @override
+  State<_PeriodeDivisionView> createState() => _PeriodeDivisionViewState();
+}
+
+class _PeriodeDivisionViewState extends State<_PeriodeDivisionView> {
+  int _selectedPeriod = 1;
 
   @override
   Widget build(BuildContext context) {
-    final isWide = MediaQuery.of(context).size.width > 600;
+    final divisionName = SeasonConfig.divisionName(widget.division);
 
-    final widgets = [
-      PeriodeStandWidget(periode: 1, divisieLetter: divisieLetter),
-      PeriodeStandWidget(periode: 2, divisieLetter: divisieLetter),
-      PeriodeStandWidget(periode: 3, divisieLetter: divisieLetter),
-    ];
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWide = constraints.maxWidth >= 900;
+        final horizontalPadding = isWide ? 32.0 : 16.0;
+        final maxContentWidth = isWide ? 1180.0 : double.infinity;
 
-    return Padding(
-      padding: const EdgeInsets.all(12),
-      child: isWide
-          ? Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: widgets
-                  .map(
-                    (w) => Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.all(8),
-                        child: w,
-                      ),
-                    ),
-                  )
-                  .toList(),
-            )
-          : ListView.separated(
-              itemCount: widgets.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 16),
-              itemBuilder: (_, index) => widgets[index],
+        return Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: maxContentWidth),
+            child: ListView(
+              padding: EdgeInsets.fromLTRB(
+                horizontalPadding,
+                18,
+                horizontalPadding,
+                24,
+              ),
+              children: [
+                _HeaderCard(
+                  title: divisionName,
+                  subtitle:
+                      'Seizoen ${SeasonConfig.activeSeasonLabel} · periodestanden',
+                ),
+                const SizedBox(height: 14),
+                _PeriodSelector(
+                  selectedPeriod: _selectedPeriod,
+                  onChanged: (period) {
+                    setState(() {
+                      _selectedPeriod = period;
+                    });
+                  },
+                ),
+                const SizedBox(height: 14),
+                _PeriodeStandCard(
+                  division: widget.division,
+                  period: _selectedPeriod,
+                ),
+              ],
             ),
+          ),
+        );
+      },
     );
   }
 }
 
-class PeriodeStandWidget extends StatelessWidget {
-  final int periode;
-  final String divisieLetter;
-
-  const PeriodeStandWidget({
-    super.key,
-    required this.periode,
-    required this.divisieLetter,
+class _HeaderCard extends StatelessWidget {
+  const _HeaderCard({
+    required this.title,
+    required this.subtitle,
   });
 
-  List<String> get clubs {
-    return divisieLetter == 'A' ? clubsDivisieA : clubsDivisieB;
-  }
-
-  String clubNaamNaarBestandsnaam(String clubNaam) {
-    final cleanName = clubNaam
-        .replaceAll(' ', '')
-        .replaceAll('/', '')
-        .replaceAll("'", '')
-        .replaceAll('’', '')
-        .replaceAll('.', '')
-        .replaceAll('-', '');
-
-    return 'assets/images/logo_$cleanName.png';
-  }
-
-  int _toInt(dynamic value) {
-    if (value == null) return 0;
-    if (value is int) return value;
-    if (value is num) return value.toInt();
-    return int.tryParse(value.toString()) ?? 0;
-  }
+  final String title;
+  final String subtitle;
 
   @override
   Widget build(BuildContext context) {
-    final divisieDocId = divisieLetter == 'A' ? 'dda' : 'ddb';
-
-    return SizedBox(
-      height: 500,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Periode $periode - Divisie $divisieLetter',
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+    return Card(
+      elevation: 0,
+      color: Colors.white,
+      surfaceTintColor: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: const BorderSide(color: _border),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+        child: Row(
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: const Color(0xFFE8F5E9),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.leaderboard_outlined,
+                color: _primaryGreen,
+              ),
             ),
-          ),
-          const SizedBox(height: 6),
-          Expanded(
-            child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-              stream: FirebaseFirestore.instance
-                  .collection('periodestanden')
-                  .doc(divisieDocId)
-                  .collection('periode_$periode')
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.hasError) {
-                  _log.warning(
-                    'Fout in periode $periode divisie $divisieLetter: ${snapshot.error}',
-                  );
-
-                  return const Text('Fout bij laden van deze periode.');
-                }
-
-                if (!snapshot.hasData) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                final docs = snapshot.data!.docs;
-
-                final Map<String, Map<String, dynamic>> dataMap = {};
-
-                for (final doc in docs) {
-                  final data = doc.data();
-                  final clubUitData = (data['club'] ?? '').toString().trim();
-
-                  if (clubUitData.isNotEmpty) {
-                    dataMap[_normClubKey(clubUitData)] = data;
-                  }
-
-                  dataMap.putIfAbsent(_normClubKey(doc.id), () => data);
-                }
-
-                final List<Map<String, dynamic>> gecombineerdeData =
-                    clubs.map((club) {
-                  final data = dataMap[_normClubKey(club)];
-
-                  final doelpuntenVoor = _toInt(data?['doelpuntenVoor']);
-                  final doelpuntenTegen = _toInt(data?['doelpuntenTegen']);
-
-                  return {
-                    'club': club,
-                    'gespeeld': _toInt(data?['gespeeld']),
-                    'gewonnen': _toInt(data?['gewonnen']),
-                    'gelijk': _toInt(data?['gelijk']),
-                    'verloren': _toInt(data?['verloren']),
-                    'punten': _toInt(data?['punten']),
-                    'doelpuntenVoor': doelpuntenVoor,
-                    'doelpuntenTegen': doelpuntenTegen,
-                    'doelsaldo': data?['doelsaldo'] == null
-                        ? doelpuntenVoor - doelpuntenTegen
-                        : _toInt(data?['doelsaldo']),
-                  };
-                }).toList();
-
-                gecombineerdeData.sort((a, b) {
-                  if (a['punten'] != b['punten']) {
-                    return (b['punten'] as int).compareTo(a['punten'] as int);
-                  }
-
-                  if (a['gespeeld'] != b['gespeeld']) {
-                    return (a['gespeeld'] as int)
-                        .compareTo(b['gespeeld'] as int);
-                  }
-
-                  if (a['doelsaldo'] != b['doelsaldo']) {
-                    return (b['doelsaldo'] as int)
-                        .compareTo(a['doelsaldo'] as int);
-                  }
-
-                  if (a['doelpuntenVoor'] != b['doelpuntenVoor']) {
-                    return (b['doelpuntenVoor'] as int)
-                        .compareTo(a['doelpuntenVoor'] as int);
-                  }
-
-                  if (a['doelpuntenTegen'] != b['doelpuntenTegen']) {
-                    return (a['doelpuntenTegen'] as int)
-                        .compareTo(b['doelpuntenTegen'] as int);
-                  }
-
-                  return (a['club'] as String).compareTo(b['club'] as String);
-                });
-
-                return SingleChildScrollView(
-                  scrollDirection: Axis.vertical,
-                  child: DataTable(
-                    columnSpacing: 8,
-                    columns: const [
-                      DataColumn(label: Text('#')),
-                      DataColumn(label: Text('Club')),
-                      DataColumn(label: Text('G')),
-                      DataColumn(label: Text('W')),
-                      DataColumn(label: Text('G')),
-                      DataColumn(label: Text('V')),
-                      DataColumn(
-                        label: Text(
-                          'Pnt',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      DataColumn(label: Text('DS')),
-                      DataColumn(label: Text('DV-DT')),
-                    ],
-                    rows: List.generate(gecombineerdeData.length, (index) {
-                      final team = gecombineerdeData[index];
-                      final clubNaam = team['club'] as String;
-                      final logoPath = clubNaamNaarBestandsnaam(clubNaam);
-
-                      final rowColor =
-                          index == 0 ? Colors.green.shade100 : null;
-
-                      return DataRow(
-                        color: rowColor != null
-                            ? WidgetStateProperty.all(rowColor)
-                            : null,
-                        cells: [
-                          DataCell(Text('${index + 1}')),
-                          DataCell(
-                            Row(
-                              children: [
-                                Image.asset(
-                                  logoPath,
-                                  width: 24,
-                                  height: 24,
-                                  errorBuilder: (_, __, ___) => Image.asset(
-                                    'assets/images/default_logo.png',
-                                    width: 24,
-                                    height: 24,
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                Flexible(child: Text(clubNaam)),
-                              ],
-                            ),
-                          ),
-                          DataCell(Text('${team['gespeeld']}')),
-                          DataCell(Text('${team['gewonnen']}')),
-                          DataCell(Text('${team['gelijk']}')),
-                          DataCell(Text('${team['verloren']}')),
-                          DataCell(Text('${team['punten']}')),
-                          DataCell(Text('${team['doelsaldo']}')),
-                          DataCell(
-                            Text(
-                              '${team['doelpuntenVoor']}-${team['doelpuntenTegen']}',
-                            ),
-                          ),
-                        ],
-                      );
-                    }),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 21,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
-                );
-              },
+                  const SizedBox(height: 3),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: _textMuted,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
+}
+
+class _PeriodSelector extends StatelessWidget {
+  const _PeriodSelector({
+    required this.selectedPeriod,
+    required this.onChanged,
+  });
+
+  final int selectedPeriod;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 0,
+      color: Colors.white,
+      surfaceTintColor: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: const BorderSide(color: _border),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(8),
+        child: Row(
+          children: List.generate(3, (index) {
+            final period = index + 1;
+            final selected = period == selectedPeriod;
+
+            return Expanded(
+              child: Padding(
+                padding: EdgeInsets.only(right: index == 2 ? 0 : 8),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(14),
+                  onTap: () => onChanged(period),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 160),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 12,
+                      horizontal: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: selected ? _primaryGreen : Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      'Periode $period',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: selected ? Colors.white : _darkGreen,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }),
+        ),
+      ),
+    );
+  }
+}
+
+class _PeriodeStandCard extends StatelessWidget {
+  const _PeriodeStandCard({
+    required this.division,
+    required this.period,
+  });
+
+  final String division;
+  final int period;
+
+  @override
+  Widget build(BuildContext context) {
+    final divisionName = SeasonConfig.divisionName(division);
+    final teams = SeasonConfig.teamsForDivision(division);
+
+    return Card(
+      elevation: 0,
+      color: Colors.white,
+      surfaceTintColor: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: const BorderSide(color: _border),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+        child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+          stream: FirebaseFirestore.instance
+              .collection('seasons')
+              .doc(SeasonConfig.activeSeasonId)
+              .collection('periodStandings')
+              .snapshots(),
+          builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              _log.warning(
+                'Fout bij laden periodestand periode $period $divisionName: ${snapshot.error}',
+              );
+
+              return const _ErrorState();
+            }
+
+            if (!snapshot.hasData) {
+              return const SizedBox(
+                height: 220,
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+
+            final rows = _buildRows(
+              docs: snapshot.data!.docs,
+              teams: teams,
+              division: division,
+              period: period,
+            );
+
+            final hasPlayedMatches = rows.any((row) => row.played > 0);
+
+            if (!hasPlayedMatches) {
+              return _EmptyState(
+                title: 'Nog geen periodestand beschikbaar',
+                message:
+                    'De stand voor periode $period in $divisionName wordt zichtbaar zodra er wedstrijden zijn verwerkt.',
+              );
+            }
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _TableTitle(
+                  title: 'Periode $period',
+                  subtitle: divisionName,
+                ),
+                const SizedBox(height: 12),
+                _StandTable(rows: rows),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  List<_PeriodStandingRow> _buildRows({
+    required List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+    required List<SeasonTeam> teams,
+    required String division,
+    required int period,
+  }) {
+    final normalizedDivision = SeasonConfig.normalizeDivisionCode(division);
+
+    final Map<String, Map<String, dynamic>> dataByTeamKey = {};
+
+    for (final doc in docs) {
+      final data = doc.data();
+
+      final docPeriod = _readInt(data, const [
+        'period',
+        'periode',
+        'periodNumber',
+        'periodeNummer',
+      ]);
+
+      if (docPeriod != period) {
+        continue;
+      }
+
+      final docDivisionRaw = _readString(data, const [
+        'division',
+        'divisie',
+        'divisionCode',
+        'divisieCode',
+        'competition',
+        'competitie',
+      ]);
+
+      if (docDivisionRaw.isNotEmpty) {
+        final docDivision = SeasonConfig.normalizeDivisionCode(docDivisionRaw);
+        if (docDivision != normalizedDivision) {
+          continue;
+        }
+      }
+
+      final possibleKeys = <String>[
+        doc.id,
+        _teamKeyFromPeriodDocId(doc.id),
+        _readString(data, const ['teamId', 'team_id', 'id']),
+        _readString(data, const ['teamName', 'club', 'clubNaam', 'name']),
+      ];
+
+      for (final key in possibleKeys) {
+        if (key.trim().isEmpty) {
+          continue;
+        }
+
+        dataByTeamKey[SeasonConfig.normalizeTeamKey(key)] = data;
+      }
+    }
+
+    final rows = teams.map((team) {
+      final data = dataByTeamKey[SeasonConfig.normalizeTeamKey(team.id)] ??
+          dataByTeamKey[SeasonConfig.normalizeTeamKey(team.name)] ??
+          dataByTeamKey[SeasonConfig.normalizeTeamKey(team.label)];
+
+      final goalsFor = _readInt(data, const [
+        'goalsFor',
+        'doelpuntenVoor',
+        'voor',
+        'dv',
+      ]);
+
+      final goalsAgainst = _readInt(data, const [
+        'goalsAgainst',
+        'doelpuntenTegen',
+        'tegen',
+        'dt',
+      ]);
+
+      final goalDifference = _readNullableInt(data, const [
+            'goalDifference',
+            'doelsaldo',
+            'saldo',
+            'ds',
+          ]) ??
+          goalsFor - goalsAgainst;
+
+      return _PeriodStandingRow(
+        team: team,
+        played: _readInt(data, const [
+          'played',
+          'matchesPlayed',
+          'gespeeld',
+          'wedstrijden',
+          'g',
+        ]),
+        won: _readInt(data, const [
+          'won',
+          'gewonnen',
+          'w',
+        ]),
+        drawn: _readInt(data, const [
+          'drawn',
+          'gelijk',
+          'draw',
+        ]),
+        lost: _readInt(data, const [
+          'lost',
+          'verloren',
+          'v',
+        ]),
+        points: _readInt(data, const [
+          'points',
+          'punten',
+          'pnt',
+        ]),
+        goalsFor: goalsFor,
+        goalsAgainst: goalsAgainst,
+        goalDifference: goalDifference,
+      );
+    }).toList();
+
+    rows.sort((a, b) {
+      if (a.points != b.points) {
+        return b.points.compareTo(a.points);
+      }
+
+      if (a.played != b.played) {
+        return a.played.compareTo(b.played);
+      }
+
+      if (a.goalDifference != b.goalDifference) {
+        return b.goalDifference.compareTo(a.goalDifference);
+      }
+
+      if (a.goalsFor != b.goalsFor) {
+        return b.goalsFor.compareTo(a.goalsFor);
+      }
+
+      if (a.goalsAgainst != b.goalsAgainst) {
+        return a.goalsAgainst.compareTo(b.goalsAgainst);
+      }
+
+      return a.team.label.compareTo(b.team.label);
+    });
+
+    return rows;
+  }
+
+  static String _teamKeyFromPeriodDocId(String docId) {
+    return docId.replaceFirst(RegExp(r'^p[123]_'), '');
+  }
+
+  static String _readString(
+    Map<String, dynamic>? data,
+    List<String> keys,
+  ) {
+    if (data == null) {
+      return '';
+    }
+
+    for (final key in keys) {
+      final value = data[key];
+      if (value != null && value.toString().trim().isNotEmpty) {
+        return value.toString().trim();
+      }
+    }
+
+    return '';
+  }
+
+  static int _readInt(
+    Map<String, dynamic>? data,
+    List<String> keys,
+  ) {
+    return _readNullableInt(data, keys) ?? 0;
+  }
+
+  static int? _readNullableInt(
+    Map<String, dynamic>? data,
+    List<String> keys,
+  ) {
+    if (data == null) {
+      return null;
+    }
+
+    for (final key in keys) {
+      final value = data[key];
+
+      if (value == null) {
+        continue;
+      }
+
+      if (value is int) {
+        return value;
+      }
+
+      if (value is num) {
+        return value.toInt();
+      }
+
+      final parsed = int.tryParse(value.toString());
+      if (parsed != null) {
+        return parsed;
+      }
+    }
+
+    return null;
+  }
+}
+
+class _TableTitle extends StatelessWidget {
+  const _TableTitle({
+    required this.title,
+    required this.subtitle,
+  });
+
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            '$title · $subtitle',
+            style: const TextStyle(
+              fontSize: 19,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+        Text(
+          SeasonConfig.activeSeasonLabel,
+          style: TextStyle(
+            color: _textMuted,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StandTable extends StatelessWidget {
+  const _StandTable({
+    required this.rows,
+  });
+
+  final List<_PeriodStandingRow> rows;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minWidth: constraints.maxWidth),
+            child: DataTable(
+              headingRowHeight: 42,
+              dataRowMinHeight: 48,
+              dataRowMaxHeight: 54,
+              columnSpacing: 18,
+              horizontalMargin: 10,
+              columns: const [
+                DataColumn(label: Text('#')),
+                DataColumn(label: Text('Club')),
+                DataColumn(numeric: true, label: Text('G')),
+                DataColumn(numeric: true, label: Text('W')),
+                DataColumn(numeric: true, label: Text('G')),
+                DataColumn(numeric: true, label: Text('V')),
+                DataColumn(
+                  numeric: true,
+                  label: Text(
+                    'Pnt',
+                    style: TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                ),
+                DataColumn(numeric: true, label: Text('DS')),
+                DataColumn(numeric: true, label: Text('DV-DT')),
+              ],
+              rows: List.generate(rows.length, (index) {
+                final row = rows[index];
+                final isLeader = index == 0;
+
+                return DataRow(
+                  color: isLeader
+                      ? WidgetStateProperty.all(const Color(0xFFE8F5E9))
+                      : null,
+                  cells: [
+                    DataCell(
+                      Text(
+                        '${index + 1}',
+                        style: TextStyle(
+                          fontWeight:
+                              isLeader ? FontWeight.w800 : FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    DataCell(
+                      _TeamCell(team: row.team),
+                    ),
+                    DataCell(Text('${row.played}')),
+                    DataCell(Text('${row.won}')),
+                    DataCell(Text('${row.drawn}')),
+                    DataCell(Text('${row.lost}')),
+                    DataCell(
+                      Text(
+                        '${row.points}',
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                    DataCell(Text('${row.goalDifference}')),
+                    DataCell(Text('${row.goalsFor}-${row.goalsAgainst}')),
+                  ],
+                );
+              }),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _TeamCell extends StatelessWidget {
+  const _TeamCell({
+    required this.team,
+  });
+
+  final SeasonTeam team;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: Image.asset(
+            team.logoPath,
+            width: 26,
+            height: 26,
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) => Image.asset(
+              'assets/images/default_logo.png',
+              width: 26,
+              height: 26,
+              fit: BoxFit.contain,
+            ),
+          ),
+        ),
+        const SizedBox(width: 9),
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 210),
+          child: Text(
+            team.label,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _EmptyState extends StatelessWidget {
+  const _EmptyState({
+    required this.title,
+    required this.message,
+  });
+
+  final String title;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 260,
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 460),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.event_note_outlined,
+                size: 48,
+                color: _primaryGreen,
+              ),
+              const SizedBox(height: 14),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 19,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  height: 1.35,
+                  color: _textMuted,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ErrorState extends StatelessWidget {
+  const _ErrorState();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 220,
+      child: Center(
+        child: Text(
+          'Fout bij laden van de periodestand.',
+          style: TextStyle(
+            color: Colors.red.shade700,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PeriodStandingRow {
+  const _PeriodStandingRow({
+    required this.team,
+    required this.played,
+    required this.won,
+    required this.drawn,
+    required this.lost,
+    required this.points,
+    required this.goalsFor,
+    required this.goalsAgainst,
+    required this.goalDifference,
+  });
+
+  final SeasonTeam team;
+  final int played;
+  final int won;
+  final int drawn;
+  final int lost;
+  final int points;
+  final int goalsFor;
+  final int goalsAgainst;
+  final int goalDifference;
 }

@@ -1,8 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:derde_divisie/features/voorspellen/user_display_name.dart';
 
 class BekijkVoorspellingenScreen extends StatefulWidget {
   final String userId;
+
   /// 'algemeen' (met A/B toggle), of geforceerd 'A' of 'B'
   final String contextType;
 
@@ -17,7 +19,8 @@ class BekijkVoorspellingenScreen extends StatefulWidget {
       _BekijkVoorspellingenScreenState();
 }
 
-class _BekijkVoorspellingenScreenState extends State<BekijkVoorspellingenScreen> {
+class _BekijkVoorspellingenScreenState
+    extends State<BekijkVoorspellingenScreen> {
   bool geladen = false;
   bool voorspellingenZichtbaar = true;
   String gebruikersnaam = 'Gebruiker';
@@ -51,7 +54,7 @@ class _BekijkVoorspellingenScreenState extends State<BekijkVoorspellingenScreen>
         .get();
     final data = doc.data();
     if (data != null) {
-      gebruikersnaam = data['username'] ?? 'Gebruiker';
+      gebruikersnaam = resolveUserDisplayName(data, fallback: 'Gebruiker');
       voorspellingenZichtbaar = data['voorspellingenZichtbaar'] ?? true;
     }
   }
@@ -76,12 +79,12 @@ class _BekijkVoorspellingenScreenState extends State<BekijkVoorspellingenScreen>
     final items = await Future.wait(futures);
     final geldigeItems = items.whereType<_PredictionViewItem>().toList();
 
-    final doelDivisie = widget.contextType == 'algemeen'
-        ? _gekozenDivisie
-        : widget.contextType;
+    final doelDivisie =
+        widget.contextType == 'algemeen' ? _gekozenDivisie : widget.contextType;
 
     for (final it in geldigeItems) {
-      final divisie = it.divisie ?? (it.wedstrijdId.startsWith('B') ? 'B' : 'A');
+      final divisie =
+          it.divisie ?? (it.wedstrijdId.startsWith('B') ? 'B' : 'A');
       if (doelDivisie != 'algemeen' && divisie != doelDivisie) continue;
       if (!_magTonen(it.wedstrijdId, it.wedstrijdDatum)) continue;
       _perSpeelronde.putIfAbsent(it.speelronde, () => []).add(it);
@@ -94,12 +97,14 @@ class _BekijkVoorspellingenScreenState extends State<BekijkVoorspellingenScreen>
     _eindstandVolgorde = [];
     _heeftEindstand = false;
 
-    final doelDivisie = widget.contextType == 'algemeen'
-        ? _gekozenDivisie
-        : widget.contextType;
+    final doelDivisie =
+        widget.contextType == 'algemeen' ? _gekozenDivisie : widget.contextType;
 
     List<QueryDocumentSnapshot<Map<String, dynamic>>> docs = [];
-    for (final coll in ['eindstand_voorspellingen', 'eindstandVoorspellingen']) {
+    for (final coll in [
+      'eindstand_voorspellingen',
+      'eindstandVoorspellingen'
+    ]) {
       final q1 = await FirebaseFirestore.instance
           .collection(coll)
           .where('gebruikerId', isEqualTo: widget.userId)
@@ -143,7 +148,8 @@ class _BekijkVoorspellingenScreenState extends State<BekijkVoorspellingenScreen>
     }
   }
 
-  Future<_PredictionViewItem?> _bouwItem(Map<String, dynamic> voorspelling) async {
+  Future<_PredictionViewItem?> _bouwItem(
+      Map<String, dynamic> voorspelling) async {
     try {
       final wedstrijdId = voorspelling['wedstrijdId'] as String;
       final matchSnap = await FirebaseFirestore.instance
@@ -185,8 +191,8 @@ class _BekijkVoorspellingenScreenState extends State<BekijkVoorspellingenScreen>
         (widget.contextType == 'A' && wedstrijdId.startsWith('A')) ||
         (widget.contextType == 'B' && wedstrijdId.startsWith('B'));
 
-    final deadlineVerstreken = DateTime.now()
-        .isAfter(DateTime(wedstrijdDatum.year, wedstrijdDatum.month, wedstrijdDatum.day, 12));
+    final deadlineVerstreken = DateTime.now().isAfter(DateTime(
+        wedstrijdDatum.year, wedstrijdDatum.month, wedstrijdDatum.day, 12));
 
     return isCorrectContext && (voorspellingenZichtbaar || deadlineVerstreken);
   }
@@ -238,9 +244,12 @@ class _BekijkVoorspellingenScreenState extends State<BekijkVoorspellingenScreen>
             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           if (verwerkt && uitslagThuis != null && uitslagUit != null)
-            Text('Uitslag: $uitslagThuis - $uitslagUit', style: const TextStyle(fontSize: 13)),
+            Text('Uitslag: $uitslagThuis - $uitslagUit',
+                style: const TextStyle(fontSize: 13)),
           if (punten != null && verwerkt)
-            Text('🎯 $punten pt', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+            Text('🎯 $punten pt',
+                style:
+                    const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
         ],
       ),
     );
@@ -278,12 +287,14 @@ class _BekijkVoorspellingenScreenState extends State<BekijkVoorspellingenScreen>
 
   Widget _eindstandView() {
     if (!_heeftEindstand) {
-      return const Center(child: Text('Geen zichtbare eindstand-voorspelling.'));
+      return const Center(
+          child: Text('Geen zichtbare eindstand-voorspelling.'));
     }
     return ListView.separated(
       padding: const EdgeInsets.symmetric(vertical: 8),
       itemCount: _eindstandVolgorde.length,
-      separatorBuilder: (_, __) => const Divider(height: 1, color: Colors.transparent),
+      separatorBuilder: (_, __) =>
+          const Divider(height: 1, color: Colors.transparent),
       itemBuilder: (_, i) {
         final positie = i + 1;
         final team = _eindstandVolgorde[i];
@@ -294,7 +305,9 @@ class _BekijkVoorspellingenScreenState extends State<BekijkVoorspellingenScreen>
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
-              boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
+              boxShadow: const [
+                BoxShadow(color: Colors.black12, blurRadius: 4)
+              ],
             ),
             child: Row(
               children: [
@@ -306,13 +319,18 @@ class _BekijkVoorspellingenScreenState extends State<BekijkVoorspellingenScreen>
                     color: Colors.green.shade100,
                     shape: BoxShape.circle,
                   ),
-                  child: Text('$positie', style: const TextStyle(fontWeight: FontWeight.bold)),
+                  child: Text('$positie',
+                      style: const TextStyle(fontWeight: FontWeight.bold)),
                 ),
                 const SizedBox(width: 12),
-                Image.asset(getLogoPath(team), width: 28, height: 28,
-                    errorBuilder: (_, __, ___) => const Icon(Icons.shield, size: 20)),
+                Image.asset(getLogoPath(team),
+                    width: 28,
+                    height: 28,
+                    errorBuilder: (_, __, ___) =>
+                        const Icon(Icons.shield, size: 20)),
                 const SizedBox(width: 12),
-                Expanded(child: Text(team, style: const TextStyle(fontSize: 16))),
+                Expanded(
+                    child: Text(team, style: const TextStyle(fontSize: 16))),
               ],
             ),
           ),

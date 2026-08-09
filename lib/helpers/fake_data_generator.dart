@@ -182,7 +182,8 @@ class _SeedBulkFakeV2ScreenState extends State<SeedBulkFakeV2Screen> {
   // -------- data helpers --------
 
   // Alle matches per competitie
-  Future<List<QueryDocumentSnapshot>> _fetchMatchesByCompetition(String ab) async {
+  Future<List<QueryDocumentSnapshot>> _fetchMatchesByCompetition(
+      String ab) async {
     final snap = await _firestore
         .collection('matches')
         .where('competitie', isEqualTo: _compLabel(ab))
@@ -199,7 +200,9 @@ class _SeedBulkFakeV2ScreenState extends State<SeedBulkFakeV2Screen> {
       final d = m.data() as Map<String, dynamic>;
       final hasResult = d['uitslagThuis'] != null && d['uitslagUit'] != null;
       if (onlyFinished && !hasResult) continue;
-      if (!onlyFinished && hasResult) continue; // voor future: alleen zonder uitslag
+      if (!onlyFinished && hasResult) {
+        continue; // voor future: alleen zonder uitslag
+      }
       final r = (d['speelronde'] ?? 0) as int;
       byRound.putIfAbsent(r, () => []);
       byRound[r]!.add(m);
@@ -230,159 +233,318 @@ class _SeedBulkFakeV2ScreenState extends State<SeedBulkFakeV2Screen> {
   // ----------------- ACTIES -----------------
 
 // ----------------- NIEUWE VERSIE _createAccounts() -----------------
-Future<void> _createAccounts({int count = 60}) async {
-  setState(() {
-    _running = true;
-    _status = 'Aanmaken van $count realistische fake accounts (met NL woonplaatsen)...';
-  });
+  Future<void> _createAccounts({int count = 60}) async {
+    setState(() {
+      _running = true;
+      _status =
+          'Aanmaken van $count realistische fake accounts (met NL woonplaatsen)...';
+    });
 
-  try {
-    final logosA = await _fetchTeamLogos('A');
-    final logosB = await _fetchTeamLogos('B');
+    try {
+      final logosA = await _fetchTeamLogos('A');
+      final logosB = await _fetchTeamLogos('B');
 
-    // --- Naamdata ---
-    final firstNames = [
-      'Mark','Joris','Femke','Ruben','Lisa','Kees','Marieke','Daan','Noa','Lotte',
-      'Bas','Sanne','Jelle','Myrthe','Timo','Anna','Pieter','Iris','Roel','Sophie',
-      'Bram','Eva','Nick','Lars','Milan','Romy','Wouter','Eline','Thijs','Nina',
-      'Martijn','Henk','Johan','Stefan','Tom','Rick','Joost','Gerard','Dennis','Frank',
-      'Jantje','Harm','Niels','Koen','Arjan','Dirk','Pascal','Tim','Floor','Stijn',
-      'Elise','Maarten','Lieke','Rosa','Niek','Sil','Matthijs','Sander','Leonie','Nadine'
-    ];
+      // --- Naamdata ---
+      final firstNames = [
+        'Mark',
+        'Joris',
+        'Femke',
+        'Ruben',
+        'Lisa',
+        'Kees',
+        'Marieke',
+        'Daan',
+        'Noa',
+        'Lotte',
+        'Bas',
+        'Sanne',
+        'Jelle',
+        'Myrthe',
+        'Timo',
+        'Anna',
+        'Pieter',
+        'Iris',
+        'Roel',
+        'Sophie',
+        'Bram',
+        'Eva',
+        'Nick',
+        'Lars',
+        'Milan',
+        'Romy',
+        'Wouter',
+        'Eline',
+        'Thijs',
+        'Nina',
+        'Martijn',
+        'Henk',
+        'Johan',
+        'Stefan',
+        'Tom',
+        'Rick',
+        'Joost',
+        'Gerard',
+        'Dennis',
+        'Frank',
+        'Jantje',
+        'Harm',
+        'Niels',
+        'Koen',
+        'Arjan',
+        'Dirk',
+        'Pascal',
+        'Tim',
+        'Floor',
+        'Stijn',
+        'Elise',
+        'Maarten',
+        'Lieke',
+        'Rosa',
+        'Niek',
+        'Sil',
+        'Matthijs',
+        'Sander',
+        'Leonie',
+        'Nadine'
+      ];
 
-    final lastNames = [
-      'Jansen','DeVries','VanDijk','Bakker','Visser','Smit','Meijer','Mulder',
-      'Bos','Kramer','Kuiper','Vos','DeBoer','Hendriks','Peters','Dekker',
-      'VanDam','Post','Prins','Verhoef','DeGroot','VanLeeuwen','Hoekstra','Koster',
-      'Vermeer','DeBruin','VanLoon','DeWit','Groen','Peeters','Blom'
-    ];
+      final lastNames = [
+        'Jansen',
+        'DeVries',
+        'VanDijk',
+        'Bakker',
+        'Visser',
+        'Smit',
+        'Meijer',
+        'Mulder',
+        'Bos',
+        'Kramer',
+        'Kuiper',
+        'Vos',
+        'DeBoer',
+        'Hendriks',
+        'Peters',
+        'Dekker',
+        'VanDam',
+        'Post',
+        'Prins',
+        'Verhoef',
+        'DeGroot',
+        'VanLeeuwen',
+        'Hoekstra',
+        'Koster',
+        'Vermeer',
+        'DeBruin',
+        'VanLoon',
+        'DeWit',
+        'Groen',
+        'Peeters',
+        'Blom'
+      ];
 
-    // Clubs (voor username-tags of referenties)
-    final clubTags = [
-      'DVS','TEC','UNA','VVSB','DOVO','HSC21','ASWH','Goes','Urk','FCU','BlauwGeel',
-      'RBC','Gemert','Hercules','SteDoCo','Sparta','SCGenemuiden','Rijnvogels',
-      'Noordwijk','Eemdijk','Hoogeveen','HarkemaseBoys','Kloetinge','ADO20','Lisse'
-    ];
+      // Clubs (voor username-tags of referenties)
+      final clubTags = [
+        'DVS',
+        'TEC',
+        'UNA',
+        'VVSB',
+        'DOVO',
+        'HSC21',
+        'ASWH',
+        'Goes',
+        'Urk',
+        'FCU',
+        'BlauwGeel',
+        'RBC',
+        'Gemert',
+        'Hercules',
+        'SteDoCo',
+        'Sparta',
+        'SCGenemuiden',
+        'Rijnvogels',
+        'Noordwijk',
+        'Eemdijk',
+        'Hoogeveen',
+        'HarkemaseBoys',
+        'Kloetinge',
+        'ADO20',
+        'Lisse'
+      ];
 
-    // Gemeenten (NL) — verkorte lijst, maar je kunt makkelijk uitbreiden
-    final woonplaatsen = [
-      'Amsterdam','Rotterdam','Den Haag','Utrecht','Eindhoven','Tilburg','Groningen',
-      'Almere','Breda','Nijmegen','Enschede','Apeldoorn','Haarlem','Amersfoort','Arnhem',
-      'Zaanstad','Den Bosch','Zwolle','Leeuwarden','Maastricht','Dordrecht','Leiden',
-      'Ede','Leidschendam','Emmen','Alkmaar','Assen','Helmond','Deventer','Venlo',
-      'Gouda','Veenendaal','Rijswijk','Roermond','Tiel','Wierden','Barneveld',
-      'Zeist','Epe','Hengelo','Oldenzaal','Zutphen','Meppel','Hoogeveen','Sneek',
-      'Raalte','Genemuiden','Urk','Rijnsburg','Noordwijk','Katwijk','Hoorn','Purmerend',
-      'Harderwijk','Lelystad','Heerenveen','Oss','Doetinchem','Hilversum','Vught'
-    ];
+      // Gemeenten (NL) — verkorte lijst, maar je kunt makkelijk uitbreiden
+      final woonplaatsen = [
+        'Amsterdam',
+        'Rotterdam',
+        'Den Haag',
+        'Utrecht',
+        'Eindhoven',
+        'Tilburg',
+        'Groningen',
+        'Almere',
+        'Breda',
+        'Nijmegen',
+        'Enschede',
+        'Apeldoorn',
+        'Haarlem',
+        'Amersfoort',
+        'Arnhem',
+        'Zaanstad',
+        'Den Bosch',
+        'Zwolle',
+        'Leeuwarden',
+        'Maastricht',
+        'Dordrecht',
+        'Leiden',
+        'Ede',
+        'Leidschendam',
+        'Emmen',
+        'Alkmaar',
+        'Assen',
+        'Helmond',
+        'Deventer',
+        'Venlo',
+        'Gouda',
+        'Veenendaal',
+        'Rijswijk',
+        'Roermond',
+        'Tiel',
+        'Wierden',
+        'Barneveld',
+        'Zeist',
+        'Epe',
+        'Hengelo',
+        'Oldenzaal',
+        'Zutphen',
+        'Meppel',
+        'Hoogeveen',
+        'Sneek',
+        'Raalte',
+        'Genemuiden',
+        'Urk',
+        'Rijnsburg',
+        'Noordwijk',
+        'Katwijk',
+        'Hoorn',
+        'Purmerend',
+        'Harderwijk',
+        'Lelystad',
+        'Heerenveen',
+        'Oss',
+        'Doetinchem',
+        'Hilversum',
+        'Vught'
+      ];
 
-    final usersCol = _firestore.collection('users');
-    var batch = _firestore.batch();
-    var inBatch = 0;
-    var created = 0;
+      final usersCol = _firestore.collection('users');
+      var batch = _firestore.batch();
+      var inBatch = 0;
+      var created = 0;
 
-    for (int i = 0; i < count; i++) {
-      final first = firstNames[_rnd.nextInt(firstNames.length)];
-      final last = lastNames[_rnd.nextInt(lastNames.length)];
-      final displayName = '$first $last';
-      final email = '${first.toLowerCase()}_${last.toLowerCase()}_${_rnd.nextInt(99999)}@example.com';
+      for (int i = 0; i < count; i++) {
+        final first = firstNames[_rnd.nextInt(firstNames.length)];
+        final last = lastNames[_rnd.nextInt(lastNames.length)];
+        final displayName = '$first $last';
+        final email =
+            '${first.toLowerCase()}_${last.toLowerCase()}_${_rnd.nextInt(99999)}@example.com';
 
-      final competitions = _assignCompetitions();
-      final favComp = _compLabel(competitions.first);
-      final isIdle = _rnd.nextDouble() < 0.08; // ~8% geen voorspellingen
-      final showPreds = true;
-      final woonplaats = woonplaatsen[_rnd.nextInt(woonplaatsen.length)];
-      final clubTag = clubTags[_rnd.nextInt(clubTags.length)];
+        final competitions = _assignCompetitions();
+        final favComp = _compLabel(competitions.first);
+        final isIdle = _rnd.nextDouble() < 0.08; // ~8% geen voorspellingen
+        final showPreds = true;
+        final woonplaats = woonplaatsen[_rnd.nextInt(woonplaatsen.length)];
+        final clubTag = clubTags[_rnd.nextInt(clubTags.length)];
 
-      // ----------- UNIEKE / REALISTISCHE USERNAME ------------
-      String username;
-      final style = _rnd.nextDouble();
+        // ----------- UNIEKE / REALISTISCHE USERNAME ------------
+        String username;
+        final style = _rnd.nextDouble();
 
-      if (style < 0.25) {
-        // voornaam + geboortejaar
-        final year = 1970 + _rnd.nextInt(35);
-        username = '$first$year';
-      } else if (style < 0.45) {
-        // kleine letters + club verwijzing
-        final suffixes = ['fan', 'sup', 'boy', 'girl', 'support', 'rules'];
-        username = '${clubTag.toLowerCase()}${suffixes[_rnd.nextInt(suffixes.length)]}';
-      } else if (style < 0.65) {
-        // korte versie met random nummer of underscore
-        final base = '${first.toLowerCase()}${last.substring(0, 1).toLowerCase()}';
-        if (_rnd.nextBool()) {
-          username = '$base$_rnd.nextInt(999)';
+        if (style < 0.25) {
+          // voornaam + geboortejaar
+          final year = 1970 + _rnd.nextInt(35);
+          username = '$first$year';
+        } else if (style < 0.45) {
+          // kleine letters + club verwijzing
+          final suffixes = ['fan', 'sup', 'boy', 'girl', 'support', 'rules'];
+          username =
+              '${clubTag.toLowerCase()}${suffixes[_rnd.nextInt(suffixes.length)]}';
+        } else if (style < 0.65) {
+          // korte versie met random nummer of underscore
+          final base =
+              '${first.toLowerCase()}${last.substring(0, 1).toLowerCase()}';
+          if (_rnd.nextBool()) {
+            username = '$base$_rnd.nextInt(999)';
+          } else {
+            username = '${base}_${_rnd.nextInt(99)}';
+          }
+        } else if (style < 0.85) {
+          // speelse naam zoals jantjuhh01
+          final endings = ['juh', 'uhh', 'ie', 'tje', 'zz', 'xx'];
+          username =
+              '${first.toLowerCase()}${endings[_rnd.nextInt(endings.length)]}${_rnd.nextInt(99).toString().padLeft(2, '0')}';
         } else {
-          username = '${base}_${_rnd.nextInt(99)}';
+          // naam + clubtag gecombineerd
+          username = '$first$clubTag';
+          if (_rnd.nextDouble() < 0.4) username += '${_rnd.nextInt(99)}';
         }
-      } else if (style < 0.85) {
-        // speelse naam zoals jantjuhh01
-        final endings = ['juh', 'uhh', 'ie', 'tje', 'zz', 'xx'];
-        username =
-            '${first.toLowerCase()}${endings[_rnd.nextInt(endings.length)]}${_rnd.nextInt(99).toString().padLeft(2, '0')}';
-      } else {
-        // naam + clubtag gecombineerd
-        username = '$first$clubTag';
-        if (_rnd.nextDouble() < 0.4) username += '${_rnd.nextInt(99)}';
+
+        // --------------- PROFIELAFBEELDING ---------------
+        String avatarUrl =
+            'https://firebasestorage.googleapis.com/v0/b/derde-divisie-app.firebasestorage.app/o/avatars%2Fstandaard%20profielfoto.webp?alt=media&token=b5137dac-fae6-445a-a4f2-d7e083fadbf7';
+
+        // 5% kans clublogo ipv standaard
+        if (_rnd.nextDouble() < 0.05) {
+          final compForAvatar = competitions[_rnd.nextInt(competitions.length)];
+          final pool = compForAvatar == 'A' ? logosA : logosB;
+          if (pool.isNotEmpty) avatarUrl = pool[_rnd.nextInt(pool.length)];
+        }
+
+        final ref = usersCol.doc();
+        batch.set(ref, {
+          'displayName': displayName,
+          'username': username,
+          'email': email,
+          'avatarUrl': avatarUrl,
+          'punten_A': 0,
+          'punten_B': 0,
+          'totalen': 0,
+          'predictionsMade': 0,
+          'competitions': competitions,
+          'isFake': true,
+          'isIdle': isIdle,
+          'joinedAt': FieldValue.serverTimestamp(),
+          'ranglijstZichtbaar': false,
+          'voorspellingenZichtbaar': showPreds,
+          // profiel
+          'eigenPoules': 0,
+          'gejoinedePoules': 0,
+          'favorieteClub': null,
+          'favorieteCompetitie': favComp,
+          'woonplaats': woonplaats,
+          'heeftGebruikersnaamGewijzigd': false,
+          'usernameChanged': true,
+          'isModerator': false,
+          'profileDescription': '',
+        });
+
+        inBatch++;
+        created++;
+        if (inBatch >= 300) {
+          await batch.commit();
+          batch = _firestore.batch();
+          inBatch = 0;
+        }
       }
 
-      // --------------- PROFIELAFBEELDING ---------------
-      String avatarUrl =
-          'https://firebasestorage.googleapis.com/v0/b/derde-divisie-app.firebasestorage.app/o/avatars%2Fstandaard%20profielfoto.webp?alt=media&token=b5137dac-fae6-445a-a4f2-d7e083fadbf7';
+      if (inBatch > 0) await batch.commit();
 
-      // 5% kans clublogo ipv standaard
-      if (_rnd.nextDouble() < 0.05) {
-        final compForAvatar = competitions[_rnd.nextInt(competitions.length)];
-        final pool = compForAvatar == 'A' ? logosA : logosB;
-        if (pool.isNotEmpty) avatarUrl = pool[_rnd.nextInt(pool.length)];
-      }
-
-      final ref = usersCol.doc();
-      batch.set(ref, {
-        'displayName': displayName,
-        'username': username,
-        'email': email,
-        'avatarUrl': avatarUrl,
-        'punten_A': 0,
-        'punten_B': 0,
-        'totalen': 0,
-        'predictionsMade': 0,
-        'competitions': competitions,
-        'isFake': true,
-        'isIdle': isIdle,
-        'joinedAt': FieldValue.serverTimestamp(),
-        'ranglijstZichtbaar': false,
-        'voorspellingenZichtbaar': showPreds,
-        // profiel
-        'eigenPoules': 0,
-        'gejoinedePoules': 0,
-        'favorieteClub': null,
-        'favorieteCompetitie': favComp,
-        'woonplaats': woonplaats,
-        'heeftGebruikersnaamGewijzigd': false,
-        'usernameChanged': true,
-        'isModerator': false,
-        'profileDescription': '',
-      });
-
-      inBatch++;
-      created++;
-      if (inBatch >= 300) {
-        await batch.commit();
-        batch = _firestore.batch();
-        inBatch = 0;
-      }
+      setState(() =>
+          _status = 'Klaar — $created realistische fake accounts aangemaakt.');
+    } catch (e) {
+      setState(() => _status = 'Fout bij aanmaken accounts: $e');
+    } finally {
+      setState(() => _running = false);
     }
-
-    if (inBatch > 0) await batch.commit();
-
-    setState(() => _status = 'Klaar — $created realistische fake accounts aangemaakt.');
-  } catch (e) {
-    setState(() => _status = 'Fout bij aanmaken accounts: $e');
-  } finally {
-    setState(() => _running = false);
   }
-}
-
 
   // 2) Retro: voorspellingen + punten toepassen, met cap per competitie
   //    - Alleen voor actieve fake users (isIdle == false)
@@ -477,8 +639,10 @@ Future<void> _createAccounts({int count = 60}) async {
 
               final userRef = _firestore.collection('users').doc(userId);
               final veld = isA ? 'punten_A' : 'punten_B';
-              await userRef.set({veld: FieldValue.increment(apply)}, SetOptions(merge: true));
-              await userRef.set({'predictionsMade': FieldValue.increment(1)}, SetOptions(merge: true));
+              await userRef.set(
+                  {veld: FieldValue.increment(apply)}, SetOptions(merge: true));
+              await userRef.set({'predictionsMade': FieldValue.increment(1)},
+                  SetOptions(merge: true));
 
               if (isA) {
                 curA += apply;
@@ -492,7 +656,8 @@ Future<void> _createAccounts({int count = 60}) async {
         }
       }
 
-      setState(() => _status = 'Retro klaar — punten toegepast onder cap, geen dubbelen.');
+      setState(() =>
+          _status = 'Retro klaar — punten toegepast onder cap, geen dubbelen.');
     } catch (e) {
       setState(() => _status = 'Fout bij retro: $e');
     } finally {
@@ -526,8 +691,7 @@ Future<void> _createAccounts({int count = 60}) async {
       final upcomingByComp = <String, Map<int, List<QueryDocumentSnapshot>>>{};
       for (final comp in ['A', 'B']) {
         final all = await _fetchMatchesByCompetition(comp);
-        upcomingByComp[comp] =
-            _groupRoundsPickNine(all, onlyFinished: false);
+        upcomingByComp[comp] = _groupRoundsPickNine(all, onlyFinished: false);
       }
 
       var created = 0;
@@ -551,19 +715,25 @@ Future<void> _createAccounts({int count = 60}) async {
               final pred = _generatePredictionForMatch(userId, m);
               final docId = '${userId}_${m.id}';
               final pr = _firestore.collection('voorspellingen').doc(docId);
-              batch.set(pr, {
-                'gebruikerId': userId,
-                'wedstrijdId': m.id,
-                'scoreThuis': pred['homeGoals'],
-                'scoreUit': pred['awayGoals'],
-                'timestamp': FieldValue.serverTimestamp(),
-                'verwerkt': false,
-                'isFake': true,
-              }, SetOptions(merge: true));
+              batch.set(
+                  pr,
+                  {
+                    'gebruikerId': userId,
+                    'wedstrijdId': m.id,
+                    'scoreThuis': pred['homeGoals'],
+                    'scoreUit': pred['awayGoals'],
+                    'timestamp': FieldValue.serverTimestamp(),
+                    'verwerkt': false,
+                    'isFake': true,
+                  },
+                  SetOptions(merge: true));
 
-              batch.set(_firestore.collection('users').doc(userId), {
-                'predictionsMade': FieldValue.increment(1),
-              }, SetOptions(merge: true));
+              batch.set(
+                  _firestore.collection('users').doc(userId),
+                  {
+                    'predictionsMade': FieldValue.increment(1),
+                  },
+                  SetOptions(merge: true));
 
               created++;
               inBatch++;
@@ -579,8 +749,8 @@ Future<void> _createAccounts({int count = 60}) async {
 
       if (inBatch > 0) await batch.commit();
 
-      setState(() =>
-          _status = 'Toekomst-voorspellingen aangemaakt (zonder dubbelen): $created.');
+      setState(() => _status =
+          'Toekomst-voorspellingen aangemaakt (zonder dubbelen): $created.');
     } catch (e) {
       setState(() => _status = 'Fout bij toekomst-voorspellen: $e');
     } finally {
@@ -602,7 +772,8 @@ Future<void> _createAccounts({int count = 60}) async {
   Future<void> _deleteAllFakeData() async {
     setState(() {
       _running = true;
-      _status = 'Verwijderen fake users + voorspellingen (incl. subcollecties)…';
+      _status =
+          'Verwijderen fake users + voorspellingen (incl. subcollecties)…';
     });
 
     try {
@@ -669,8 +840,10 @@ Future<void> _createAccounts({int count = 60}) async {
       }
 
       // users + subcollecties
-      final usersSnap =
-          await _firestore.collection('users').where('isFake', isEqualTo: true).get();
+      final usersSnap = await _firestore
+          .collection('users')
+          .where('isFake', isEqualTo: true)
+          .get();
       for (final userDoc in usersSnap.docs) {
         await deleteSubcollections(userDoc.reference);
         await userDoc.reference.delete();
@@ -692,8 +865,10 @@ Future<void> _createAccounts({int count = 60}) async {
     });
 
     try {
-      final snap =
-          await _firestore.collection('users').where('isFake', isEqualTo: true).get();
+      final snap = await _firestore
+          .collection('users')
+          .where('isFake', isEqualTo: true)
+          .get();
       var updated = 0;
       for (final d in snap.docs) {
         final data = d.data();
@@ -732,7 +907,8 @@ Future<void> _createAccounts({int count = 60}) async {
                     ),
                     const SizedBox(height: 12),
                     ElevatedButton(
-                      onPressed: _running ? null : () => _createAccounts(count: 30),
+                      onPressed:
+                          _running ? null : () => _createAccounts(count: 30),
                       child: const Text('Stap 1: Maak ~30 accounts'),
                     ),
                     const SizedBox(height: 8),
@@ -744,8 +920,10 @@ Future<void> _createAccounts({int count = 60}) async {
                     ),
                     const SizedBox(height: 8),
                     ElevatedButton(
-                      onPressed: _running ? null : _predictRemainingConsideringPoints,
-                      child: const Text('Stap 3: Toekomst voorspellen (zonder punten)'),
+                      onPressed:
+                          _running ? null : _predictRemainingConsideringPoints,
+                      child: const Text(
+                          'Stap 3: Toekomst voorspellen (zonder punten)'),
                     ),
                     const SizedBox(height: 8),
                     ElevatedButton(
@@ -755,13 +933,15 @@ Future<void> _createAccounts({int count = 60}) async {
                     const SizedBox(height: 8),
                     ElevatedButton(
                       onPressed: _running ? null : _deleteAllFakeData,
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+                      style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange),
                       child: const Text('Verwijder alle fake data'),
                     ),
                     const SizedBox(height: 8),
                     ElevatedButton(
                       onPressed: _running ? null : _sanitizeRemovePointsField,
-                      child: const Text('Sanitize: verwijder oud veld "points"'),
+                      child:
+                          const Text('Sanitize: verwijder oud veld "points"'),
                     ),
                     const SizedBox(height: 16),
                     if (_running) const LinearProgressIndicator(),
@@ -775,7 +955,8 @@ Future<void> _createAccounts({int count = 60}) async {
                   ],
                 ),
               )
-            : const Center(child: Text('Geen toegang — alleen admin/moderator')),
+            : const Center(
+                child: Text('Geen toegang — alleen admin/moderator')),
       ),
     );
   }

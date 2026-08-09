@@ -42,8 +42,10 @@ class _TeamLogoColumn extends StatelessWidget {
           assetPath,
           width: 36,
           height: 36,
-          errorBuilder: (_, __, ___) =>
-              Image.asset('assets/images/default_logo.png', width: 36, height: 36),
+          errorBuilder: (_, __, ___) => Image.asset(
+              'assets/images/default_logo.png',
+              width: 36,
+              height: 36),
         ),
         const SizedBox(height: 6),
         Text(
@@ -87,7 +89,8 @@ class _PredictionCenterColumn extends StatelessWidget {
                 style: const TextStyle(fontSize: 13)),
           if (punten != null && verwerkt)
             Text('🎯 $punten pt',
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                style:
+                    const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
         ],
       ),
     );
@@ -134,7 +137,8 @@ class PouleVoorspellingenScreen extends StatelessWidget {
     final data = deelnemerSnap.data()!;
     return (data['voorspellingenZichtbaar'] ??
             data['toonVoorspellingen'] ??
-            false) == true;
+            false) ==
+        true;
   }
 
   /// Alle voorspellingen van deze user in deze poule (uit diverse collecties)
@@ -181,7 +185,8 @@ class PouleVoorspellingenScreen extends StatelessWidget {
       if (seen.add(id)) deduped.add(r);
     }
 
-    deduped.sort((a, b) => (a['matchId'] as String).compareTo(b['matchId'] as String));
+    deduped.sort(
+        (a, b) => (a['matchId'] as String).compareTo(b['matchId'] as String));
     return deduped;
   }
 
@@ -195,7 +200,8 @@ class PouleVoorspellingenScreen extends StatelessWidget {
 
     // 1) documentId
     for (var i = 0; i < matchIds.length; i += chunk) {
-      final slice = matchIds.sublist(i, (i + chunk > matchIds.length) ? matchIds.length : i + chunk);
+      final slice = matchIds.sublist(
+          i, (i + chunk > matchIds.length) ? matchIds.length : i + chunk);
       final snap = await FirebaseFirestore.instance
           .collection('matches')
           .where(FieldPath.documentId, whereIn: slice)
@@ -208,7 +214,8 @@ class PouleVoorspellingenScreen extends StatelessWidget {
     // 2) matchId
     final missing1 = matchIds.where((id) => !result.containsKey(id)).toList();
     for (var i = 0; i < missing1.length; i += chunk) {
-      final slice = missing1.sublist(i, (i + chunk > missing1.length) ? missing1.length : i + chunk);
+      final slice = missing1.sublist(
+          i, (i + chunk > missing1.length) ? missing1.length : i + chunk);
       final snap = await FirebaseFirestore.instance
           .collection('matches')
           .where('matchId', whereIn: slice)
@@ -223,14 +230,16 @@ class PouleVoorspellingenScreen extends StatelessWidget {
     // 3) wedstrijdId
     final missing2 = matchIds.where((id) => !result.containsKey(id)).toList();
     for (var i = 0; i < missing2.length; i += chunk) {
-      final slice = missing2.sublist(i, (i + chunk > missing2.length) ? missing2.length : i + chunk);
+      final slice = missing2.sublist(
+          i, (i + chunk > missing2.length) ? missing2.length : i + chunk);
       final snap = await FirebaseFirestore.instance
           .collection('matches')
           .where('wedstrijdId', whereIn: slice)
           .get();
       for (final doc in snap.docs) {
         final data = doc.data();
-        final id = (data['wedstrijdId'] ?? data['matchId'] ?? doc.id).toString();
+        final id =
+            (data['wedstrijdId'] ?? data['matchId'] ?? doc.id).toString();
         result[id] = data;
       }
     }
@@ -258,7 +267,8 @@ class PouleVoorspellingenScreen extends StatelessWidget {
               }
               final voorspellingen = predSnap.data!;
               if (voorspellingen.isEmpty) {
-                return const Center(child: Text('Geen voorspellingen gevonden.'));
+                return const Center(
+                    child: Text('Geen voorspellingen gevonden.'));
               }
 
               final matchIds = voorspellingen
@@ -320,8 +330,8 @@ class PouleVoorspellingenScreen extends StatelessWidget {
                       'predHome': (v['voorspellingThuis'] ?? '-').toString(),
                       'predAway': (v['voorspellingUit'] ?? '-').toString(),
                       'punten': v['punten'] as int?,
-                      'verwerkt':
-                          (v['verwerkt'] == true) || (uitslagThuis != null && uitslagUit != null),
+                      'verwerkt': (v['verwerkt'] == true) ||
+                          (uitslagThuis != null && uitslagUit != null),
                       'uitslagThuis': uitslagThuis,
                       'uitslagUit': uitslagUit,
                       'datetime': dt,
@@ -334,12 +344,14 @@ class PouleVoorspellingenScreen extends StatelessWidget {
                         firstKickoff[round] = dt;
 
                         // deadline = 12:00 op die dag
-                        roundDeadline[round] = DateTime(dt.year, dt.month, dt.day, 12, 0);
+                        roundDeadline[round] =
+                            DateTime(dt.year, dt.month, dt.day, 12, 0);
                       }
                     }
                   }
 
-                  final tabCount = (maxRound >= 1 && maxRound <= 34) ? maxRound : 34;
+                  final tabCount =
+                      (maxRound >= 1 && maxRound <= 34) ? maxRound : 34;
                   final now = DateTime.now();
 
                   bool roundVisible(int r) {
@@ -359,7 +371,8 @@ class PouleVoorspellingenScreen extends StatelessWidget {
                             indicatorColor: Colors.white,
                             labelColor: Colors.white,
                             unselectedLabelColor: Colors.white70,
-                            tabs: List.generate(tabCount, (i) => Tab(text: 'Ronde ${i + 1}')),
+                            tabs: List.generate(
+                                tabCount, (i) => Tab(text: 'Ronde ${i + 1}')),
                           ),
                         ),
                         Expanded(
@@ -367,12 +380,13 @@ class PouleVoorspellingenScreen extends StatelessWidget {
                             children: List.generate(tabCount, (i) {
                               final r = i + 1;
                               final lijst = (perRonde[r] ?? [])
-                                ..sort((a, b) =>
-                                    (a['homeName'] as String).compareTo(b['homeName'] as String));
+                                ..sort((a, b) => (a['homeName'] as String)
+                                    .compareTo(b['homeName'] as String));
 
                               if (lijst.isEmpty) {
                                 return const Center(
-                                  child: Text('Geen wedstrijden/voorspellingen in deze ronde.'),
+                                  child: Text(
+                                      'Geen wedstrijden/voorspellingen in deze ronde.'),
                                 );
                               }
 
@@ -407,28 +421,34 @@ class PouleVoorspellingenScreen extends StatelessWidget {
                                         color: Colors.white,
                                         borderRadius: BorderRadius.circular(12),
                                         boxShadow: const [
-                                          BoxShadow(color: Colors.black12, blurRadius: 4)
+                                          BoxShadow(
+                                              color: Colors.black12,
+                                              blurRadius: 4)
                                         ],
                                       ),
                                       child: Row(
                                         children: [
                                           Expanded(
                                               child: _TeamLogoColumn(
-                                                  teamDisplayName: it['homeName'])),
+                                                  teamDisplayName:
+                                                      it['homeName'])),
                                           Expanded(
                                             flex: 2,
                                             child: _PredictionCenterColumn(
                                               prediction:
                                                   '${it['predHome']} - ${it['predAway']}',
-                                              uitslagThuis: it['uitslagThuis'] as int?,
-                                              uitslagUit: it['uitslagUit'] as int?,
+                                              uitslagThuis:
+                                                  it['uitslagThuis'] as int?,
+                                              uitslagUit:
+                                                  it['uitslagUit'] as int?,
                                               punten: it['punten'] as int?,
                                               verwerkt: it['verwerkt'] as bool,
                                             ),
                                           ),
                                           Expanded(
                                               child: _TeamLogoColumn(
-                                                  teamDisplayName: it['awayName'])),
+                                                  teamDisplayName:
+                                                      it['awayName'])),
                                         ],
                                       ),
                                     ),

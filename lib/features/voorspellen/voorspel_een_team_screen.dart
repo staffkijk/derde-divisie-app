@@ -1,407 +1,257 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import 'dart:async';
+import 'package:derde_divisie/data/services/activity_log_service.dart';
+import 'package:derde_divisie/data/services/analytics_service.dart';
 
+import 'package:derde_divisie/data/config/season_config.dart';
+import 'package:derde_divisie/data/firestore/season_paths.dart';
+import 'package:derde_divisie/core/utils/match_formatters.dart';
 
 class VoorspelEenTeamScreen extends StatefulWidget {
-  final String team;        // bv. "Noordwijk"
-  final String competition; // bv. "DDA" / "DDB" / "Derde Divisie A"
-  final String pouleId;
-
   const VoorspelEenTeamScreen({
     super.key,
     required this.team,
     required this.competition,
-    required this.pouleId,
+    this.pouleId,
   });
+
+  final String team;
+  final String competition;
+
+  /// Alleen behouden zodat oude navigatie vanuit poules backwards compatible is.
+  final String? pouleId;
 
   @override
   State<VoorspelEenTeamScreen> createState() => _VoorspelEenTeamScreenState();
 }
 
 class _VoorspelEenTeamScreenState extends State<VoorspelEenTeamScreen> {
-  final String userId = FirebaseAuth.instance.currentUser!.uid;
-
-  // Sync status van deelnemer in deze poule
-  bool _syncEnabled = false;
-  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _deelnemerSub;
-
-  // ---- LOGO-MAP: keys = genormaliseerde teamcode (lowercase, zonder spaties/'/ /) ----
-  static const Map<String, String> _logoByTeamCode = {
-    // 3A/3B – op basis van je assets-map (pas aan/voeg toe als nodig)
-    'ado20': 'assets/images/logo_ADO20.png',
-    'aswh': 'assets/images/logo_ASWH.png',
-    'blauwgeel38jumbo': 'assets/images/logo_BlauwGeel38JUMBO.png',
-    'dovo': 'assets/images/logo_DOVO.png',
-    'dvs33ermelo': 'assets/images/logo_DVS33Ermelo.png',
-    'eemdijk': 'assets/images/logo_Eemdijk.png',
-    'excelsior31': 'assets/images/logo_Excelsior31.png',
-    'fclisse': 'assets/images/logo_FCLisse.png',
-    'gemert': 'assets/images/logo_Gemert.png',
-    'goes': 'assets/images/logo_Goes.png',
-    'groenester': 'assets/images/logo_GroeneSter.png',
-    'harkemaseboys': 'assets/images/logo_HarkemaseBoys.png',
-    'hercules': 'assets/images/logo_Hercules.png',
-    'hoogeveen': 'assets/images/logo_Hoogeveen.png',
-    'hsc21': 'assets/images/logo_HSC21.png',
-    'huizen': 'assets/images/logo_Huizen.png',
-    'kloetinge': 'assets/images/logo_Kloetinge.png',
-    'noordwijk': 'assets/images/logo_Noordwijk.png',
-    'rbc': 'assets/images/logo_RBC.png',
-    'rijnvogels': 'assets/images/logo_Rijnvogels.png',
-    'rohdaraalte': 'assets/images/logo_RohdaRaalte.png',
-    'scgenemuiden': 'assets/images/logo_SCGenemuiden.png',
-    'scherpenzeel': 'assets/images/logo_Scherpenzeel.png',
-    'scheveningen': 'assets/images/logo_Scheveningen.png',
-    'spartanijkerk': 'assets/images/logo_SpartaNijkerk.png',
-    'sportlust46': 'assets/images/logo_Sportlust46.png',
-    'staphorst': 'assets/images/logo_Staphorst.png',
-    'stedoco': 'assets/images/logo_SteDoCo.png',
-    'svmeerssen': 'assets/images/logo_svMeerssen.png',
-    'tec': 'assets/images/logo_TEC.png',
-    'togb': 'assets/images/logo_TOGB.png',
-    'udi19': 'assets/images/logo_UDI19.png',
-    'una': 'assets/images/logo_UNA.png',
-    'urk': 'assets/images/logo_Urk.png',
-    'vvsb': 'assets/images/logo_VVSB.png',
-    'zwaluwen': 'assets/images/logo_Zwaluwen.png',
-  };
-
-  // Controllers en caches per wedstrijd (key = matchId)
-  final Map<String, TextEditingController> _homeCtrls = {};
-  final Map<String, TextEditingController> _awayCtrls = {};
-  final Map<String, int?> _points = {};
-  final Map<String, int?> _resHome = {};
-  final Map<String, int?> _resAway = {};
-  final Map<String, DateTime> _matchDate = {};
+  final _db = FirebaseFirestore.instance;
+  final Map<String, TextEditingController> _homeControllers = {};
+  final Map<String, TextEditingController> _awayControllers = {};
+  late Future<List<_TeamMatch>> _matchesFuture;
 
   @override
   void initState() {
     super.initState();
-    _listenDeelnemerSyncStatus();
+    _matchesFuture = _loadMatches();
   }
 
   @override
   void dispose() {
-    _deelnemerSub?.cancel();
-    for (final c in _homeCtrls.values) {
-      c.dispose();
+    for (final controller in _homeControllers.values) {
+      controller.dispose();
     }
-    for (final c in _awayCtrls.values) {
-      c.dispose();
+    for (final controller in _awayControllers.values) {
+      controller.dispose();
     }
     super.dispose();
   }
 
-  // ---------- Helpers ----------
+  Future<List<_TeamMatch>> _loadMatches() async {
+    var matches = <_TeamMatch>[];
+    try {
+      final seasonSnapshot = await SeasonPaths.currentSeasonMatches.get();
+      matches = _parseMatches(seasonSnapshot.docs);
+    } on FirebaseException {
+      // De rootcollectie blijft beschikbaar tijdens de seizoensmigratie.
+    }
 
-  void _listenDeelnemerSyncStatus() {
-    _deelnemerSub?.cancel();
-    _deelnemerSub = FirebaseFirestore.instance
-        .collection('poules')
-        .doc(widget.pouleId)
-        .collection('deelnemers')
-        .doc(userId)
-        .snapshots()
-        .listen((snap) {
-      final data = snap.data();
-      final enabled = (data?['syncEnabled'] == true);
-      if (enabled != _syncEnabled && mounted) {
-        setState(() => _syncEnabled = enabled);
+    if (matches.isEmpty) {
+      final rootSnapshot = await _db.collection('matches').get();
+      matches = _parseMatches(rootSnapshot.docs);
+    }
+
+    await _loadPredictions(matches);
+    return matches;
+  }
+
+  List<_TeamMatch> _parseMatches(
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+  ) {
+    final selectedTeam = SeasonConfig.normalizeTeamKey(widget.team);
+    final division = SeasonConfig.normalizeDivisionCode(widget.competition);
+    final matches = <_TeamMatch>[];
+
+    for (final doc in docs) {
+      if (doc.id == '_meta') continue;
+      final data = doc.data();
+      final rawDivision =
+          (data['division'] ?? data['divisie'] ?? data['competitie'] ?? '')
+              .toString();
+      if (rawDivision.isNotEmpty &&
+          SeasonConfig.normalizeDivisionCode(rawDivision) != division) {
+        continue;
       }
+
+      final home = _string(data, ['homeTeam', 'thuisTeam', 'thuisteam']);
+      final away = _string(data, ['awayTeam', 'uitTeam', 'uitteam']);
+      final homeCode =
+          _string(data, ['homeTeamCode']).isEmpty ? home : data['homeTeamCode'];
+      final awayCode =
+          _string(data, ['awayTeamCode']).isEmpty ? away : data['awayTeamCode'];
+      final selected = SeasonConfig.normalizeTeamKey(homeCode.toString()) ==
+              selectedTeam ||
+          SeasonConfig.normalizeTeamKey(awayCode.toString()) == selectedTeam ||
+          SeasonConfig.teamByName(home)?.id ==
+              SeasonConfig.teamByName(widget.team)?.id ||
+          SeasonConfig.teamByName(away)?.id ==
+              SeasonConfig.teamByName(widget.team)?.id;
+      if (!selected || home.isEmpty || away.isEmpty) continue;
+
+      final matchId = _string(data, ['matchId', 'wedstrijdId']);
+      matches.add(
+        _TeamMatch(
+          id: matchId.isEmpty ? doc.id : matchId,
+          homeTeam: SeasonConfig.displayNameForTeam(home),
+          awayTeam: SeasonConfig.displayNameForTeam(away),
+          round: _integer(data, ['round', 'speelronde']) ?? 0,
+          date: _date(data['date'] ?? data['datum'] ?? data['startTime']),
+          homeScore: _integer(
+            data,
+            ['homeScore', 'thuisScore', 'uitslagThuis'],
+          ),
+          awayScore: _integer(
+            data,
+            ['awayScore', 'uitScore', 'uitslagUit'],
+          ),
+        ),
+      );
+    }
+
+    matches.sort((a, b) {
+      final round = a.round.compareTo(b.round);
+      if (round != 0) return round;
+      if (a.date == null && b.date == null) return 0;
+      if (a.date == null) return 1;
+      if (b.date == null) return -1;
+      return a.date!.compareTo(b.date!);
     });
+    return matches;
   }
 
-  DateTime _parseDatum(dynamic value) {
-    if (value is Timestamp) return value.toDate();
-    if (value is String) return DateTime.tryParse(value) ?? DateTime(1970);
-    return DateTime(1970);
-  }
+  Future<void> _loadPredictions(List<_TeamMatch> matches) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null || matches.isEmpty) return;
 
-  String _mapCompetition(String code) {
-    switch (code.toLowerCase()) {
-      case 'dda':
-        return 'Derde Divisie A';
-      case 'ddb':
-        return 'Derde Divisie B';
-      default:
-        return code;
+    final snapshot = await _db
+        .collection('voorspellingen')
+        .where('gebruikerId', isEqualTo: user.uid)
+        .get();
+    final ids = matches.map((match) => match.id).toSet();
+
+    for (final doc in snapshot.docs) {
+      final data = doc.data();
+      final matchId = (data['wedstrijdId'] ?? data['matchId'] ?? '').toString();
+      if (!ids.contains(matchId)) continue;
+      _homeControllers.putIfAbsent(
+        matchId,
+        () => TextEditingController(text: data['scoreThuis']?.toString() ?? ''),
+      );
+      _awayControllers.putIfAbsent(
+        matchId,
+        () => TextEditingController(text: data['scoreUit']?.toString() ?? ''),
+      );
     }
   }
 
-  // Zelfde normalisatie als in matches.homeTeamCode/awayTeamCode
-  String _normCode(String s) => s
-      .toLowerCase()
-      .replaceAll(' ', '')
-      .replaceAll("'", '')
-      .replaceAll('/', '')
-      .replaceAll('.', '')
-      .replaceAll('-', '');
+  Future<void> _save(_TeamMatch match) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null || _isLocked(match)) return;
 
-  bool _validScore(String s) {
-    final n = int.tryParse(s);
-    return n != null && n >= 0 && n <= 19;
-  }
+    final home = int.tryParse(_homeControllers[match.id]?.text ?? '');
+    final away = int.tryParse(_awayControllers[match.id]?.text ?? '');
+    if (home == null || away == null || home > 19 || away > 19) return;
 
-  String _logoPath(String clubNaam) {
-    final code = _normCode(clubNaam);
-    return _logoByTeamCode[code] ?? 'assets/images/default_logo.png';
-  }
-
-  // ---------- Save ----------
-
-  Future<void> _save(String matchId) async {
-    final home = _homeCtrls[matchId]?.text ?? '';
-    final away = _awayCtrls[matchId]?.text ?? '';
-    if (!_validScore(home) || !_validScore(away)) return;
-
-    // Per-wedstrijd locking: 12:00 op wedstrijddag
-    final d = _matchDate[matchId];
-    if (d != null) {
-      final deadline = DateTime(d.year, d.month, d.day, 12);
-      final locked = DateTime.now().isAfter(deadline);
-      if (_syncEnabled || locked) return; // blokkeer bij sync of na deadline
-    }
-
-    await FirebaseFirestore.instance
-        .collection('predictions')
-        .doc('${userId}_${matchId}_${widget.pouleId}')
-        .set({
-      'pouleId': widget.pouleId,
-      'gebruikerId': userId,
-      'matchId': matchId,
-      'wedstrijdId': matchId, // compat
-      'scoreThuis': int.parse(home),
-      'scoreUit': int.parse(away),
-      'syncedFromGeneral': false, // expliciet handmatig
+    await _db.collection('voorspellingen').doc('${user.uid}_${match.id}').set({
+      'gebruikerId': user.uid,
+      'wedstrijdId': match.id,
+      'scoreThuis': home,
+      'scoreUit': away,
       'timestamp': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
+    await ActivityLogService().log(
+      eventType: ActivityEventType.predictionSaved,
+      entityType: 'match',
+      entityId: match.id,
+      metadata: {'scope': 'team'},
+    );
+    await AnalyticsService.instance.trackPredictionSaved(
+      division: SeasonConfig.normalizeDivisionCode(widget.competition),
+      round: match.round,
+      matchId: match.id,
+      source: 'team_predictions',
+    );
   }
 
-  // ---------- Streams ----------
-
-  Stream<QuerySnapshot<Map<String, dynamic>>> _homeMatchesStream() {
-    final comp = _mapCompetition(widget.competition);
-    final teamCode = _normCode(widget.team);
-
-    return FirebaseFirestore.instance
-        .collection('matches')
-        .where('competitie', isEqualTo: comp)
-        .where('homeTeamCode', isEqualTo: teamCode)
-        .snapshots();
+  bool _isLocked(_TeamMatch match) {
+    final date = match.date;
+    if (date == null) return false;
+    return DateTime.now().isAfter(
+      DateTime(date.year, date.month, date.day, 12),
+    );
   }
-
-  Stream<QuerySnapshot<Map<String, dynamic>>> _awayMatchesStream() {
-    final comp = _mapCompetition(widget.competition);
-    final teamCode = _normCode(widget.team);
-
-    return FirebaseFirestore.instance
-        .collection('matches')
-        .where('competitie', isEqualTo: comp)
-        .where('awayTeamCode', isEqualTo: teamCode)
-        .snapshots();
-  }
-
-  Stream<QuerySnapshot<Map<String, dynamic>>> _predictionsStream() {
-    return FirebaseFirestore.instance
-        .collection('predictions')
-        .where('gebruikerId', isEqualTo: userId)
-        .where('pouleId', isEqualTo: widget.pouleId)
-        .snapshots();
-  }
-
-  // ---------- UI ----------
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Voorspel ${widget.team}')),
-      body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-        stream: _homeMatchesStream(),
-        builder: (context, homeSnap) {
-          if (homeSnap.connectionState == ConnectionState.waiting) {
+      appBar: AppBar(title: Text('${widget.team} voorspellen')),
+      body: FutureBuilder<List<_TeamMatch>>(
+        future: _matchesFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-          return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-            stream: _awayMatchesStream(),
-            builder: (context, awaySnap) {
-              if (awaySnap.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
+          if (snapshot.hasError) {
+            return const Center(
+              child: Text('De wedstrijden kunnen nu niet worden geladen.'),
+            );
+          }
 
-              final List<QueryDocumentSnapshot<Map<String, dynamic>>> combined = [];
-              if (homeSnap.hasData) combined.addAll(homeSnap.data!.docs);
-              if (awaySnap.hasData) combined.addAll(awaySnap.data!.docs);
+          final matches = snapshot.data ?? [];
+          if (matches.isEmpty) {
+            return const Center(
+              child: Padding(
+                padding: EdgeInsets.all(24),
+                child: Text(
+                  'Het programma voor dit team is nog niet bekend.',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            );
+          }
 
-              if (combined.isEmpty) {
-                return const Center(child: Text('Geen wedstrijden gevonden voor dit team.'));
-              }
-
-              final Map<String, QueryDocumentSnapshot<Map<String, dynamic>>> byId = {
-                for (final d in combined) d.id: d
-              };
-              final matches = byId.values.toList();
-
-              matches.sort((a, b) {
-                final aData = a.data();
-                final bData = b.data();
-                final ad = _parseDatum(aData['datum'] ?? aData['timestamp']);
-                final bd = _parseDatum(bData['datum'] ?? bData['timestamp']);
-                return ad.compareTo(bd);
-              });
-
-              for (final d in matches) {
-                final id = d.id;
-                final data = d.data();
-                _matchDate[id] = _parseDatum(data['datum'] ?? data['timestamp']);
-                _resHome[id] = data['uitslagThuis'];
-                _resAway[id] = data['uitslagUit'];
-
-                _homeCtrls.putIfAbsent(id, () => TextEditingController());
-                _awayCtrls.putIfAbsent(id, () => TextEditingController());
-              }
-
-              return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                stream: _predictionsStream(),
-                builder: (context, predSnap) {
-                  if (predSnap.hasData) {
-                    for (final doc in predSnap.data!.docs) {
-                      final data = doc.data();
-                      final matchId = (data['matchId'] ?? data['wedstrijdId'])?.toString();
-                      if (matchId == null) continue;
-
-                      final existingHome = data['scoreThuis']?.toString() ?? '';
-                      final existingAway = data['scoreUit']?.toString() ?? '';
-                      _points[matchId] = data['punten'];
-
-                      final hc = _homeCtrls[matchId];
-                      final ac = _awayCtrls[matchId];
-                      if (hc != null && hc.text != existingHome) hc.text = existingHome;
-                      if (ac != null && ac.text != existingAway) ac.text = existingAway;
-                    }
-                  }
-
-                  return Column(
-                    children: [
-                      if (_syncEnabled)
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-                          child: Card(
-                            color: Colors.blue.shade50,
-                            child: const ListTile(
-                              leading: Icon(Icons.sync, color: Colors.blue),
-                              title: Text('Synchronisatie is ingeschakeld'),
-                              subtitle: Text(
-                                'Je voorspellingen volgen je algemene voorspellingen (tot de deadline). '
-                                'Wil je hier handmatig voorspellen? Zet synchronisatie uit op het pouledetail-scherm.',
-                              ),
-                            ),
-                          ),
-                        ),
-                      Expanded(
-                        child: ListView.builder(
-                          itemCount: matches.length,
-                          itemBuilder: (context, i) {
-                            final m = matches[i];
-                            final data = m.data();
-                            final id = m.id;
-
-                            final date = _matchDate[id]!;
-                            final deadline = DateTime(date.year, date.month, date.day, 12);
-                            final locked = DateTime.now().isAfter(deadline);
-
-                            final speelronde = data['speelronde']?.toString() ?? '';
-                            final homeName = data['thuisteam'] ?? '';
-                            final awayName = data['uitteam'] ?? '';
-
-                            final hasResult = _resHome[id] != null && _resAway[id] != null;
-
-                            final ownHome = int.tryParse(_homeCtrls[id]?.text ?? '');
-                            final ownAway = int.tryParse(_awayCtrls[id]?.text ?? '');
-                            final haveOwnPrediction = ownHome != null && ownAway != null;
-
-                            final inputsDisabled = _syncEnabled || locked;
-
-                            return Card(
-                              color: const Color(0xFFF7FAF6),
-                              margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              child: Padding(
-                                padding: const EdgeInsets.all(16),
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  children: [
-                                    Expanded(child: _teamColumn(homeName, _logoPath(homeName))),
-                                    Expanded(
-                                      flex: 2,
-                                      child: Column(
-                                        children: [
-                                          Text(
-                                            'Speelronde $speelronde – ${DateFormat('d MMMM yyyy', 'nl').format(date)}',
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 14,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 8),
-                                          Row(
-                                            mainAxisAlignment: MainAxisAlignment.center,
-                                            children: [
-                                              _scoreField(
-                                                enabled: !inputsDisabled,
-                                                controller: _homeCtrls[id]!,
-                                                onChanged: (_) => _save(id),
-                                              ),
-                                              const Padding(
-                                                padding: EdgeInsets.symmetric(horizontal: 6),
-                                                child: Text('-'),
-                                              ),
-                                              _scoreField(
-                                                enabled: !inputsDisabled,
-                                                controller: _awayCtrls[id]!,
-                                                onChanged: (_) => _save(id),
-                                              ),
-                                            ],
-                                          ),
-                                          const SizedBox(height: 8),
-                                          if (hasResult) ...[
-                                            Text('Uitslag: ${_resHome[id]} - ${_resAway[id]}'),
-                                            if (_points[id] != null)
-                                              Text('Behaalde punten: +${_points[id]}',
-                                                  style: const TextStyle(color: Colors.green)),
-                                            if (haveOwnPrediction)
-                                              Text('Jouw voorspelling: $ownHome - $ownAway',
-                                                  style: const TextStyle(color: Colors.blueGrey)),
-                                          ] else if (locked && haveOwnPrediction) ...[
-                                            Text('Jouw voorspelling: $ownHome - $ownAway',
-                                                style: const TextStyle(color: Colors.blueGrey)),
-                                          ] else ...[
-                                            const Text('Uitslag nog niet bekend'),
-                                          ],
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            'Deadline: ${DateFormat('EEE d MMM, HH:mm', 'nl').format(deadline)}',
-                                            style: TextStyle(
-                                              fontSize: 11,
-                                              color: locked ? Colors.red[700] : Colors.black54,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    Expanded(child: _teamColumn(awayName, _logoPath(awayName))),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ],
-                  );
-                },
+          return LayoutBuilder(
+            builder: (context, constraints) {
+              return Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 980),
+                  child: ListView.separated(
+                    padding:
+                        EdgeInsets.all(constraints.maxWidth < 600 ? 12 : 20),
+                    itemCount: matches.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 10),
+                    itemBuilder: (context, index) {
+                      final match = matches[index];
+                      _homeControllers.putIfAbsent(
+                        match.id,
+                        TextEditingController.new,
+                      );
+                      _awayControllers.putIfAbsent(
+                        match.id,
+                        TextEditingController.new,
+                      );
+                      return _MatchPredictionCard(
+                        match: match,
+                        locked: _isLocked(match),
+                        homeController: _homeControllers[match.id]!,
+                        awayController: _awayControllers[match.id]!,
+                        onChanged: () => _save(match),
+                      );
+                    },
+                  ),
+                ),
               );
             },
           );
@@ -409,50 +259,183 @@ class _VoorspelEenTeamScreenState extends State<VoorspelEenTeamScreen> {
       ),
     );
   }
+}
 
-  Widget _teamColumn(String naam, String logoPath) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Image.asset(
-          logoPath,
-          width: 36,
-          height: 36,
-          errorBuilder: (context, error, stackTrace) =>
-              const Icon(Icons.shield, size: 36),
-        ),
-        const SizedBox(height: 4),
-        Text(naam, textAlign: TextAlign.center, style: const TextStyle(fontSize: 12)),
-      ],
-    );
-  }
+class _MatchPredictionCard extends StatelessWidget {
+  const _MatchPredictionCard({
+    required this.match,
+    required this.locked,
+    required this.homeController,
+    required this.awayController,
+    required this.onChanged,
+  });
 
-  Widget _scoreField({
-    required bool enabled,
-    required TextEditingController controller,
-    required ValueChanged<String> onChanged,
-  }) {
-    return SizedBox(
-      width: 36,
-      height: 38,
-      child: TextField(
-        enabled: enabled,
-        controller: controller,
-        keyboardType: TextInputType.number,
-        textAlign: TextAlign.center,
-        maxLength: 2,
-        style: const TextStyle(fontSize: 14),
-        decoration: const InputDecoration(
-          isDense: true,
-          counterText: '',
-          contentPadding: EdgeInsets.symmetric(vertical: 8),
-          border: OutlineInputBorder(),
-        ),
-        onChanged: (val) {
-          if (!_validScore(val)) return; // alleen 0..19
-          onChanged(val);
-        },
+  final _TeamMatch match;
+  final bool locked;
+  final TextEditingController homeController;
+  final TextEditingController awayController;
+  final VoidCallback onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final date = match.date;
+    final dateText = date == null
+        ? 'Datum volgt'
+        : '${MatchDateTimeFormatter.shortDate(date)}'
+            '${date.hour == 0 && date.minute == 0 ? '' : ', ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}'}';
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFE3EADF)),
+      ),
+      child: Column(
+        children: [
+          Text(
+            'Speelronde ${match.round}  |  $dateText',
+            style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(child: _Team(team: match.homeTeam)),
+              _ScoreInput(
+                controller: homeController,
+                enabled: !locked,
+                onChanged: onChanged,
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8),
+                child: Text('-', style: TextStyle(fontWeight: FontWeight.w800)),
+              ),
+              _ScoreInput(
+                controller: awayController,
+                enabled: !locked,
+                onChanged: onChanged,
+              ),
+              Expanded(child: _Team(team: match.awayTeam)),
+            ],
+          ),
+          if (locked) ...[
+            const SizedBox(height: 10),
+            const Text(
+              'Deze wedstrijd is vergrendeld.',
+              style: TextStyle(color: Color(0xFF8A4B00), fontSize: 12),
+            ),
+          ],
+          if (match.homeScore != null && match.awayScore != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Uitslag: ${match.homeScore} - ${match.awayScore}',
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ],
+        ],
       ),
     );
   }
+}
+
+class _Team extends StatelessWidget {
+  const _Team({required this.team});
+
+  final String team;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Image.asset(
+          SeasonConfig.logoPathForTeam(team),
+          width: 40,
+          height: 40,
+          errorBuilder: (_, __, ___) =>
+              const Icon(Icons.shield_outlined, size: 40),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          team,
+          textAlign: TextAlign.center,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+        ),
+      ],
+    );
+  }
+}
+
+class _ScoreInput extends StatelessWidget {
+  const _ScoreInput({
+    required this.controller,
+    required this.enabled,
+    required this.onChanged,
+  });
+
+  final TextEditingController controller;
+  final bool enabled;
+  final VoidCallback onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 48,
+      child: TextField(
+        controller: controller,
+        enabled: enabled,
+        keyboardType: TextInputType.number,
+        textAlign: TextAlign.center,
+        maxLength: 2,
+        decoration: const InputDecoration(counterText: ''),
+        onChanged: (_) => onChanged(),
+      ),
+    );
+  }
+}
+
+class _TeamMatch {
+  const _TeamMatch({
+    required this.id,
+    required this.homeTeam,
+    required this.awayTeam,
+    required this.round,
+    required this.date,
+    required this.homeScore,
+    required this.awayScore,
+  });
+
+  final String id;
+  final String homeTeam;
+  final String awayTeam;
+  final int round;
+  final DateTime? date;
+  final int? homeScore;
+  final int? awayScore;
+}
+
+String _string(Map<String, dynamic> data, List<String> keys) {
+  for (final key in keys) {
+    final value = data[key]?.toString().trim();
+    if (value != null && value.isNotEmpty) return value;
+  }
+  return '';
+}
+
+int? _integer(Map<String, dynamic> data, List<String> keys) {
+  for (final key in keys) {
+    final value = data[key];
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    final parsed = int.tryParse(value?.toString() ?? '');
+    if (parsed != null) return parsed;
+  }
+  return null;
+}
+
+DateTime? _date(dynamic value) {
+  if (value is Timestamp) return value.toDate();
+  if (value is DateTime) return value;
+  return DateTime.tryParse(value?.toString() ?? '');
 }

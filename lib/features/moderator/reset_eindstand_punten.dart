@@ -3,7 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:logging/logging.dart';
 
 // Let op: dit pad moet kloppen met jouw projectstructuur
-import 'package:derde_divisie/Puntensysteem/puntenverwerker.dart' show resetWedstrijd;
+import 'package:derde_divisie/Puntensysteem/puntenverwerker.dart'
+    show resetWedstrijd;
 
 final Logger _log = Logger('ResetServices');
 
@@ -50,8 +51,12 @@ Future<void> resetEindstandPuntenBeide() async {
       final bool bWasGiven = bAwarded || rawB != null;
 
       final Map<String, dynamic> userUpd = {};
-      if (aWasGiven && bonusA != 0) userUpd['punten_A'] = FieldValue.increment(-bonusA);
-      if (bWasGiven && bonusB != 0) userUpd['punten_B'] = FieldValue.increment(-bonusB);
+      if (aWasGiven && bonusA != 0) {
+        userUpd['punten_A'] = FieldValue.increment(-bonusA);
+      }
+      if (bWasGiven && bonusB != 0) {
+        userUpd['punten_B'] = FieldValue.increment(-bonusB);
+      }
       if (aWasGiven) userUpd['eindstandA_awarded'] = false;
       if (bWasGiven) userUpd['eindstandB_awarded'] = false;
 
@@ -62,18 +67,24 @@ Future<void> resetEindstandPuntenBeide() async {
       }
 
       // markers/bonussen leeg op voorspelling
-      batch.set(doc.reference, {
-        'eindstand_A_punten': null,
-        'eindstand_B_punten': null,
-      }, SetOptions(merge: true));
+      batch.set(
+          doc.reference,
+          {
+            'eindstand_A_punten': null,
+            'eindstand_B_punten': null,
+          },
+          SetOptions(merge: true));
       ops++;
 
       // overzicht leegmaken
       final puntenRef = fs.collection('voorspel_punten').doc(uid);
-      batch.set(puntenRef, {
-        'eindstand_A_punten': null,
-        'eindstand_B_punten': null,
-      }, SetOptions(merge: true));
+      batch.set(
+          puntenRef,
+          {
+            'eindstand_A_punten': null,
+            'eindstand_B_punten': null,
+          },
+          SetOptions(merge: true));
       ops++;
 
       if (ops > 450) {
@@ -94,8 +105,12 @@ Future<void> resetEindstandPuntenBeide() async {
       final snap = await ref.get();
       if (!snap.exists) continue;
       final u = snap.data() as Map<String, dynamic>;
-      final int a = (u['punten_A'] ?? 0) is int ? u['punten_A'] as int : int.tryParse('${u['punten_A'] ?? 0}') ?? 0;
-      final int b = (u['punten_B'] ?? 0) is int ? u['punten_B'] as int : int.tryParse('${u['punten_B'] ?? 0}') ?? 0;
+      final int a = (u['punten_A'] ?? 0) is int
+          ? u['punten_A'] as int
+          : int.tryParse('${u['punten_A'] ?? 0}') ?? 0;
+      final int b = (u['punten_B'] ?? 0) is int
+          ? u['punten_B'] as int
+          : int.tryParse('${u['punten_B'] ?? 0}') ?? 0;
       final int maxAB = a > b ? a : b;
       await ref.set({'totalen': maxAB}, SetOptions(merge: true));
     }
@@ -133,12 +148,15 @@ Future<void> volledigeResetAllesNaarNul() async {
     _log.info('🧽 Reset eindstand-bonussen/markers...');
     final eindstandSnap = await fs.collection('eindstand_voorspellingen').get();
     for (final d in eindstandSnap.docs) {
-      batch.set(d.reference, {
-        'eindstand_A_punten': null,
-        'eindstand_B_punten': null,
-        'eindstand_A_punten_old': null,
-        'eindstand_B_punten_old': null,
-      }, SetOptions(merge: true));
+      batch.set(
+          d.reference,
+          {
+            'eindstand_A_punten': null,
+            'eindstand_B_punten': null,
+            'eindstand_A_punten_old': null,
+            'eindstand_B_punten_old': null,
+          },
+          SetOptions(merge: true));
       ops++;
       if (ops > 450) {
         batch = await commitAndNew(batch);
@@ -150,13 +168,16 @@ Future<void> volledigeResetAllesNaarNul() async {
     _log.info('👤 Zet alle users-punten op 0 + flags uit...');
     final usersSnap = await fs.collection('users').get();
     for (final u in usersSnap.docs) {
-      batch.set(u.reference, {
-        'punten_A': 0,
-        'punten_B': 0,
-        'totalen': 0,
-        'eindstandA_awarded': false,
-        'eindstandB_awarded': false,
-      }, SetOptions(merge: true));
+      batch.set(
+          u.reference,
+          {
+            'punten_A': 0,
+            'punten_B': 0,
+            'totalen': 0,
+            'eindstandA_awarded': false,
+            'eindstandB_awarded': false,
+          },
+          SetOptions(merge: true));
       ops++;
       if (ops > 450) {
         batch = await commitAndNew(batch);
@@ -168,10 +189,13 @@ Future<void> volledigeResetAllesNaarNul() async {
     _log.info('🗒️ Leeg voorspel_punten...');
     final vpSnap = await fs.collection('voorspel_punten').get();
     for (final d in vpSnap.docs) {
-      batch.set(d.reference, {
-        'eindstand_A_punten': null,
-        'eindstand_B_punten': null,
-      }, SetOptions(merge: true));
+      batch.set(
+          d.reference,
+          {
+            'eindstand_A_punten': null,
+            'eindstand_B_punten': null,
+          },
+          SetOptions(merge: true));
       ops++;
       if (ops > 450) {
         batch = await commitAndNew(batch);
@@ -198,11 +222,14 @@ Future<void> volledigeResetAllesNaarNul() async {
     Future<void> wipePredictionCollection(String collectie) async {
       final snap = await fs.collection(collectie).get();
       for (final d in snap.docs) {
-        batch.set(d.reference, {
-          'punten': null,
-          'verwerkt': false,
-          'verwerktVoorUitslag': null,
-        }, SetOptions(merge: true));
+        batch.set(
+            d.reference,
+            {
+              'punten': null,
+              'verwerkt': false,
+              'verwerktVoorUitslag': null,
+            },
+            SetOptions(merge: true));
         ops++;
         if (ops > 450) {
           batch = await commitAndNew(batch);
@@ -212,16 +239,17 @@ Future<void> volledigeResetAllesNaarNul() async {
     }
 
     _log.info('🧹 Extra schoonmaak: voorspellingen-collecties resetten...');
-    await wipePredictionCollection('voorspellingen');        // algemeen A/B
-    await wipePredictionCollection('poule_predictions');     // DDA
-    await wipePredictionCollection('poule_voorspellingen');  // DDB
-    await wipePredictionCollection('predictions');           // 1-team
+    await wipePredictionCollection('voorspellingen'); // algemeen A/B
+    await wipePredictionCollection('poule_predictions'); // DDA
+    await wipePredictionCollection('poule_voorspellingen'); // DDB
+    await wipePredictionCollection('predictions'); // 1-team
 
     if (ops > 0) {
       await batch.commit();
     }
 
-    _log.info('✅ VOLLEDIGE RESET voltooid. Alles staat weer op 0 (voorspellingen blijven bewaard).');
+    _log.info(
+        '✅ VOLLEDIGE RESET voltooid. Alles staat weer op 0 (voorspellingen blijven bewaard).');
   } catch (e, st) {
     _log.severe('❌ Fout tijdens volledige reset: $e', e, st);
     rethrow;

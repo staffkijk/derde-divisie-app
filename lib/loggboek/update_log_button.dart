@@ -27,11 +27,11 @@ class UpdateLogButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Contrasterende kleur voor het icoon op de AppBar (val terug op wit)
-    final Color resolvedIconColor = iconColor
-        ?? Theme.of(context).appBarTheme.actionsIconTheme?.color
-        ?? Theme.of(context).appBarTheme.iconTheme?.color
-        ?? Colors.white;
+    // Contrasterende kleur voor het icoon op de AppBar.
+    final Color resolvedIconColor = iconColor ??
+        Theme.of(context).appBarTheme.actionsIconTheme?.color ??
+        Theme.of(context).appBarTheme.iconTheme?.color ??
+        Colors.white;
 
     // Badge-kleur
     final Color resolvedBadgeColor = badgeColor ?? Colors.red;
@@ -51,49 +51,60 @@ class UpdateLogButton extends StatelessWidget {
                 ? (lastSeen == null || latestTs.compareTo(lastSeen) > 0)
                 : false;
 
-            return Stack(
-              clipBehavior: Clip.none,
-              children: [
-                IconButton(
-                  tooltip: 'Updates',
-                  onPressed: () async {
-                    await Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => UpdateLogScreen(
-                          service: _service,
-                          isAdmin: isAdmin,
-                        ),
-                      ),
-                    );
-                    if (latestTs != null) {
-                      await _service.markUpdatesSeen(upTo: latestTs);
-                    }
-                  },
-                  // 🔔 Bel-icoon met expliciete kleur (werkt betrouwbaar op mobiel/PWA)
-                  icon: Icon(
-                    Icons.notifications,
-                    color: resolvedIconColor,
-                    size: 26,
-                  ),
+            return Container(
+              margin: const EdgeInsets.symmetric(horizontal: 2),
+              decoration: BoxDecoration(
+                color: resolvedIconColor.withValues(alpha: .10),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: resolvedIconColor.withValues(alpha: .18),
                 ),
-                if (hasUnseen)
-                  Positioned(
-                    right: 6,
-                    top: 6,
-                    child: Container(
-                      width: 10,
-                      height: 10,
-                      decoration: BoxDecoration(
-                        color: resolvedBadgeColor,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Colors.white.withAlpha(230),
-                          width: 1,
+              ),
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  IconButton(
+                    tooltip: 'Updates',
+                    onPressed: () async {
+                      if (latestTs != null) {
+                        await _service.markUpdatesSeen(upTo: latestTs);
+                      }
+                      if (!context.mounted) return;
+                      await Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => UpdateLogScreen(
+                            service: _service,
+                            isAdmin: isAdmin,
+                          ),
+                        ),
+                      );
+                    },
+                    // 🔔 Bel-icoon met expliciete kleur (werkt betrouwbaar op mobiel/PWA)
+                    icon: Icon(
+                      Icons.system_update_alt_rounded,
+                      color: resolvedIconColor,
+                      size: 26,
+                    ),
+                  ),
+                  if (hasUnseen)
+                    Positioned(
+                      right: 6,
+                      top: 6,
+                      child: Container(
+                        width: 10,
+                        height: 10,
+                        decoration: BoxDecoration(
+                          color: resolvedBadgeColor,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.white.withAlpha(230),
+                            width: 1,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             );
           },
         );

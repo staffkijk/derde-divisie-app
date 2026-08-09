@@ -3,14 +3,28 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:derde_divisie/data/firestore/season_paths.dart';
 import 'package:derde_divisie/data/models/wedstrijd.dart';
 import 'package:derde_divisie/data/services/wedstrijden_ddb.dart';
 import 'package:derde_divisie/helpers/sync_service.dart';
+import 'package:derde_divisie/data/services/activity_log_service.dart';
+import 'package:derde_divisie/data/services/analytics_service.dart';
+import 'package:derde_divisie/data/services/division_data_service.dart';
+import 'package:derde_divisie/core/design/app_design.dart';
+import 'package:derde_divisie/core/widgets/team_logo.dart';
+import 'package:derde_divisie/data/config/season_config.dart';
+import 'package:derde_divisie/features/voorspellen/prediction_round_selection.dart';
+import 'package:derde_divisie/features/voorspellen/widgets/prediction_score_picker.dart';
 
 class WedstrijdenSchermDerdeDivisieB extends StatefulWidget {
   final String divisie;
+  final int? initialRound;
 
-  const WedstrijdenSchermDerdeDivisieB({super.key, required this.divisie});
+  const WedstrijdenSchermDerdeDivisieB({
+    super.key,
+    required this.divisie,
+    this.initialRound,
+  });
 
   @override
   State<WedstrijdenSchermDerdeDivisieB> createState() =>
@@ -29,47 +43,77 @@ class _WedstrijdenSchermDerdeDivisieBState
   final Map<String, int?> _behaaldePunten = {};
   final Map<String, int?> _voorspellingThuis = {};
   final Map<String, int?> _voorspellingUit = {};
+  final Set<String> _savingPredictionIds = {};
 
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _seasonMatchesSub;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _matchesSub;
+  bool _usingSeasonMatches = false;
+  String? _favoriteTeamId;
+  bool _favoriteOnly = false;
+  bool _initialRoundLoading = true;
+  late final PredictionRoundSelection _roundSelection =
+      PredictionRoundSelection(division: 'B');
+
+  List<int> get _availableRounds {
+    final firestoreRounds = _roundSelection.availableRounds;
+    final rounds = firestoreRounds.isNotEmpty
+        ? firestoreRounds
+        : (wedstrijdenDerdeDivisieB
+            .map((wedstrijd) => wedstrijd.speelronde)
+            .where((round) => round > 0)
+            .toSet()
+            .toList()
+          ..sort());
+    return rounds.isEmpty ? [_huidigeSpeelronde] : rounds;
+  }
 
   @override
   void initState() {
     super.initState();
     _init();
+    _loadFavoriteTeam();
+  }
+
+  Future<void> _loadFavoriteTeam() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    final snapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
+    final data = snapshot.data();
+    final team = SeasonConfig.teamById(
+          (data?['favoriteTeamSlug'] ?? '').toString(),
+        ) ??
+        SeasonConfig.teamByName(
+          (data?['favoriteTeamName'] ?? data?['favorieteClub'] ?? '')
+              .toString(),
+        );
+    if (mounted && team != null) setState(() => _favoriteTeamId = team.id);
   }
 
   @override
   void dispose() {
+    _seasonMatchesSub?.cancel();
     _matchesSub?.cancel();
     super.dispose();
   }
 
   Future<void> _init() async {
-    _bepaalHuidigeSpeelrondeOpDatum();
+    _huidigeSpeelronde = widget.initialRound != null && widget.initialRound! > 0
+        ? widget.initialRound!
+        : await _roundSelection.initializeFromCurrentSeason(
+            fallbackMatches: wedstrijdenDerdeDivisieB,
+            now: DateTime.now(),
+          );
     _laadWedstrijdenBasisVoorSpeelronde(_huidigeSpeelronde);
+    _listenSeasonMatchesFirestore(_huidigeSpeelronde);
     _listenMatchesFirestore(_huidigeSpeelronde);
     await _laadVoorspellingen();
-    setState(() {});
+    if (mounted) setState(() => _initialRoundLoading = false);
   }
 
   /// 🔹 Automatische speelronde o.b.v. datum
-  void _bepaalHuidigeSpeelrondeOpDatum() {
-    final vandaag = DateTime.now();
-    final toekomstige = wedstrijdenDerdeDivisieB
-        .where((w) => w.datum.isAfter(vandaag))
-        .map((w) => w.speelronde)
-        .toList();
-
-    if (toekomstige.isNotEmpty) {
-      _huidigeSpeelronde =
-          toekomstige.reduce((a, b) => a < b ? a : b).clamp(1, 34);
-    } else {
-      _huidigeSpeelronde = wedstrijdenDerdeDivisieB
-          .map((w) => w.speelronde)
-          .reduce((a, b) => a > b ? a : b);
-    }
-  }
-
   void _laadWedstrijdenBasisVoorSpeelronde(int speelronde) {
     final wedstrijdenVoorRonde = wedstrijdenDerdeDivisieB
         .where((w) => w.speelronde == speelronde)
@@ -84,6 +128,173 @@ class _WedstrijdenSchermDerdeDivisieBState
     _deadline = null;
   }
 
+  String _readString(Map<String, dynamic> data, List<String> keys) {
+    for (final key in keys) {
+      final value = data[key];
+      if (value != null && value.toString().trim().isNotEmpty) {
+        return value.toString().trim();
+      }
+    }
+    return '';
+  }
+
+  int? _readInt(Map<String, dynamic> data, List<String> keys) {
+    for (final key in keys) {
+      final value = data[key];
+      if (value is int) return value;
+      if (value is num) return value.toInt();
+
+      final parsed = int.tryParse(value?.toString() ?? '');
+      if (parsed != null) return parsed;
+    }
+    return null;
+  }
+
+  DateTime? _readDate(Map<String, dynamic> data) {
+    final value = data['date'] ?? data['datum'];
+    DateTime? parsed;
+
+    if (value is Timestamp) {
+      parsed = value.toDate();
+    } else if (value is DateTime) {
+      parsed = value;
+    } else if (value != null) {
+      parsed = DateTime.tryParse(value.toString());
+    }
+
+    if (parsed == null) return null;
+
+    final time = _readString(data, const ['kickoffTime', 'tijd']);
+    final match = RegExp(r'^(\d{1,2}):(\d{2})').firstMatch(time);
+    if (match == null) return parsed;
+
+    final hour = int.tryParse(match.group(1)!);
+    final minute = int.tryParse(match.group(2)!);
+    if (hour == null || minute == null) return parsed;
+
+    return DateTime(parsed.year, parsed.month, parsed.day, hour, minute);
+  }
+
+  bool _matchesDivision(Map<String, dynamic> data) {
+    return DivisionDataService.matchBelongsToDivision(data, 'B');
+  }
+
+  List<Wedstrijd> _parseSeasonMatches(
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+    int speelronde,
+  ) {
+    final wedstrijden = <Wedstrijd>[];
+    final fsDatums = <String, DateTime>{};
+    final werkelijkeUitslagThuis = <String, int?>{};
+    final werkelijkeUitslagUit = <String, int?>{};
+
+    for (final doc in docs) {
+      if (doc.id == '_meta') continue;
+
+      final data = doc.data();
+      if (!_matchesDivision(data)) continue;
+
+      final round = _readInt(data, const ['round', 'speelronde']);
+      if (round == null) continue;
+      if (round != speelronde) continue;
+
+      final homeTeam = _readString(data, const [
+        'homeTeam',
+        'thuisTeam',
+        'thuisteam',
+      ]);
+      final awayTeam = _readString(data, const [
+        'awayTeam',
+        'uitTeam',
+        'uitteam',
+      ]);
+      final date = _readDate(data);
+
+      if (homeTeam.isEmpty || awayTeam.isEmpty || date == null) continue;
+
+      final matchId =
+          _readString(data, const ['matchId', 'wedstrijdId']).isNotEmpty
+              ? _readString(data, const ['matchId', 'wedstrijdId'])
+              : doc.id;
+
+      fsDatums[matchId] = date;
+      werkelijkeUitslagThuis[matchId] = _readInt(data, const [
+        'homeScore',
+        'thuisScore',
+        'uitslagThuis',
+      ]);
+      werkelijkeUitslagUit[matchId] = _readInt(data, const [
+        'awayScore',
+        'uitScore',
+        'uitslagUit',
+      ]);
+
+      wedstrijden.add(
+        Wedstrijd(
+          id: matchId,
+          speelronde: round,
+          datum: date,
+          thuis: homeTeam,
+          uit: awayTeam,
+        ),
+      );
+    }
+
+    wedstrijden.sort((a, b) {
+      final roundCompare = a.speelronde.compareTo(b.speelronde);
+      if (roundCompare != 0) return roundCompare;
+      return a.datum.compareTo(b.datum);
+    });
+
+    if (wedstrijden.isNotEmpty) {
+      _fsDatums
+        ..clear()
+        ..addAll(fsDatums);
+      _werkelijkeUitslagThuis
+        ..clear()
+        ..addAll(werkelijkeUitslagThuis);
+      _werkelijkeUitslagUit
+        ..clear()
+        ..addAll(werkelijkeUitslagUit);
+    }
+
+    return wedstrijden;
+  }
+
+  void _listenSeasonMatchesFirestore(int speelronde) {
+    _seasonMatchesSub?.cancel();
+
+    _seasonMatchesSub = SeasonPaths.currentSeasonMatches.snapshots().listen(
+      (snapshot) {
+        _roundSelection.updateFromSnapshot(
+          snapshot.docs
+              .where((doc) => doc.id != '_meta')
+              .map((doc) => doc.data()),
+        );
+        final seasonMatches = _parseSeasonMatches(snapshot.docs, speelronde);
+        final hasSeasonMatches = seasonMatches.isNotEmpty;
+
+        _usingSeasonMatches = hasSeasonMatches;
+
+        if (!hasSeasonMatches) {
+          _laadWedstrijdenBasisVoorSpeelronde(speelronde);
+          if (mounted) setState(() {});
+          return;
+        }
+
+        _wedstrijden = seasonMatches;
+
+        final earliest = seasonMatches
+            .map((w) => w.datum)
+            .reduce((a, b) => a.isBefore(b) ? a : b);
+
+        _deadline = DateTime(earliest.year, earliest.month, earliest.day, 12);
+
+        if (mounted) setState(() {});
+      },
+    );
+  }
+
   void _listenMatchesFirestore(int speelronde) {
     _matchesSub?.cancel();
 
@@ -93,6 +304,8 @@ class _WedstrijdenSchermDerdeDivisieBState
         .where('speelronde', isEqualTo: speelronde)
         .snapshots()
         .listen((snapshot) {
+      if (_usingSeasonMatches) return;
+
       DateTime? earliest;
 
       for (final doc in snapshot.docs) {
@@ -136,45 +349,82 @@ class _WedstrijdenSchermDerdeDivisieBState
   Future<void> _opslaanVoorspelling(
       Wedstrijd wedstrijd, int? thuis, int? uit) async {
     if (thuis == null || uit == null) return;
+    if (_savingPredictionIds.contains(wedstrijd.id)) return;
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
+    _savingPredictionIds.add(wedstrijd.id);
 
-    await FirebaseFirestore.instance
-        .collection('voorspellingen')
-        .doc('${user.uid}_${wedstrijd.id}')
-        .set({
-      'gebruikerId': user.uid,
-      'wedstrijdId': wedstrijd.id,
-      'scoreThuis': thuis,
-      'scoreUit': uit,
-      'timestamp': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
+    try {
+      await FirebaseFirestore.instance
+          .collection('voorspellingen')
+          .doc('${user.uid}_${wedstrijd.id}')
+          .set({
+        'gebruikerId': user.uid,
+        'wedstrijdId': wedstrijd.id,
+        'scoreThuis': thuis,
+        'scoreUit': uit,
+        'timestamp': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
 
-    _voorspellingThuis[wedstrijd.id] = thuis;
-    _voorspellingUit[wedstrijd.id] = uit;
+      _voorspellingThuis[wedstrijd.id] = thuis;
+      _voorspellingUit[wedstrijd.id] = uit;
 
-    await SyncService.instance.onGeneralPredictionChangedCompetition(
-      userId: user.uid,
-      competition: 'ddb',
-      round: wedstrijd.speelronde,
-      matchId: wedstrijd.id,
-      generalPrediction: {'scoreThuis': thuis, 'scoreUit': uit},
-    );
+      await SyncService.instance.onGeneralPredictionChangedCompetition(
+        userId: user.uid,
+        competition: 'ddb',
+        round: wedstrijd.speelronde,
+        matchId: wedstrijd.id,
+        generalPrediction: {'scoreThuis': thuis, 'scoreUit': uit},
+      );
 
-    await SyncService.instance.onGeneralPredictionChangedOneTeam(
-      userId: user.uid,
-      matchId: wedstrijd.id,
-      generalPrediction: {'scoreThuis': thuis, 'scoreUit': uit},
-    );
-
-    setState(() {});
+      await SyncService.instance.onGeneralPredictionChangedOneTeam(
+        userId: user.uid,
+        matchId: wedstrijd.id,
+        generalPrediction: {'scoreThuis': thuis, 'scoreUit': uit},
+      );
+      await ActivityLogService().log(
+        eventType: ActivityEventType.predictionSaved,
+        entityType: 'match',
+        entityId: wedstrijd.id,
+        metadata: {
+          'division': widget.divisie,
+          'round': wedstrijd.speelronde,
+        },
+      );
+      await AnalyticsService.instance.trackPredictionSaved(
+        division: 'B',
+        round: wedstrijd.speelronde,
+        matchId: wedstrijd.id,
+        source: 'division_predictions',
+      );
+    } finally {
+      _savingPredictionIds.remove(wedstrijd.id);
+      if (mounted) setState(() {});
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_initialRoundLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
     final deadlineTekst = (_deadline != null)
         ? DateFormat('EEEE d-MM-yyyy – HH:mm', 'nl').format(_deadline!)
         : 'n.v.t.';
+    final visibleMatches = _favoriteOnly && _favoriteTeamId != null
+        ? _wedstrijden.where((match) {
+            final home = SeasonConfig.teamByName(match.thuis)?.id;
+            final away = SeasonConfig.teamByName(match.uit)?.id;
+            return home == _favoriteTeamId || away == _favoriteTeamId;
+          }).toList()
+        : _wedstrijden;
+    final predictedCount = visibleMatches
+        .where((match) =>
+            _voorspellingThuis[match.id] != null &&
+            _voorspellingUit[match.id] != null)
+        .length;
+    final missingCount = visibleMatches.length - predictedCount;
+    final isMobile = MediaQuery.sizeOf(context).width < 600;
 
     return SafeArea(
       child: Center(
@@ -183,139 +433,128 @@ class _WedstrijdenSchermDerdeDivisieBState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 8),
-              _buildRondeSelector(),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.amber.shade50,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.amber.shade100),
-                  ),
-                  child: Text(
-                    'Deadline voorspellen: $deadlineTekst',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
-                  ),
-                ),
+              _buildCompactControls(
+                predictedCount: predictedCount,
+                totalCount: visibleMatches.length,
+                missingCount: missingCount,
+                deadlineText: deadlineTekst,
               ),
               Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  itemCount: _wedstrijden.length,
-                  itemBuilder: (context, index) {
-                    final w = _wedstrijden[index];
-                    final id = w.id;
-                    final thuis = _werkelijkeUitslagThuis[id];
-                    final uit = _werkelijkeUitslagUit[id];
-                    final uitslagBekend = thuis != null && uit != null;
-                    final punten = _behaaldePunten[id] ?? 0;
-                    final isLocked = (_deadline != null)
-                        ? DateTime.now().isAfter(_deadline!)
-                        : false;
-
-                    final voorspellingThuis = _voorspellingThuis[id];
-                    final voorspellingUit = _voorspellingUit[id];
-
-                    return Container(
-                      margin:
-                          const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(14),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.06),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
+                child: visibleMatches.isEmpty
+                    ? const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(24),
+                          child: Text(
+                            'Het programma voor deze divisie is nog niet bekend.',
+                            textAlign: TextAlign.center,
                           ),
-                        ],
-                      ),
-                      child: Column(
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              _buildTeamWithLogo(w.thuis, alignRight: false),
-                              _buildVerticalPickerBox(
-                                huidigeWaarde: voorspellingThuis,
-                                disabled: isLocked,
-                                onSelected: (v) {
-                                  setState(() {
-                                    _voorspellingThuis[id] = v;
-                                  });
-                                  if (!isLocked) {
-                                    _opslaanVoorspelling(
-                                        w, v, voorspellingUit);
-                                  }
-                                },
-                              ),
-                              const SizedBox(width: 6),
-                              const Text('-'),
-                              const SizedBox(width: 6),
-                              _buildVerticalPickerBox(
-                                huidigeWaarde: voorspellingUit,
-                                disabled: isLocked,
-                                onSelected: (v) {
-                                  setState(() {
-                                    _voorspellingUit[id] = v;
-                                  });
-                                  if (!isLocked) {
-                                    _opslaanVoorspelling(
-                                        w, voorspellingThuis, v);
-                                  }
-                                },
-                              ),
-                              _buildTeamWithLogo(w.uit, alignRight: true),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          if (uitslagBekend)
-                            Column(
-                              children: [
-                                Text(
-                                  'Eindstand: $thuis - $uit',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: Colors.grey.shade700,
-                                    fontStyle: FontStyle.italic,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: punten > 0
-                                        ? Colors.green.shade50
-                                        : Colors.grey.shade100,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    'Behaalde punten: $punten pt',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: punten > 0
-                                          ? Colors.green.shade800
-                                          : Colors.grey.shade600,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        itemCount: visibleMatches.length,
+                        itemBuilder: (context, index) {
+                          final w = visibleMatches[index];
+                          final id = w.id;
+                          final thuis = _werkelijkeUitslagThuis[id];
+                          final uit = _werkelijkeUitslagUit[id];
+                          final uitslagBekend = thuis != null && uit != null;
+                          final punten = _behaaldePunten[id] ?? 0;
+                          final isLocked = (_deadline != null)
+                              ? DateTime.now().isAfter(_deadline!)
+                              : false;
+
+                          final voorspellingThuis = _voorspellingThuis[id];
+                          final voorspellingUit = _voorspellingUit[id];
+
+                          return Container(
+                            margin: const EdgeInsets.symmetric(
+                              horizontal: 4,
+                              vertical: 4,
+                            ),
+                            padding: EdgeInsets.all(isMobile ? 8 : 10),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(14),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.06),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
                                 ),
                               ],
                             ),
-                        ],
+                            child: Column(
+                              children: [
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    _buildTeamWithLogo(w.thuis,
+                                        alignRight: false),
+                                    PredictionScorePicker(
+                                      homeScore: voorspellingThuis,
+                                      awayScore: voorspellingUit,
+                                      locked: isLocked,
+                                      semanticLabel:
+                                          'Voorspelling ${w.thuis} tegen ${w.uit}',
+                                      onScoreSelected: (score) {
+                                        setState(() {
+                                          _voorspellingThuis[id] = score.home;
+                                          _voorspellingUit[id] = score.away;
+                                        });
+                                        _opslaanVoorspelling(
+                                          w,
+                                          score.home,
+                                          score.away,
+                                        );
+                                      },
+                                    ),
+                                    _buildTeamWithLogo(w.uit, alignRight: true),
+                                  ],
+                                ),
+                                const SizedBox(height: 5),
+                                if (uitslagBekend)
+                                  Column(
+                                    children: [
+                                      Text(
+                                        'Eindstand: $thuis - $uit',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: Colors.grey.shade700,
+                                          fontStyle: FontStyle.italic,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: punten > 0
+                                              ? Colors.green.shade50
+                                              : Colors.grey.shade100,
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                        ),
+                                        child: Text(
+                                          'Behaalde punten: $punten pt',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            color: punten > 0
+                                                ? Colors.green.shade800
+                                                : Colors.grey.shade600,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                              ],
+                            ),
+                          );
+                        },
                       ),
-                    );
-                  },
-                ),
               ),
             ],
           ),
@@ -325,84 +564,123 @@ class _WedstrijdenSchermDerdeDivisieBState
   }
 
   Widget _buildRondeSelector() {
-    return SizedBox(
-      height: 46,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: 34,
-        controller: ScrollController(
-            initialScrollOffset: (_huidigeSpeelronde * 70).toDouble()),
-        itemBuilder: (context, index) {
-          final ronde = index + 1;
-          final isSelected = _huidigeSpeelronde == ronde;
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: ChoiceChip(
-              label: Text('R$ronde'),
-              selected: isSelected,
-              labelStyle: TextStyle(
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-              ),
-              selectedColor: Colors.orange.shade200,
-              onSelected: (_) async {
-                setState(() {
-                  _huidigeSpeelronde = ronde;
-                  _laadWedstrijdenBasisVoorSpeelronde(ronde);
-                  _listenMatchesFirestore(ronde);
-                });
-                await _laadVoorspellingen();
-                setState(() {});
-              },
-            ),
-          );
+    Future<void> selectRound(int round) async {
+      setState(() {
+        _roundSelection.selectManually(round);
+        _huidigeSpeelronde = round;
+        _laadWedstrijdenBasisVoorSpeelronde(round);
+        _listenSeasonMatchesFirestore(round);
+        _listenMatchesFirestore(round);
+      });
+      await _laadVoorspellingen();
+      await ActivityLogService().log(
+        eventType: ActivityEventType.roundSelected,
+        metadata: {
+          'division': widget.divisie,
+          'round': round,
         },
-      ),
+      );
+      if (mounted) setState(() {});
+    }
+
+    final rounds = _availableRounds;
+    final selectedRound =
+        rounds.contains(_huidigeSpeelronde) ? _huidigeSpeelronde : rounds.first;
+    final selectedIndex = rounds.indexOf(selectedRound);
+
+    final isMobile = MediaQuery.sizeOf(context).width < 600;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        IconButton(
+          tooltip: 'Vorige speelronde',
+          onPressed: selectedIndex > 0
+              ? () => selectRound(rounds[selectedIndex - 1])
+              : null,
+          icon: const Icon(Icons.chevron_left),
+        ),
+        DropdownButton<int>(
+          value: selectedRound,
+          items: [
+            for (final round in rounds)
+              DropdownMenuItem(
+                value: round,
+                child: Text(isMobile ? 'Ronde $round' : 'Speelronde $round'),
+              ),
+          ],
+          onChanged: (round) {
+            if (round != null) selectRound(round);
+          },
+        ),
+        IconButton(
+          tooltip: 'Volgende speelronde',
+          onPressed: selectedIndex < rounds.length - 1
+              ? () => selectRound(rounds[selectedIndex + 1])
+              : null,
+          icon: const Icon(Icons.chevron_right),
+        ),
+      ],
     );
   }
 
-  /// 🔢 Verticale popup picker met directe update
-  Widget _buildVerticalPickerBox(
-      {required int? huidigeWaarde,
-      required bool disabled,
-      required Function(int?) onSelected}) {
-    return PopupMenuButton<int?>(
-      enabled: !disabled,
-      onSelected: (v) => onSelected(v),
-      itemBuilder: (context) => [
-        const PopupMenuItem<int?>(
-          value: null,
-          child: Text('—', style: TextStyle(color: Colors.grey)),
-        ),
-        for (var i = 0; i <= 9; i++)
-          PopupMenuItem<int?>(
-            value: i,
-            child: Center(child: Text(i.toString())),
-          ),
-      ],
-      child: Container(
-        width: 42,
-        height: 38,
-        alignment: Alignment.center,
+  Widget _buildCompactControls({
+    required int predictedCount,
+    required int totalCount,
+    required int missingCount,
+    required String deadlineText,
+  }) {
+    final isMobile = MediaQuery.sizeOf(context).width < 600;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(12, isMobile ? 4 : 8, 12, 8),
+      child: DecoratedBox(
         decoration: BoxDecoration(
-          color: disabled ? Colors.grey.shade100 : Colors.grey.shade50,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: disabled ? Colors.grey.shade300 : Colors.grey.shade400,
-          ),
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: AppColors.border),
         ),
-        child: Text(
-          huidigeWaarde?.toString() ?? '',
-          style: const TextStyle(
-              fontSize: 15, fontWeight: FontWeight.w600, color: Colors.black87),
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: isMobile ? 8 : 12,
+            vertical: isMobile ? 6 : 8,
+          ),
+          child: Wrap(
+            spacing: 12,
+            runSpacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              _buildRondeSelector(),
+              Chip(
+                visualDensity: VisualDensity.compact,
+                avatar: const Icon(Icons.check_circle_outline, size: 16),
+                label: Text(
+                  '$predictedCount van $totalCount voorspeld'
+                  '${missingCount > 0 ? ' - $missingCount ontbreekt' : ''}',
+                ),
+              ),
+              Chip(
+                visualDensity: VisualDensity.compact,
+                avatar: const Icon(Icons.schedule_outlined, size: 16),
+                label: Text('Deadline: $deadlineText'),
+              ),
+              if (_favoriteTeamId != null)
+                FilterChip(
+                  visualDensity: VisualDensity.compact,
+                  selected: _favoriteOnly,
+                  label: const Text('Favoriete club'),
+                  avatar: const Icon(Icons.favorite_outline, size: 17),
+                  onSelected: (value) => setState(() => _favoriteOnly = value),
+                ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildTeamWithLogo(String team, {required bool alignRight}) {
-    final cleanTeam = team.replaceAll(RegExp(r'[^A-Za-z0-9]'), '');
-    final imagePath = 'assets/images/logo_$cleanTeam.png';
-
+    final isMobile = MediaQuery.sizeOf(context).width < 600;
     return Expanded(
       child: Row(
         mainAxisAlignment:
@@ -412,36 +690,25 @@ class _WedstrijdenSchermDerdeDivisieBState
           if (!alignRight)
             Padding(
               padding: const EdgeInsets.only(right: 8),
-              child: _teamLogoWidget(imagePath),
+              child: TeamLogo(teamName: team, size: isMobile ? 30 : 38),
             ),
           Flexible(
             child: Text(
               team,
               textAlign: alignRight ? TextAlign.right : TextAlign.left,
               overflow: TextOverflow.ellipsis,
-              style:
-                  const TextStyle(fontWeight: FontWeight.w600, fontSize: 17.0),
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: isMobile ? 13.5 : 17.0,
+              ),
             ),
           ),
           if (alignRight)
             Padding(
               padding: const EdgeInsets.only(left: 8),
-              child: _teamLogoWidget(imagePath),
+              child: TeamLogo(teamName: team, size: isMobile ? 30 : 38),
             ),
         ],
-      ),
-    );
-  }
-
-  Widget _teamLogoWidget(String imagePath) {
-    return Image.asset(
-      imagePath,
-      width: 38,
-      height: 38,
-      errorBuilder: (context, error, stackTrace) => Image.asset(
-        'assets/images/default_logo.png',
-        width: 38,
-        height: 38,
       ),
     );
   }

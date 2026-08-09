@@ -10,18 +10,21 @@ class PredictionSyncService {
   // === Collections ===
   static const String poulesCol = 'poules';
   static const String deelnemersSubCol = 'deelnemers';
-  static const String poulePredictionsSubCol = 'voorspellingen'; // poules/{pouleId}/voorspellingen/{autoId}
+  static const String poulePredictionsSubCol =
+      'voorspellingen'; // poules/{pouleId}/voorspellingen/{autoId}
 
   // Root collecties waar voorspellingen kunnen staan
-  static const String generalPredictionsCol = 'voorspellingen';          // algemeen
-  static const String rootPoulePredictionsCol1 = 'poule_predictions';    // DDA
+  static const String generalPredictionsCol = 'voorspellingen'; // algemeen
+  static const String rootPoulePredictionsCol1 = 'poule_predictions'; // DDA
   static const String rootPoulePredictionsCol2 = 'poule_voorspellingen'; // DDB
-  static const String rootPoulePredictionsCol3 = 'predictions';          // één-team poules
+  static const String rootPoulePredictionsCol3 =
+      'predictions'; // één-team poules
 
   // System flags / logging
   static const String systemCol = 'system';
   static const String syncFlagsDoc = 'sync_flags';
-  static const String flagBackfillDoneField = 'oneTimeUserIdBackfillDone'; // nieuwe flag
+  static const String flagBackfillDoneField =
+      'oneTimeUserIdBackfillDone'; // nieuwe flag
   static const String syncLogsCol = 'sync_logs';
   static const String backfillLogDoc = 'userId_backfill';
 
@@ -62,7 +65,9 @@ class PredictionSyncService {
       rootPoulePredictionsCol2,
       rootPoulePredictionsCol3,
     ]) {
-      final qs = await _db.collection(col).get(const GetOptions(source: Source.server));
+      final qs = await _db
+          .collection(col)
+          .get(const GetOptions(source: Source.server));
       await _patchSnapshot(
         qs.docs,
         stats,
@@ -81,7 +86,8 @@ class PredictionSyncService {
         .collectionGroup(poulePredictionsSubCol)
         .get(const GetOptions(source: Source.server));
     // Filter: we willen alleen de subcollecties onder /poules/*
-    final subDocs = cg.docs.where((d) => d.reference.path.contains('/$poulesCol/'));
+    final subDocs =
+        cg.docs.where((d) => d.reference.path.contains('/$poulesCol/'));
     await _patchSnapshot(
       subDocs,
       stats,
@@ -120,7 +126,9 @@ class PredictionSyncService {
   Future<void> _patchSnapshot(
     Iterable<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
     _BackfillStats stats, {
-    required void Function(DocumentReference<Map<String, dynamic>> ref, Map<String, dynamic> data) addWrite,
+    required void Function(DocumentReference<Map<String, dynamic>> ref,
+            Map<String, dynamic> data)
+        addWrite,
   }) async {
     for (final d in docs) {
       stats.scanned++;

@@ -88,8 +88,7 @@ class _VoorspelCompetitiePouleScreenState
       final id = doc.id;
       werkelijkeThuis[id] =
           data['uitslagThuis'] is int ? data['uitslagThuis'] : null;
-      werkelijkeUit[id] =
-          data['uitslagUit'] is int ? data['uitslagUit'] : null;
+      werkelijkeUit[id] = data['uitslagUit'] is int ? data['uitslagUit'] : null;
     }
 
     setState(() => isLoading = false);
@@ -150,8 +149,8 @@ class _VoorspelCompetitiePouleScreenState
                                   Expanded(
                                     child: TextFormField(
                                       initialValue: homeText,
-                                      decoration: const InputDecoration(
-                                          hintText: 'H'),
+                                      decoration:
+                                          const InputDecoration(hintText: 'H'),
                                       keyboardType: TextInputType.number,
                                       onChanged: (val) {
                                         voorspellingen[wedstrijdId] ??= {};

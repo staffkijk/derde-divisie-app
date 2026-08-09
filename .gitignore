@@ -56,6 +56,7 @@ node_modules/
 # Firebase/service account secrets
 tools/serviceAccountKey*.json
 **/serviceAccountKey*.json
+.firebase/hosting.*.cache
 
 # Firestore exports / grote lokale backups
 firestore_exports/
@@ -64,3 +65,4 @@ firestore_exports/
 
 # Tijdelijke Excel lock-bestanden
 ~$*.xlsx
+functions/.env.derde-divisie-app

@@ -23,11 +23,10 @@ class PredictionScreen extends StatelessWidget {
     }
 
     return Scaffold(
-  appBar: AppBar(
-    title: Text('Wedstrijden voorspellen – Divisie $divisie'),
-  ),
-  body: child,
-);
-
+      appBar: AppBar(
+        title: Text('Wedstrijden voorspellen – Divisie $divisie'),
+      ),
+      body: child,
+    );
   }
 }

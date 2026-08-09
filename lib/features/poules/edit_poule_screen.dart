@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:derde_divisie/core/design/app_design.dart';
+import 'package:derde_divisie/data/models/poule_prediction_scope.dart';
 
 class EditPouleScreen extends StatefulWidget {
   final String pouleId;
@@ -25,6 +27,7 @@ class _EditPouleScreenState extends State<EditPouleScreen> {
 
   bool _isPublic = true; // default; wordt overschreven bij load
   bool _initialIsPublic = true;
+  PoulePredictionScope _predictionScope = PoulePredictionScope.matches;
 
   @override
   void initState() {
@@ -56,6 +59,7 @@ class _EditPouleScreenState extends State<EditPouleScreen> {
       _selectedTeam = data['selectedTeam'] as String?;
       _isPublic = (data['isPublic'] ?? true) as bool;
       _initialIsPublic = _isPublic;
+      _predictionScope = parsePoulePredictionScope(data['predictionScope']);
 
       _descriptionController.text = (data['description'] ?? '') as String;
       // wachtwoord nooit vooraf invullen (veiligheid)
@@ -65,7 +69,8 @@ class _EditPouleScreenState extends State<EditPouleScreen> {
       if (currentUserId == null || currentUserId != _ownerId) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Alleen de eigenaar kan deze poule wijzigen.')),
+            const SnackBar(
+                content: Text('Alleen de eigenaar kan deze poule wijzigen.')),
           );
           Navigator.of(context).pop();
         }
@@ -92,7 +97,12 @@ class _EditPouleScreenState extends State<EditPouleScreen> {
       final updates = <String, dynamic>{
         'description': _descriptionController.text.trim(),
         'isPublic': _isPublic,
-        'updatedAt': DateTime.now(),
+        'updatedAt': FieldValue.serverTimestamp(),
+        'predictionScope': _predictionScope.firestoreValue,
+        'includeMatchPredictions':
+            _predictionScope != PoulePredictionScope.finalRanking,
+        'includeFinalStandingPredictions':
+            _predictionScope != PoulePredictionScope.matches,
       };
 
       // Wachtwoordregels:
@@ -142,13 +152,13 @@ class _EditPouleScreenState extends State<EditPouleScreen> {
   Widget build(BuildContext context) {
     if (_loading) {
       return Scaffold(
-  appBar: AppBar(title: const Text('Poule bewerken')),
-  body: const Center(child: CircularProgressIndicator()),
-);
-
+        appBar: AppBar(title: const Text('Poule bewerken')),
+        body: const Center(child: CircularProgressIndicator()),
+      );
     }
 
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Poule bewerken'),
         actions: [
@@ -160,64 +170,110 @@ class _EditPouleScreenState extends State<EditPouleScreen> {
       ),
       body: AbsorbPointer(
         absorbing: _saving,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Niet wijzigbaar: naam en competitie
-                Text('Poule', style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 8),
-                Text(_name, style: const TextStyle(fontWeight: FontWeight.w600)),
-                const SizedBox(height: 4),
-                Text(
-                  _competition == 'team'
-                      ? 'Eén team: ${_selectedTeam ?? '-'}'
-                      : (_competition == 'dda' ? 'Derde Divisie A' : 'Derde Divisie B'),
-                  style: const TextStyle(color: Colors.black54),
-                ),
-                const SizedBox(height: 24),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 720),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              child: AppCard(
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Niet wijzigbaar: naam en competitie
+                      Text('Poule',
+                          style: Theme.of(context).textTheme.titleMedium),
+                      const SizedBox(height: 8),
+                      Text(_name,
+                          style: const TextStyle(fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 4),
+                      Text(
+                        _competition == 'team'
+                            ? 'Eén team: ${_selectedTeam ?? '-'}'
+                            : (_competition == 'dda'
+                                ? 'Derde Divisie A'
+                                : 'Derde Divisie B'),
+                        style: const TextStyle(color: Colors.black54),
+                      ),
+                      const SizedBox(height: 24),
 
-                const Text('Beschrijving'),
-                TextFormField(
-                  controller: _descriptionController,
-                  maxLength: 300,
-                  maxLines: 3,
-                  decoration: const InputDecoration(
-                    hintText: 'Bijv. vrienden uit de straat',
+                      const Text('Beschrijving'),
+                      TextFormField(
+                        controller: _descriptionController,
+                        maxLength: 300,
+                        maxLines: 3,
+                        decoration: const InputDecoration(
+                          hintText: 'Bijv. vrienden uit de straat',
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      const Text(
+                        'Wat telt mee?',
+                        style: AppTextStyles.sectionTitle,
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      DropdownButtonFormField<PoulePredictionScope>(
+                        value: _predictionScope,
+                        decoration: const InputDecoration(
+                          labelText: 'Voorspelonderdelen',
+                        ),
+                        items: PoulePredictionScope.values
+                            .map(
+                              (scope) => DropdownMenuItem(
+                                value: scope,
+                                child: Text(scope.label),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (scope) {
+                          if (scope != null) {
+                            setState(() => _predictionScope = scope);
+                          }
+                        },
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        _predictionScope.explanation,
+                        style: AppTextStyles.bodyMuted,
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+
+                      SwitchListTile(
+                        title: const Text('Poule is openbaar'),
+                        subtitle:
+                            const Text('Uit = alleen met wachtwoord te joinen'),
+                        value: _isPublic,
+                        onChanged: (v) => setState(() => _isPublic = v),
+                      ),
+
+                      if (!_isPublic) ...[
+                        TextFormField(
+                          controller: _passwordController,
+                          decoration: const InputDecoration(
+                              labelText:
+                                  'Wachtwoord (nieuw of laat leeg om huidig te behouden)'),
+                          obscureText: true,
+                          validator: (value) {
+                            // Als we van public -> private gaan én er was nog geen wachtwoord, dan verplichten
+                            if (_initialIsPublic && !_isPublic) {
+                              if (value == null || value.trim().isEmpty) {
+                                return 'Wachtwoord is verplicht voor een privé-poule';
+                              }
+                            }
+                            return null;
+                          },
+                        ),
+                      ],
+
+                      const SizedBox(height: 24),
+                      if (_saving)
+                        const Center(child: CircularProgressIndicator()),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 16),
-
-                SwitchListTile(
-                  title: const Text('Poule is openbaar'),
-                  subtitle: const Text('Uit = alleen met wachtwoord te joinen'),
-                  value: _isPublic,
-                  onChanged: (v) => setState(() => _isPublic = v),
-                ),
-
-                if (!_isPublic) ...[
-                  TextFormField(
-                    controller: _passwordController,
-                    decoration: const InputDecoration(labelText: 'Wachtwoord (nieuw of laat leeg om huidig te behouden)'),
-                    obscureText: true,
-                    validator: (value) {
-                      // Als we van public -> private gaan én er was nog geen wachtwoord, dan verplichten
-                      if (_initialIsPublic && !_isPublic) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Wachtwoord is verplicht voor een privé-poule';
-                        }
-                      }
-                      return null;
-                    },
-                  ),
-                ],
-
-                const SizedBox(height: 24),
-                if (_saving) const Center(child: CircularProgressIndicator()),
-              ],
+              ),
             ),
           ),
         ),

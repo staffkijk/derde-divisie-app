@@ -67,7 +67,8 @@ class PuntentellingScreen extends StatelessWidget {
             const SizedBox(height: 12),
             _buildCard([
               _puntregel('Kampioen correct voorspeld', '30 punten'),
-              _puntregel('Exacte eindpositie correct (anders dan kampioen)', '10 punten'),
+              _puntregel('Exacte eindpositie correct (anders dan kampioen)',
+                  '10 punten'),
               _puntregel('1 plek ernaast', '6 punten'),
               _puntregel('2 plekken ernaast', '2 punten'),
             ]),
@@ -139,7 +140,8 @@ class PuntentellingScreen extends StatelessWidget {
           Expanded(
             child: RichText(
               text: TextSpan(
-                style: const TextStyle(color: Colors.black87, fontSize: 16, height: 1.4),
+                style: const TextStyle(
+                    color: Colors.black87, fontSize: 16, height: 1.4),
                 children: [
                   TextSpan(
                     text: '$tekst: ',

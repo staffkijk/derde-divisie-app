@@ -3,22 +3,35 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher_string.dart';
+
+import 'package:derde_divisie/core/design/app_design.dart';
+import 'package:derde_divisie/data/config/season_config.dart';
+import 'package:derde_divisie/data/firestore/season_paths.dart';
+import 'package:derde_divisie/data/services/analytics_service.dart';
+import 'package:derde_divisie/data/services/prediction_reminder_service.dart';
+import 'package:derde_divisie/core/widgets/derde_div_logo.dart';
+import 'package:derde_divisie/core/widgets/team_logo.dart';
+import 'package:derde_divisie/features/derde_divisie/historical_standings_screen.dart';
+import 'package:derde_divisie/features/dashboard/dashboard_match_center.dart';
+import 'package:derde_divisie/features/calendar/calendar_subscription_dialog.dart';
 
 /// ---------------------------
 /// Firestore veldmapping
 /// ---------------------------
 class MatchFieldMap {
-  static const homeTeamKeys = ['thuisteam', 'homeTeam'];
-  static const awayTeamKeys = ['uitteam', 'awayTeam'];
-  static const homeScoreKeys = ['uitslagThuis', 'scoreThuis'];
-  static const awayScoreKeys = ['uitslagUit', 'scoreUit'];
-  static const divisionKeys = ['competitie'];
-  static const dateKeys = ['datum'];
-  static const playedFlagKeys = ['verwerkt', 'gespeeld', 'isProcessed'];
+  static const homeTeamKeys = ['homeTeamName', 'homeTeam', 'thuisteam'];
+  static const awayTeamKeys = ['awayTeamName', 'awayTeam', 'uitteam'];
+  static const homeScoreKeys = ['homeScore', 'uitslagThuis', 'scoreThuis'];
+  static const awayScoreKeys = ['awayScore', 'uitslagUit', 'scoreUit'];
+  static const divisionKeys = ['division', 'competitie'];
+  static const dateKeys = ['scheduledAt', 'date', 'datum'];
+  static const playedFlagKeys = ['processed', 'verwerkt', 'gespeeld'];
 }
 
 /// ---------------------------
@@ -97,8 +110,7 @@ class _M {
 /// Firestore: lees `matches`
 /// ---------------------------
 Future<List<_M>> _loadMatchesFromFirestore() async {
-  final fs = FirebaseFirestore.instance;
-  final snapshot = await fs.collection('matches').get();
+  final snapshot = await SeasonPaths.currentSeasonMatches.get();
   if (snapshot.docs.isEmpty) return <_M>[];
 
   return snapshot.docs.map((doc) {
@@ -157,8 +169,57 @@ class _Stats {
   });
 }
 
+class _HomePredictionReminder extends StatelessWidget {
+  const _HomePredictionReminder({required this.onOpenPredict});
+
+  final VoidCallback? onOpenPredict;
+
+  Future<PredictionReminderStatus?> _load() async {
+    if (FirebaseAuth.instance.currentUser == null) return null;
+    final service = PredictionReminderService();
+    final a = await service.syncMissingPredictionNotification(division: 'A');
+    if (a != null && !a.complete && !a.expired && a.missing > 0) return a;
+    final b = await service.syncMissingPredictionNotification(division: 'B');
+    if (b != null && !b.complete && !b.expired && b.missing > 0) return b;
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<PredictionReminderStatus?>(
+      future: _load(),
+      builder: (context, snapshot) {
+        final status = snapshot.data;
+        if (status == null) return const SizedBox(height: 24);
+        return Padding(
+          padding: const EdgeInsets.only(top: 16),
+          child: AppCard(
+            child: ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(
+                Icons.edit_notifications_outlined,
+                color: AppColors.primary,
+              ),
+              title: Text(
+                'Je hebt nog ${status.missing} wedstrijden niet voorspeld voor speelronde ${status.round}.',
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+              subtitle: Text(
+                'Divisie ${status.division} - ${status.predicted} van ${status.totalRequired} ingevuld.',
+              ),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: onOpenPredict,
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
 _Stats _computeStats(List<_M> ms) {
-  final played = ms.where((m) => m.played && m.sh != null && m.sa != null).toList();
+  final played =
+      ms.where((m) => m.played && m.sh != null && m.sa != null).toList();
   final total = ms.length;
 
   int totalGoals = 0, goalsA = 0, goalsB = 0, playedA = 0, playedB = 0;
@@ -215,61 +276,6 @@ _Stats _computeStats(List<_M> ms) {
 }
 
 /// ---------------------------
-/// Deelnemende teams 2026/2027
-///
-/// Zolang de indeling A/B nog niet definitief is, tonen we alle 36 teams
-/// als gezamenlijke deelnemerslijst. Ontbrekende logo's vallen terug op
-/// assets/images/default_logo.png, zodat de app niet vastloopt.
-/// ---------------------------
-class _SeasonTeam {
-  final String name;
-  final String logoAsset;
-
-  const _SeasonTeam(this.name, this.logoAsset);
-}
-
-const String _defaultTeamLogo = 'assets/images/default_logo.png';
-
-const List<_SeasonTeam> _seasonTeams20262027 = [
-  _SeasonTeam('ACV', 'assets/images/logo_ACV.png'),
-  _SeasonTeam("ADO'20", 'assets/images/logo_ADO20.png'),
-  _SeasonTeam("Blauw Geel '38", 'assets/images/logo_BlauwGeel38JUMBO.png'),
-  _SeasonTeam("DVS'33 Ermelo", 'assets/images/logo_DVS33Ermelo.png'),
-  _SeasonTeam('EVV Echt', 'assets/images/logo_EVVEcht.png'),
-  _SeasonTeam("Excelsior '31", 'assets/images/logo_Excelsior31.png'),
-  _SeasonTeam('Excelsior Maassluis', 'assets/images/logo_ExcelsiorMaassluis.png'),
-  _SeasonTeam('FC Lisse', 'assets/images/logo_FCLisse.png'),
-  _SeasonTeam('FC Rijnvogels', 'assets/images/logo_Rijnvogels.png'),
-  _SeasonTeam('Harkemase Boys', 'assets/images/logo_HarkemaseBoys.png'),
-  _SeasonTeam('HVV Hollandia', 'assets/images/logo_Hollandia.png'),
-  _SeasonTeam('Purmersteijn', 'assets/images/logo_Purmersteijn.png'),
-  _SeasonTeam('RBC', 'assets/images/logo_RBC.png'),
-  _SeasonTeam('RKSV Groene Ster', 'assets/images/logo_GroeneSter.png'),
-  _SeasonTeam('SC Genemuiden', 'assets/images/logo_SCGenemuiden.png'),
-  _SeasonTeam("Sportlust '46", 'assets/images/logo_Sportlust46.png'),
-  _SeasonTeam('SV Poortugaal', 'assets/images/logo_Poortugaal.png'),
-  _SeasonTeam('SV TEC', 'assets/images/logo_TEC.png'),
-  _SeasonTeam('SVZW', 'assets/images/logo_SVZW.png'),
-  _SeasonTeam('TOGB', 'assets/images/logo_TOGB.png'),
-  _SeasonTeam("UDI'19", 'assets/images/logo_UDI19.png'),
-  _SeasonTeam('USV Hercules', 'assets/images/logo_Hercules.png'),
-  _SeasonTeam('VV Achilles Veen', 'assets/images/logo_AchillesVeen.png'),
-  _SeasonTeam('VV Dongen', 'assets/images/logo_dongen.png'),
-  _SeasonTeam('VV DOVO', 'assets/images/logo_DOVO.png'),
-  _SeasonTeam('VV Eemdijk', 'assets/images/logo_Eemdijk.png'),
-  _SeasonTeam('VV Gemert', 'assets/images/logo_Gemert.png'),
-  _SeasonTeam('VV Goes', 'assets/images/logo_Goes.png'),
-  _SeasonTeam('VV Hoogeveen', 'assets/images/logo_Hoogeveen.png'),
-  _SeasonTeam('VV Noordwijk', 'assets/images/logo_Noordwijk.png'),
-  _SeasonTeam('VV Scherpenzeel', 'assets/images/logo_Scherpenzeel.png'),
-  _SeasonTeam('VV Sparta Nijkerk', 'assets/images/logo_SpartaNijkerk.png'),
-  _SeasonTeam('VV Staphorst', 'assets/images/logo_Staphorst.png'),
-  _SeasonTeam('VV UNA', 'assets/images/logo_UNA.png'),
-  _SeasonTeam('VV Zwaluwen', 'assets/images/logo_Zwaluwen.png'),
-  _SeasonTeam('VVSB', 'assets/images/logo_VVSB.png'),
-];
-
-/// ---------------------------
 /// RotatingLogo
 /// ---------------------------
 class RotatingLogo extends StatefulWidget {
@@ -280,14 +286,15 @@ class RotatingLogo extends StatefulWidget {
 }
 
 class _RotatingLogoState extends State<RotatingLogo> {
-  late List<_SeasonTeam> _teams;
+  late List<SeasonTeam> _teams;
   int _index = 0;
   Timer? _timer;
 
   @override
   void initState() {
     super.initState();
-    _teams = List<_SeasonTeam>.from(_seasonTeams20262027)..shuffle(Random());
+    _teams = List<SeasonTeam>.from(SeasonConfig.teamsInListOrder)
+      ..shuffle(Random());
     _timer = Timer.periodic(const Duration(seconds: 2), (_) {
       if (!mounted) return;
       setState(() {
@@ -314,19 +321,17 @@ class _RotatingLogoState extends State<RotatingLogo> {
         SizedBox(
           width: 120,
           height: 120,
-          child: Image.asset(
-            team.logoAsset,
-            fit: BoxFit.contain,
-            errorBuilder: (_, __, ___) => Image.asset(
-              _defaultTeamLogo,
-              fit: BoxFit.contain,
-              errorBuilder: (_, __, ___) => const Icon(Icons.shield_outlined, size: 64),
-            ),
+          child: TeamLogo(
+            teamName: team.listLabel,
+            teamSlug: team.id,
+            assetPath: team.logoPath,
+            size: 120,
+            padding: 0,
           ),
         ),
         const SizedBox(height: 8),
         Text(
-          team.name,
+          team.listLabel,
           textAlign: TextAlign.center,
           style: const TextStyle(
             color: Color(0xFF1B5E20),
@@ -342,15 +347,25 @@ class _RotatingLogoState extends State<RotatingLogo> {
 /// DashboardScreen
 /// ---------------------------
 class DashboardScreen extends StatelessWidget {
-  final VoidCallback? onOpenStand;
+  final VoidCallback? onOpenIntrofilm;
+  final VoidCallback? onOpenDivisionA;
+  final VoidCallback? onOpenDivisionB;
   final VoidCallback? onOpenPredict;
   final VoidCallback? onOpenPoules;
+  final VoidCallback? onOpenProgram;
+  final VoidCallback? onOpenProfile;
+  final VoidCallback? onOpenHistoricalStandings;
 
   const DashboardScreen({
     super.key,
-    this.onOpenStand,
+    this.onOpenIntrofilm,
+    this.onOpenDivisionA,
+    this.onOpenDivisionB,
     this.onOpenPredict,
     this.onOpenPoules,
+    this.onOpenProgram,
+    this.onOpenProfile,
+    this.onOpenHistoricalStandings,
   });
 
   Future<void> _openUrl(BuildContext context, String url) async {
@@ -362,17 +377,212 @@ class DashboardScreen extends StatelessWidget {
     }
   }
 
-  String _fmtDate(Timestamp ts) => DateFormat('d MMM yyyy', 'nl').format(ts.toDate());
+  Future<void> _showShareMenu(BuildContext context) async {
+    const url = 'https://derdediv.nl/';
+    const text =
+        'Volg de Derde Divisie, bekijk het programma en voorspel de uitslagen op DerdeDiv.';
+    const fullText = '$text $url';
+
+    Future<void> track(String source) =>
+        AnalyticsService.instance.trackShareClicked(source: source);
+
+    Future<void> openEncoded(String source, String target) async {
+      await track(source);
+      await _openUrl(context, target);
+    }
+
+    final pageContext = context;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+          child: Wrap(
+            runSpacing: 6,
+            children: [
+              const ListTile(
+                title: Text(
+                  'Delen',
+                  style: TextStyle(fontWeight: FontWeight.w900),
+                ),
+                subtitle: Text(fullText),
+              ),
+              ListTile(
+                leading: const Icon(Icons.chat_outlined),
+                title: const Text('WhatsApp'),
+                onTap: () {
+                  Navigator.pop(context);
+                  openEncoded(
+                    'whatsapp',
+                    'https://wa.me/?text=${Uri.encodeComponent(fullText)}',
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.facebook_outlined),
+                title: const Text('Facebook'),
+                onTap: () {
+                  Navigator.pop(context);
+                  openEncoded(
+                    'facebook',
+                    'https://www.facebook.com/sharer/sharer.php?u=${Uri.encodeComponent(url)}',
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.alternate_email_rounded),
+                title: const Text('X / Twitter'),
+                onTap: () {
+                  Navigator.pop(context);
+                  openEncoded(
+                    'x',
+                    'https://twitter.com/intent/tweet?text=${Uri.encodeComponent(text)}&url=${Uri.encodeComponent(url)}',
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.email_outlined),
+                title: const Text('E-mail'),
+                onTap: () {
+                  Navigator.pop(context);
+                  openEncoded(
+                    'email',
+                    'mailto:?subject=${Uri.encodeComponent('DerdeDiv')}&body=${Uri.encodeComponent(fullText)}',
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.link_rounded),
+                title: const Text('Kopieer link'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  await track('copy_link');
+                  await Clipboard.setData(const ClipboardData(text: url));
+                  if (!pageContext.mounted) return;
+                  ScaffoldMessenger.of(pageContext).showSnackBar(
+                    const SnackBar(content: Text('Link gekopieerd')),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_camera_outlined),
+                title: const Text('Kopieer voor Instagram'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  await track('instagram_copy');
+                  await Clipboard.setData(const ClipboardData(text: fullText));
+                  if (!pageContext.mounted) return;
+                  ScaffoldMessenger.of(pageContext).showSnackBar(
+                    const SnackBar(
+                      content: Text('Tekst gekopieerd voor Instagram'),
+                    ),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.ios_share_outlined),
+                title: const Text('Meer delen'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  await track('native_share');
+                  await Share.share(fullText, subject: 'DerdeDiv');
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _fmtDate(Timestamp ts) =>
+      DateFormat('d MMM yyyy', 'nl').format(ts.toDate());
 
   Widget _buildStatRow(String label, String value, {IconData? icon}) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 2),
         child: Row(
           children: [
-            if (icon != null) Icon(icon, size: 18, color: const Color(0xFF2E7D32)),
+            if (icon != null)
+              Icon(icon, size: 18, color: const Color(0xFF2E7D32)),
             if (icon != null) const SizedBox(width: 8),
             Expanded(child: Text(label)),
             Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
           ],
+        ),
+      );
+
+  Widget _quickLinksCard(BuildContext context) => Card(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        elevation: 2,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final compact = constraints.maxWidth < 760;
+              final cards = [
+                _HomeQuickAction(
+                  title: 'Derde Divisie A',
+                  subtitle: 'Stand, alle 9 wedstrijden en laatste uitslagen.',
+                  icon: Icons.leaderboard_rounded,
+                  onTap: onOpenDivisionA,
+                ),
+                _HomeQuickAction(
+                  title: 'Derde Divisie B',
+                  subtitle: 'Stand, alle 9 wedstrijden en laatste uitslagen.',
+                  icon: Icons.leaderboard_rounded,
+                  onTap: onOpenDivisionB,
+                ),
+                _HomeQuickAction(
+                  title: 'Voorspellen',
+                  subtitle: 'Log in om uitslagen te voorspellen.',
+                  icon: Icons.edit_calendar_rounded,
+                  onTap: onOpenPredict,
+                ),
+                _HomeQuickAction(
+                  title: 'Poules',
+                  subtitle: 'Bekijk je poules en ranglijsten.',
+                  icon: Icons.groups_2_rounded,
+                  onTap: onOpenPoules,
+                ),
+                _HomeQuickAction(
+                  title: 'Historische eindstanden',
+                  subtitle: 'Bekijk eindstanden van eerdere seizoenen.',
+                  icon: Icons.history_rounded,
+                  onTap: onOpenHistoricalStandings ??
+                      () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const HistoricalStandingsScreen(),
+                          ),
+                        );
+                      },
+                ),
+              ];
+
+              if (compact) {
+                return Column(
+                  children: [
+                    for (var i = 0; i < cards.length; i++) ...[
+                      cards[i],
+                      if (i != cards.length - 1) const SizedBox(height: 10),
+                    ],
+                  ],
+                );
+              }
+
+              return GridView.count(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: constraints.maxWidth >= 960 ? 5 : 3,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+                childAspectRatio: 1.35,
+                children: cards,
+              );
+            },
+          ),
         ),
       );
 
@@ -422,7 +632,7 @@ class DashboardScreen extends StatelessWidget {
                   return GridView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    itemCount: _seasonTeams20262027.length,
+                    itemCount: SeasonConfig.teamsInListOrder.length,
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: crossAxisCount,
                       mainAxisSpacing: 12,
@@ -430,7 +640,7 @@ class DashboardScreen extends StatelessWidget {
                       childAspectRatio: 0.92,
                     ),
                     itemBuilder: (context, index) {
-                      final team = _seasonTeams20262027[index];
+                      final team = SeasonConfig.teamsInListOrder[index];
                       return Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
@@ -442,23 +652,17 @@ class DashboardScreen extends StatelessWidget {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Expanded(
-                              child: Image.asset(
-                                team.logoAsset,
-                                fit: BoxFit.contain,
-                                errorBuilder: (_, __, ___) => Image.asset(
-                                  _defaultTeamLogo,
-                                  fit: BoxFit.contain,
-                                  errorBuilder: (_, __, ___) => const Icon(
-                                    Icons.shield_outlined,
-                                    size: 42,
-                                    color: Color(0xFF2E7D32),
-                                  ),
-                                ),
+                              child: TeamLogo(
+                                teamName: team.listLabel,
+                                teamSlug: team.id,
+                                assetPath: team.logoPath,
+                                size: 72,
+                                padding: 0,
                               ),
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              team.name,
+                              team.listLabel,
                               textAlign: TextAlign.center,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
@@ -480,6 +684,10 @@ class DashboardScreen extends StatelessWidget {
         ),
       );
 
+  Widget _introfilmCard() => _DashboardIntrofilmCard(
+        onTap: onOpenIntrofilm,
+      );
+
   Widget _statsCard() => FutureBuilder<List<_M>>(
         future: _loadMatchesFromFirestore(),
         builder: (context, snap) {
@@ -491,16 +699,20 @@ class DashboardScreen extends StatelessWidget {
 
           final biggestWinLines = s.biggestWins.isEmpty
               ? const ['n.v.t.']
-              : s.biggestWins.map((m) => '${m.home} ${m.sh}-${m.sa} ${m.away}').toList();
+              : s.biggestWins
+                  .map((m) => '${m.home} ${m.sh}-${m.sa} ${m.away}')
+                  .toList();
 
           final mostGoalsLines = s.mostGoalsMatches.isEmpty
               ? const ['n.v.t.']
               : s.mostGoalsMatches
-                  .map((m) => '${m.home} ${m.sh}-${m.sa} ${m.away} (${m.totalGoals} goals)')
+                  .map((m) =>
+                      '${m.home} ${m.sh}-${m.sa} ${m.away} (${m.totalGoals} goals)')
                   .toList();
 
           return Card(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             elevation: 2,
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -526,14 +738,19 @@ class DashboardScreen extends StatelessWidget {
                   _buildStatRow('Doelpunten Derde Divisie A', '${s.goalsA}'),
                   _buildStatRow('Doelpunten Derde Divisie B', '${s.goalsB}'),
                   const Divider(),
-                  _buildStatRow('Gemiddeld aantal doelpunten', s.avgGoalsTotal.toStringAsFixed(2)),
-                  _buildStatRow('Gem. per wedstrijd Divisie A', s.avgGoalsA.toStringAsFixed(2)),
-                  _buildStatRow('Gem. per wedstrijd Divisie B', s.avgGoalsB.toStringAsFixed(2)),
+                  _buildStatRow('Gemiddeld aantal doelpunten',
+                      s.avgGoalsTotal.toStringAsFixed(2)),
+                  _buildStatRow('Gem. per wedstrijd Divisie A',
+                      s.avgGoalsA.toStringAsFixed(2)),
+                  _buildStatRow('Gem. per wedstrijd Divisie B',
+                      s.avgGoalsB.toStringAsFixed(2)),
                   const Divider(),
-                  const Text('Grootste overwinning:', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const Text('Grootste overwinning:',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
                   ...biggestWinLines.map((t) => Text(t)),
                   const SizedBox(height: 8),
-                  const Text('Meeste goals in één wedstrijd:', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const Text('Meeste goals in één wedstrijd:',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
                   ...mostGoalsLines.map((t) => Text(t)),
                 ],
               ),
@@ -589,7 +806,9 @@ class DashboardScreen extends StatelessWidget {
                   }
 
                   final docs = snapshot.data?.docs ?? [];
-                  if (docs.isEmpty) return const Text('Nog geen berichten gevonden.');
+                  if (docs.isEmpty) {
+                    return const Text('Nog geen berichten gevonden.');
+                  }
 
                   return SizedBox(
                     height: 400,
@@ -613,12 +832,15 @@ class DashboardScreen extends StatelessWidget {
                                 if (created != null)
                                   Text(
                                     _fmtDate(created),
-                                    style: const TextStyle(color: Colors.grey, fontSize: 12),
+                                    style: const TextStyle(
+                                        color: Colors.grey, fontSize: 12),
                                   ),
                                 if (mediaUrl != null && mediaUrl.isNotEmpty)
                                   Padding(
-                                    padding: const EdgeInsets.symmetric(vertical: 8),
-                                    child: Image.network(mediaUrl, fit: BoxFit.cover),
+                                    padding:
+                                        const EdgeInsets.symmetric(vertical: 8),
+                                    child: Image.network(mediaUrl,
+                                        fit: BoxFit.cover),
                                   ),
                                 Text(text, style: const TextStyle(height: 1.3)),
                                 if (url != null && url.isNotEmpty)
@@ -642,7 +864,7 @@ class DashboardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        backgroundColor: const Color(0xFFFAF5F3),
+        backgroundColor: const Color(0xFFF3F6F1),
         body: LayoutBuilder(
           builder: (context, constraints) {
             final isWide = constraints.maxWidth > 800;
@@ -653,52 +875,110 @@ class DashboardScreen extends StatelessWidget {
                   constraints: const BoxConstraints(maxWidth: 1180),
                   child: Column(
                     children: [
-                      const Text(
-                        'Derde Divisie seizoen 2026/2027',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Color(0xFF2E7D32),
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 16,
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Alle deelnemende teams op één plek. De competitie-indeling wordt later toegevoegd.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.black54),
-                      ),
-                      const SizedBox(height: 22),
-                      const RotatingLogo(),
-                      const SizedBox(height: 16),
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          const message =
-                              '🏆 Doe mee met de Derde Divisie Voorspelpoule!\n'
-                              'Voorspel uitslagen, daag je vrienden uit en klim in de ranglijst.\n'
-                              '👉 Download de app of volg @Derde_Div op X!';
-                          SharePlus.instance.share(
-                            ShareParams(
-                              text: message,
-                              subject: 'Daag je vrienden uit!',
-                            ),
-                          );
-                        },
-                        icon: const Icon(Icons.emoji_events_rounded, color: Colors.white),
-                        label: const Text(
-                          'Daag je vrienden uit',
-                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF2E7D32),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF153B2A), Color(0xFF2F8F3B)],
                           ),
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        child: Column(
+                          children: [
+                            Text(
+                              'DerdeDiv · ${SeasonConfig.activeSeasonLabel}',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 24,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Standen, programma, uitslagen en voorspellingen voor de Derde Divisie.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: Colors.white70),
+                            ),
+                            const SizedBox(height: 10),
+                            OutlinedButton.icon(
+                              onPressed: () => _showShareMenu(context),
+                              icon: const Icon(Icons.ios_share_outlined),
+                              label: const Text('Daag je vrienden uit'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.white,
+                                side: const BorderSide(color: Colors.white54),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            FilledButton.icon(
+                              key: const Key('open-calendar-subscription'),
+                              onPressed: () =>
+                                  CalendarSubscriptionDialog.show(context),
+                              icon: const Icon(Icons.calendar_month_outlined),
+                              label:
+                                  const Text('Zet het programma in je agenda'),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: Colors.white,
+                                foregroundColor: const Color(0xFF153B2A),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      _HomePredictionReminder(onOpenPredict: onOpenPredict),
+                      const SizedBox.shrink(),
+                      const SizedBox.shrink(),
+                      const SizedBox.shrink(),
+                      Visibility(
+                        visible: false,
+                        child: ElevatedButton.icon(
+                          onPressed: () async {
+                            const message =
+                                '🏆 Doe mee met de Derde Divisie Voorspelpoule!\n'
+                                'Voorspel uitslagen, daag je vrienden uit en klim in de ranglijst.\n'
+                                '👉 Download de app of volg @Derde_Div op X!';
+
+                            await AnalyticsService.instance
+                                .trackShareClicked(source: 'home_hidden');
+                            await Share.share(
+                              message,
+                              subject: 'Daag je vrienden uit!',
+                            );
+                          },
+                          icon: const Icon(Icons.emoji_events_rounded,
+                              color: Colors.white),
+                          label: const Text(
+                            'Daag je vrienden uit',
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF2E7D32),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 10),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 24),
-                      _seasonTeamsCard(),
+                      DashboardMatchCenter(
+                        showHero: false,
+                        onOpenProgram: onOpenProgram ?? () {},
+                        onOpenPredict: onOpenPredict ?? () {},
+                        onOpenProfile: onOpenProfile ?? () {},
+                      ),
+                      const SizedBox(height: 24),
+                      _introfilmCard(),
+                      const SizedBox(height: 24),
+                      _quickLinksCard(context),
                       const SizedBox(height: 24),
                       if (isWide)
                         Row(
@@ -714,6 +994,8 @@ class DashboardScreen extends StatelessWidget {
                         const SizedBox(height: 24),
                         _xPostsCard(context),
                       ],
+                      const SizedBox(height: 24),
+                      _seasonTeamsCard(),
                     ],
                   ),
                 ),
@@ -722,4 +1004,274 @@ class DashboardScreen extends StatelessWidget {
           },
         ),
       );
+}
+
+class _DashboardIntrofilmCard extends StatefulWidget {
+  final VoidCallback? onTap;
+
+  const _DashboardIntrofilmCard({required this.onTap});
+
+  @override
+  State<_DashboardIntrofilmCard> createState() =>
+      _DashboardIntrofilmCardState();
+}
+
+class _DashboardIntrofilmCardState extends State<_DashboardIntrofilmCard> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = widget.onTap != null;
+
+    return Semantics(
+      button: true,
+      label: 'Open de Derde Divisie introfilm voor seizoen 2026/2027',
+      child: Tooltip(
+        message: 'Introfilm openen',
+        child: MouseRegion(
+          cursor: enabled ? SystemMouseCursors.click : MouseCursor.defer,
+          onEnter: (_) => setState(() => _hovered = true),
+          onExit: (_) => setState(() => _hovered = false),
+          child: AnimatedScale(
+            scale: _hovered && enabled ? 1.006 : 1,
+            duration: const Duration(milliseconds: 160),
+            curve: Curves.easeOut,
+            child: Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(22),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(22),
+                onTap: widget.onTap,
+                child: AspectRatio(
+                  aspectRatio: 16 / 9,
+                  child: Ink(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF050807),
+                      borderRadius: BorderRadius.circular(22),
+                      border: Border.all(
+                        color: const Color(0xFF3BAE5D).withValues(alpha: .34),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF3BAE5D).withValues(
+                            alpha: _hovered && enabled ? .22 : .12,
+                          ),
+                          blurRadius: _hovered && enabled ? 34 : 24,
+                          offset: const Offset(0, 14),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(22),
+                      child: DecoratedBox(
+                        decoration: const BoxDecoration(
+                          gradient: RadialGradient(
+                            center: Alignment.center,
+                            radius: .76,
+                            colors: [
+                              Color(0x332F8F3B),
+                              Color(0x110F2B1D),
+                              Color(0xFF050807),
+                            ],
+                            stops: [0, .48, 1],
+                          ),
+                        ),
+                        child: Stack(
+                          children: [
+                            Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(28),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const DerdeDivLogo.full(
+                                      width: 210,
+                                      height: 82,
+                                    ),
+                                    const SizedBox(height: 22),
+                                    Container(
+                                      width: 70,
+                                      height: 70,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF3BAE5D)
+                                            .withValues(alpha: .94),
+                                        shape: BoxShape.circle,
+                                        boxShadow: const [
+                                          BoxShadow(
+                                            color: Color(0x66000000),
+                                            blurRadius: 18,
+                                            offset: Offset(0, 8),
+                                          ),
+                                        ],
+                                      ),
+                                      child: const Icon(
+                                        Icons.play_arrow_rounded,
+                                        color: Colors.white,
+                                        size: 44,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              left: 22,
+                              right: 22,
+                              bottom: 20,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Derde Divisie introfilm',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 23,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  const Text(
+                                    'Seizoen 2026/2027',
+                                    style: TextStyle(
+                                      color: Color(0xFF7DDD90),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    'Bekijk de officiële introductiefilm van het nieuwe seizoen.',
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color:
+                                          Colors.white.withValues(alpha: .74),
+                                      fontSize: 14,
+                                      height: 1.35,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Positioned(
+                              top: 18,
+                              right: 18,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 11,
+                                  vertical: 7,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: .34),
+                                  borderRadius: BorderRadius.circular(999),
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: .14),
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.ondemand_video_rounded,
+                                      color: Colors.white,
+                                      size: 17,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    const Text(
+                                      'Introfilm',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HomeQuickAction extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final VoidCallback? onTap;
+
+  const _HomeQuickAction({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: const Color(0xFFF7FAF6),
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFE2E8DF)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE8F5E9),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(icon, color: const Color(0xFF2E7D32), size: 20),
+                  ),
+                  const Spacer(),
+                  const Icon(Icons.arrow_forward_rounded,
+                      color: Color(0xFF2E7D32)),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Color(0xFF153B2A),
+                  fontWeight: FontWeight.w900,
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: Colors.grey.shade700, height: 1.25),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

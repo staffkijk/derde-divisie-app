@@ -1,8 +1,14 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'app_update.dart';
+import 'package:derde_divisie/data/services/activity_log_service.dart';
 
 class UpdateService {
+  static const _guestLastSeenKey = 'last_seen_update_millis';
+  static final _guestSeenChanges = StreamController<Timestamp?>.broadcast();
   final _db = FirebaseFirestore.instance;
   final _auth = FirebaseAuth.instance;
 
@@ -37,7 +43,12 @@ class UpdateService {
   /// Timestamp van "laatst gezien" voor ingelogde user (of null als niet ingelogd)
   Stream<Timestamp?> streamUserLastSeen() {
     final doc = _maybeUserDoc;
-    if (doc == null) return Stream.value(null);
+    if (doc == null) {
+      return (() async* {
+        yield await _guestLastSeen();
+        yield* _guestSeenChanges.stream;
+      })();
+    }
     return doc.snapshots().map((s) {
       final data = s.data() as Map<String, dynamic>?;
       return data?['lastSeenUpdateAt'] as Timestamp?;
@@ -47,8 +58,27 @@ class UpdateService {
   /// Markeer updates als gezien t/m 'upTo'
   Future<void> markUpdatesSeen({required Timestamp upTo}) async {
     final doc = _maybeUserDoc;
-    if (doc == null) return;
+    if (doc == null) {
+      final preferences = await SharedPreferences.getInstance();
+      await preferences.setInt(
+        _guestLastSeenKey,
+        upTo.millisecondsSinceEpoch,
+      );
+      _guestSeenChanges.add(upTo);
+      return;
+    }
     await doc.set({'lastSeenUpdateAt': upTo}, SetOptions(merge: true));
+    await ActivityLogService().log(
+      eventType: ActivityEventType.updateRead,
+      entityType: 'app_update',
+      metadata: {'upToMillis': upTo.millisecondsSinceEpoch},
+    );
+  }
+
+  Future<Timestamp?> _guestLastSeen() async {
+    final preferences = await SharedPreferences.getInstance();
+    final millis = preferences.getInt(_guestLastSeenKey);
+    return millis == null ? null : Timestamp.fromMillisecondsSinceEpoch(millis);
   }
 
   /// Nieuwe update toevoegen (admin)

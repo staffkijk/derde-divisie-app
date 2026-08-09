@@ -2,11 +2,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import 'package:derde_divisie/data/services/analytics_service.dart';
+
 class JoinGeslotenPouleScreen extends StatefulWidget {
   const JoinGeslotenPouleScreen({super.key});
 
   @override
-  State<JoinGeslotenPouleScreen> createState() => _JoinGeslotenPouleScreenState();
+  State<JoinGeslotenPouleScreen> createState() =>
+      _JoinGeslotenPouleScreenState();
 }
 
 class _JoinGeslotenPouleScreenState extends State<JoinGeslotenPouleScreen> {
@@ -96,7 +99,8 @@ class _JoinGeslotenPouleScreenState extends State<JoinGeslotenPouleScreen> {
       // 4) Max 10 poules check
       final userRef = _firestore.collection('users').doc(userId);
       final userSnap = await userRef.get();
-      final currentJoinCount = (userSnap.data()?['gejoinedePoules'] ?? 0) as int;
+      final currentJoinCount =
+          (userSnap.data()?['gejoinedePoules'] ?? 0) as int;
       if (currentJoinCount >= 10) {
         setState(() {
           _error = 'Je kunt maximaal 10 poules joinen.';
@@ -121,20 +125,28 @@ class _JoinGeslotenPouleScreenState extends State<JoinGeslotenPouleScreen> {
       // sync staat standaard AAN bij joinen; wil je uit bij joinen, zet syncEnabled hier op false
       const bool syncEnabled = true;
 
-      batch.set(deelnemersRef, {
-        'rol': 'deelnemer',
-        'joinedAt': FieldValue.serverTimestamp(),
-        'punten': 0,
-        'voorspellingenZichtbaarVoorDeadline': _voorspellingenZichtbaar,
-        'syncEnabled': syncEnabled,
-        if (syncEnabled) 'syncStartAt': FieldValue.serverTimestamp(), // "alleen vooruit" vanaf nu
-      }, SetOptions(merge: true));
+      batch.set(
+          deelnemersRef,
+          {
+            'rol': 'deelnemer',
+            'joinedAt': FieldValue.serverTimestamp(),
+            'punten': 0,
+            'voorspellingenZichtbaarVoorDeadline': _voorspellingenZichtbaar,
+            'syncEnabled': syncEnabled,
+            if (syncEnabled)
+              'syncStartAt':
+                  FieldValue.serverTimestamp(), // "alleen vooruit" vanaf nu
+          },
+          SetOptions(merge: true));
 
       // users/{uid}/poules/{pouleId} index
       final indexRef = _firestore.doc('users/$userId/poules/$pouleId');
-      batch.set(indexRef, {
-        'joinedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+      batch.set(
+          indexRef,
+          {
+            'joinedAt': FieldValue.serverTimestamp(),
+          },
+          SetOptions(merge: true));
 
       // teller ophogen
       batch.update(userRef, {
@@ -142,6 +154,10 @@ class _JoinGeslotenPouleScreenState extends State<JoinGeslotenPouleScreen> {
       });
 
       await batch.commit();
+      await AnalyticsService.instance.trackPouleJoined(
+        source: 'closed_poule',
+        public: false,
+      );
 
       if (!mounted) return;
       Navigator.pop(context);
@@ -176,13 +192,15 @@ class _JoinGeslotenPouleScreenState extends State<JoinGeslotenPouleScreen> {
               TextFormField(
                 controller: _pouleNaamController,
                 decoration: const InputDecoration(labelText: 'Poule naam'),
-                validator: (val) => val == null || val.isEmpty ? 'Verplicht' : null,
+                validator: (val) =>
+                    val == null || val.isEmpty ? 'Verplicht' : null,
               ),
               TextFormField(
                 controller: _wachtwoordController,
                 decoration: const InputDecoration(labelText: 'Wachtwoord'),
                 obscureText: true,
-                validator: (val) => val == null || val.isEmpty ? 'Verplicht' : null,
+                validator: (val) =>
+                    val == null || val.isEmpty ? 'Verplicht' : null,
               ),
               const SizedBox(height: 16),
               Row(
@@ -207,13 +225,16 @@ class _JoinGeslotenPouleScreenState extends State<JoinGeslotenPouleScreen> {
                 onPressed: _loading ? null : _join,
                 child: _loading
                     ? const SizedBox(
-                        width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2))
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(strokeWidth: 2))
                     : const Text('Join poule'),
               ),
               if (_error.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(top: 12),
-                  child: Text(_error, style: const TextStyle(color: Colors.red)),
+                  child:
+                      Text(_error, style: const TextStyle(color: Colors.red)),
                 ),
             ],
           ),

@@ -111,9 +111,7 @@ class _ModeratorToolsScreenState extends State<ModeratorToolsScreen> {
                       );
                     },
             ),
-
             const Divider(height: 24, thickness: 1),
-
             _sectionTitle('Veilig herstel'),
             _buildButton(
               label: 'Herstel algemene voorspellingen + usertotalen',
@@ -132,8 +130,8 @@ class _ModeratorToolsScreenState extends State<ModeratorToolsScreen> {
                       if (!confirmed) return;
 
                       await _runTool(
-                        action:
-                            tools.herstelAlleAlgemeneVoorspellingenEnUserTotalen,
+                        action: tools
+                            .herstelAlleAlgemeneVoorspellingenEnUserTotalen,
                         successMessage:
                             'Algemene voorspellingen en usertotalen zijn hersteld.',
                         errorPrefix:
@@ -232,15 +230,12 @@ class _ModeratorToolsScreenState extends State<ModeratorToolsScreen> {
 
                       await _runTool(
                         action: tools.herstelVoorspellingenSpeelronde18A,
-                        successMessage:
-                            'Speelronde 18 A is opnieuw verwerkt.',
+                        successMessage: 'Speelronde 18 A is opnieuw verwerkt.',
                         errorPrefix: 'Fout bij herstel speelronde 18 A',
                       );
                     },
             ),
-
             const Divider(height: 24, thickness: 1),
-
             _sectionTitle('Algemene tools'),
             _buildButton(
               label: 'Sync Tools',
@@ -277,9 +272,7 @@ class _ModeratorToolsScreenState extends State<ModeratorToolsScreen> {
               color: Colors.green,
               onPressed: _isBusy ? null : () {},
             ),
-
             const Divider(height: 24, thickness: 1),
-
             _sectionTitle('Einde seizoen'),
             _buildButton(
               label: 'Einde seizoen: verwerk eindstand (A & B)',
@@ -299,15 +292,12 @@ class _ModeratorToolsScreenState extends State<ModeratorToolsScreen> {
 
                       await _runTool(
                         action: tools.verwerkEindstandPuntenBeide,
-                        successMessage:
-                            'Eindstandpunten A & B zijn verwerkt.',
+                        successMessage: 'Eindstandpunten A & B zijn verwerkt.',
                         errorPrefix: 'Fout bij verwerken eindstandpunten',
                       );
                     },
             ),
-
             const Divider(height: 24, thickness: 1),
-
             _sectionTitle('Testdata'),
             _buildButton(
               label: 'Fake Data Generator',
@@ -324,9 +314,7 @@ class _ModeratorToolsScreenState extends State<ModeratorToolsScreen> {
                       );
                     },
             ),
-
             const Divider(height: 24, thickness: 1),
-
             _sectionTitle('Gevaarlijke acties'),
             _buildButton(
               label: 'Reset eindstandpunten (A & B)',
@@ -374,7 +362,6 @@ class _ModeratorToolsScreenState extends State<ModeratorToolsScreen> {
                       );
                     },
             ),
-
             if (_isBusy) ...[
               const SizedBox(height: 16),
               const Center(
