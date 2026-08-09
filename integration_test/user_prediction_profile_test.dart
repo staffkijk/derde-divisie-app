@@ -116,8 +116,7 @@ void main() {
 
     final descriptionField = find.byWidgetPredicate(
       (widget) =>
-          widget is TextFormField &&
-          widget.decoration?.hintText == 'Vertel kort iets over jezelf',
+          widget is TextFormField && widget.minLines == 3 && widget.maxLines == 5,
     );
     final cityField = find.widgetWithText(TextFormField, 'Woonplaats');
 
