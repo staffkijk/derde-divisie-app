@@ -4,7 +4,7 @@ import * as functions from "firebase-functions/v1";
 import * as admin from "firebase-admin";
 import axios from "axios";
 import {BetaAnalyticsDataClient} from "@google-analytics/data";
-import {defineString} from "firebase-functions/params";
+import {defineSecret, defineString} from "firebase-functions/params";
 import {buildCalendar, loadCalendarData} from "./calendar";
 import {allowsMissingPredictionReminderPush} from "./prediction-reminder-policy";
 
@@ -13,6 +13,8 @@ const db = admin.firestore();
 const region = "europe-west1";
 const analyticsDataClient = new BetaAnalyticsDataClient();
 const ga4PropertyIdParam = defineString("GA4_PROPERTY_ID");
+const xBearerTokenParam = defineSecret("X_BEARER_TOKEN");
+const xUsernameParam = defineString("X_USERNAME", {default: "Derde_Div"});
 
 let calendarCache: {expires: number; data: Awaited<ReturnType<typeof loadCalendarData>>} | null = null;
 
@@ -169,8 +171,8 @@ export const syncVoorspellingToPoules = functions
 /* -------------------------------------------------------------------------- */
 
 async function fetchAndStoreTweets() {
-  const BEARER = functions.config().x?.bearer;
-  const USERNAME = (functions.config().x?.username || "Derde_Div").replace("@", "");
+  const BEARER = xBearerTokenParam.value();
+  const USERNAME = xUsernameParam.value().replace("@", "");
   if (!BEARER) throw new Error("Geen BEARER token");
 
   // 1 — user id
@@ -221,6 +223,7 @@ async function fetchAndStoreTweets() {
 
 export const xSyncNow = functions
   .region(region)
+  .runWith({secrets: [xBearerTokenParam]})
   .https.onRequest(async (_req, res): Promise<void> => {
     try {
       const count = await fetchAndStoreTweets();
@@ -237,6 +240,7 @@ export const xSyncNow = functions
 
 export const xSyncHourly = functions
   .region(region)
+  .runWith({secrets: [xBearerTokenParam]})
   .pubsub.schedule("every 60 minutes")
   .timeZone("Europe/Amsterdam")
   .onRun(async (): Promise<void> => {
