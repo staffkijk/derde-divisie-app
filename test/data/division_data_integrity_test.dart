@@ -9,9 +9,15 @@ void main() {
     test('beide divisies bevatten exact 18 unieke clubs', () {
       final divisionA = SeasonConfig.teamsForDivision('A');
       final divisionB = SeasonConfig.teamsForDivision('B');
+      final divisionANames = SeasonConfig.teamNamesForDivision('A').toSet();
+      final divisionBNames = SeasonConfig.teamNamesForDivision('B').toSet();
 
       expect(divisionA, hasLength(18));
       expect(divisionB, hasLength(18));
+      expect(divisionANames, hasLength(18));
+      expect(divisionBNames, hasLength(18));
+      expect(divisionANames.intersection(divisionBNames), isEmpty);
+      expect(divisionANames.union(divisionBNames), hasLength(36));
       expect(
         {...divisionA.map((team) => team.id)}
             .intersection({...divisionB.map((team) => team.id)}),
