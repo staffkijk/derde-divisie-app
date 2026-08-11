@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:derde_divisie/data/models/notification_collection_utils.dart';
+import 'package:derde_divisie/data/models/notification_preferences.dart';
 
 void main() {
   const notifications = [
@@ -112,5 +113,89 @@ void main() {
     });
     expect(remaining, isEmpty);
     expect(unreadNotificationCount(remaining), 0);
+  });
+
+  test('selectieve divisievoorkeur filtert cleanup, center en badge gelijk',
+      () {
+    const records = [
+      UserNotificationRecord(
+        id: 'missing_predictions_2026-2027_A_1',
+        data: {'type': 'missing_predictions', 'division': 'A', 'read': false},
+      ),
+      UserNotificationRecord(
+        id: 'missing_predictions_2026-2027_B_1',
+        data: {'type': 'missing_predictions', 'division': 'B', 'read': false},
+      ),
+      UserNotificationRecord(
+        id: 'announcement',
+        data: {'type': 'announcement', 'read': false},
+      ),
+    ];
+    const onlyA = NotificationPreferences(divisionA: true, divisionB: false);
+    final visible = notificationsAllowedByPreferences(records, onlyA);
+
+    expect(visible.map((item) => item.id), [
+      'missing_predictions_2026-2027_A_1',
+      'announcement',
+    ]);
+    expect(unreadNotificationCount(visible), 2);
+    expect(disallowedPredictionReminderNotificationIds(records, onlyA), [
+      'missing_predictions_2026-2027_B_1',
+    ]);
+  });
+
+  test('hoofdschakelaar uit verwijdert A en B maar niet andere meldingen', () {
+    const records = [
+      UserNotificationRecord(
+        id: 'missing_predictions_2026-2027_A_1',
+        data: {'type': 'missing_predictions', 'division': 'A', 'read': false},
+      ),
+      UserNotificationRecord(
+        id: 'missing_predictions_2026-2027_B_1',
+        data: {'type': 'missing_predictions', 'division': 'B', 'read': false},
+      ),
+      UserNotificationRecord(
+        id: 'announcement',
+        data: {'type': 'announcement', 'read': false},
+      ),
+    ];
+    const disabled = NotificationPreferences(missingPredictionReminders: false);
+
+    expect(disallowedPredictionReminderNotificationIds(records, disabled), [
+      'missing_predictions_2026-2027_A_1',
+      'missing_predictions_2026-2027_B_1',
+    ]);
+    expect(
+      notificationsAllowedByPreferences(records, disabled)
+          .map((item) => item.id),
+      ['announcement'],
+    );
+  });
+
+  test('legacy reminder zonder divisie is niet actief bij selectieve voorkeur',
+      () {
+    const legacy = UserNotificationRecord(
+      id: 'legacy',
+      data: {
+        'type': 'missing_predictions',
+        'body': 'Je hebt wedstrijden niet voorspeld voor speelronde 1.',
+        'read': false,
+      },
+    );
+
+    expect(
+      notificationAllowedByPreferences(
+        legacy,
+        const NotificationPreferences(divisionB: false),
+      ),
+      isFalse,
+    );
+    expect(
+      notificationAllowedByPreferences(
+        legacy,
+        const NotificationPreferences(),
+      ),
+      isTrue,
+    );
   });
 }

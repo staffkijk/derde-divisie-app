@@ -14,6 +14,8 @@ import 'features/derde_divisie/unified_program_screen.dart';
 import 'features/media/intro_video_screen.dart';
 import 'features/notifications/notification_center_screen.dart';
 import 'features/notifications/notification_auth_gate.dart';
+import 'features/notifications/notification_preference_gate.dart';
+import 'data/models/notification_preferences.dart';
 import 'features/about/juridisch_scherm.dart';
 import 'package:derde_divisie/features/profiel/profile_screen.dart';
 import 'features/moderator/moderator_dashboard_screen.dart';
@@ -469,11 +471,15 @@ class _MainScreenState extends State<MainScreen> {
                     UpdateLogButton(isAdmin: isModerator),
                     NotificationAuthGate(
                       loggedIn: loggedIn,
-                      child: _NotificationBell(
-                        service: _reminderService,
-                        hasAnnouncement: _hasMelding,
-                        onOpenNotifications: _openNotifications,
-                        onShowAnnouncement: () => _showAnnouncement(loggedIn),
+                      child: NotificationPreferenceGate(
+                        key: ValueKey(user?.uid),
+                        builder: (context, preferences) => _NotificationBell(
+                          service: _reminderService,
+                          hasAnnouncement: _hasMelding,
+                          onOpenNotifications: _openNotifications,
+                          onShowAnnouncement: () => _showAnnouncement(loggedIn),
+                          preferences: preferences,
+                        ),
                       ),
                     ),
                     IconButton(
@@ -827,23 +833,26 @@ class _NotificationBell extends StatelessWidget {
     required this.hasAnnouncement,
     required this.onOpenNotifications,
     required this.onShowAnnouncement,
+    required this.preferences,
   });
 
   final PredictionReminderService service;
   final bool hasAnnouncement;
   final VoidCallback onOpenNotifications;
   final VoidCallback onShowAnnouncement;
+  final NotificationPreferences preferences;
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
       stream: service.unreadNotificationsStream(),
       builder: (context, snapshot) {
+        final records = snapshot.data?.docs.map(
+              (doc) => UserNotificationRecord(id: doc.id, data: doc.data()),
+            ) ??
+            const <UserNotificationRecord>[];
         final unread = unreadNotificationCount(
-          snapshot.data?.docs.map(
-                (doc) => UserNotificationRecord(id: doc.id, data: doc.data()),
-              ) ??
-              const [],
+          notificationsAllowedByPreferences(records, preferences),
         );
         return Stack(
           clipBehavior: Clip.none,
@@ -1060,11 +1069,14 @@ class _DesktopHeader extends StatelessWidget {
           ),
           NotificationAuthGate(
             loggedIn: loggedIn,
-            child: _NotificationBell(
-              service: reminderService,
-              hasAnnouncement: hasMelding,
-              onOpenNotifications: onOpenNotifications,
-              onShowAnnouncement: onShowAnnouncement,
+            child: NotificationPreferenceGate(
+              builder: (context, preferences) => _NotificationBell(
+                service: reminderService,
+                hasAnnouncement: hasMelding,
+                onOpenNotifications: onOpenNotifications,
+                onShowAnnouncement: onShowAnnouncement,
+                preferences: preferences,
+              ),
             ),
           ),
           IconButton(

@@ -1,16 +1,20 @@
 export interface PredictionReminderPreferences {
   missingPredictionReminders?: boolean;
+  divisionA?: boolean;
+  divisionB?: boolean;
 }
 
 /**
  * Returns whether missing-prediction pushes are enabled for this user.
- * @param {PredictionReminderPreferences|undefined} preferences Stored user
- * notification preferences.
- * @return {boolean} Whether a push may be sent.
+ * Missing fields preserve the application opt-in default for existing users.
  */
 export function allowsMissingPredictionReminderPush(
-  preferences: PredictionReminderPreferences | undefined
+  preferences: PredictionReminderPreferences | undefined,
+  division?: unknown
 ): boolean {
-  // Backward-compatible application default: existing users are opted in.
-  return preferences?.missingPredictionReminders !== false;
+  if (preferences?.missingPredictionReminders === false) return false;
+  const normalized = String(division || "").trim().toUpperCase();
+  if (normalized === "A") return preferences?.divisionA !== false;
+  if (normalized === "B") return preferences?.divisionB !== false;
+  return preferences?.divisionA !== false && preferences?.divisionB !== false;
 }

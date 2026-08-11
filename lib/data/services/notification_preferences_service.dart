@@ -77,9 +77,11 @@ class NotificationPreferencesService implements NotificationPreferencesStore {
     }, SetOptions(merge: true));
 
     var removed = true;
-    if (!preferences.missingPredictionReminders) {
+    if (!preferences.missingPredictionReminders ||
+        !preferences.divisionA ||
+        !preferences.divisionB) {
       try {
-        await _deleteExistingPredictionReminders(userRef);
+        await _deleteDisallowedPredictionReminders(userRef, preferences);
       } catch (error, stack) {
         removed = false;
         debugPrint(
@@ -98,10 +100,10 @@ class NotificationPreferencesService implements NotificationPreferencesStore {
     final uid = _uid;
     if (uid == null) return true;
     final preferences = await load();
-    if (preferences.missingPredictionReminders) return true;
     try {
-      await _deleteExistingPredictionReminders(
+      await _deleteDisallowedPredictionReminders(
         _firestore.collection('users').doc(uid),
+        preferences,
       );
       return true;
     } catch (error, stack) {
@@ -111,14 +113,16 @@ class NotificationPreferencesService implements NotificationPreferencesStore {
     }
   }
 
-  Future<void> _deleteExistingPredictionReminders(
+  Future<void> _deleteDisallowedPredictionReminders(
     DocumentReference<Map<String, dynamic>> userRef,
+    NotificationPreferences preferences,
   ) async {
     final notifications = await userRef.collection('notifications').get();
-    final ids = missingPredictionNotificationIds(
+    final ids = disallowedPredictionReminderNotificationIds(
       notifications.docs.map(
         (doc) => UserNotificationRecord(id: doc.id, data: doc.data()),
       ),
+      preferences,
     );
     for (var offset = 0; offset < ids.length; offset += 500) {
       final batch = _firestore.batch();

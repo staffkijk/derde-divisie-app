@@ -245,7 +245,7 @@ class PredictionReminderService {
 
       // Recheck at write time so an in-flight sync cannot recreate a reminder
       // after the user disabled reminders and cleanup completed.
-      if (!preferences.missingPredictionReminders) {
+      if (!preferences.allowsDivision(status.division)) {
         if (existing.exists) transaction.delete(ref);
         return;
       }

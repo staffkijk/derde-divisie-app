@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import 'package:derde_divisie/core/design/app_design.dart';
 import 'package:derde_divisie/data/services/activity_log_service.dart';
+import 'package:derde_divisie/data/models/notification_collection_utils.dart';
+import 'package:derde_divisie/data/models/notification_preferences.dart';
 import 'package:derde_divisie/data/services/prediction_reminder_service.dart';
 import 'package:derde_divisie/features/notifications/prediction_reminder_preferences_panel.dart';
 import 'package:derde_divisie/data/services/notification_preferences_service.dart';
@@ -23,11 +27,23 @@ class NotificationCenterScreen extends StatefulWidget {
 
 class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
   final _service = PredictionReminderService();
+  final _preferencesService = NotificationPreferencesService();
+  StreamSubscription<NotificationPreferences>? _preferencesSubscription;
+  NotificationPreferences? _preferences;
 
   @override
   void initState() {
     super.initState();
-    NotificationPreferencesService().cleanupIfDisabled();
+    _preferencesService.cleanupIfDisabled();
+    _preferencesSubscription = _preferencesService.watch().listen((value) {
+      if (mounted) setState(() => _preferences = value);
+    });
+  }
+
+  @override
+  void dispose() {
+    _preferencesSubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> _showSettings() async {
@@ -93,7 +109,16 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
           if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
-          final docs = snapshot.data!.docs;
+          final preferences = _preferences;
+          if (preferences == null) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final docs = snapshot.data!.docs.where((doc) {
+            return notificationAllowedByPreferences(
+              UserNotificationRecord(id: doc.id, data: doc.data()),
+              preferences,
+            );
+          }).toList(growable: false);
           if (docs.isEmpty) {
             return const Center(child: Text('Je hebt geen meldingen.'));
           }

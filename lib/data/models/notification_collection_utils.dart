@@ -1,3 +1,6 @@
+import 'package:derde_divisie/data/config/season_config.dart';
+import 'package:derde_divisie/data/models/notification_preferences.dart';
+
 class UserNotificationRecord {
   const UserNotificationRecord({required this.id, required this.data});
 
@@ -48,3 +51,46 @@ List<String> missingPredictionNotificationIds(
 
 int unreadNotificationCount(Iterable<UserNotificationRecord> notifications) =>
     notifications.where((item) => item.data['read'] != true).length;
+
+String? predictionReminderDivision(UserNotificationRecord notification) {
+  final stored = SeasonConfig.normalizeDivisionCode(
+    notification.data['division']?.toString() ?? '',
+  );
+  if (stored == 'A' || stored == 'B') return stored;
+  final idMatch =
+      RegExp(r'missing[_-]predictions_[^_]+_([AB])_', caseSensitive: false)
+          .firstMatch(notification.id);
+  if (idMatch != null) return idMatch.group(1)!.toUpperCase();
+  final title = (notification.data['title'] ?? '').toString();
+  final body = (notification.data['body'] ?? '').toString();
+  final copy = '$title $body'.toLowerCase();
+  if (copy.contains('divisie a')) return 'A';
+  if (copy.contains('divisie b')) return 'B';
+  return null;
+}
+
+bool notificationAllowedByPreferences(
+    UserNotificationRecord notification, NotificationPreferences preferences) {
+  if (!isMissingPredictionNotification(notification)) return true;
+  final division = predictionReminderDivision(notification);
+  if (division != null) return preferences.allowsDivision(division);
+  return preferences.allowsDivision('A') && preferences.allowsDivision('B');
+}
+
+List<UserNotificationRecord> notificationsAllowedByPreferences(
+  Iterable<UserNotificationRecord> notifications,
+  NotificationPreferences preferences,
+) =>
+    notifications
+        .where((item) => notificationAllowedByPreferences(item, preferences))
+        .toList(growable: false);
+
+List<String> disallowedPredictionReminderNotificationIds(
+  Iterable<UserNotificationRecord> notifications,
+  NotificationPreferences preferences,
+) =>
+    notifications
+        .where(isActiveMissingPredictionNotification)
+        .where((item) => !notificationAllowedByPreferences(item, preferences))
+        .map((item) => item.id)
+        .toList(growable: false);

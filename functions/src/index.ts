@@ -257,8 +257,6 @@ export const sendPredictionReminderPushes = functions
     const now = admin.firestore.Timestamp.now();
 
     for (const user of users.docs) {
-      const preferences = user.data().notificationPreferences;
-      if (!allowsMissingPredictionReminderPush(preferences)) continue;
       const notifications = await user.ref
         .collection("notifications")
         .where("type", "==", "missing_predictions")
@@ -271,11 +269,18 @@ export const sendPredictionReminderPushes = functions
       const tokenValues = tokens.docs
         .map((doc) => String(doc.data().token || doc.id || ""))
         .filter((token) => token.length > 20);
-      if (!tokenValues.length) continue;
-
       for (const notification of notifications.docs) {
         const data = notification.data();
-        if (data.pushSentAt) continue;
+        const latestUser = await user.ref.get();
+        const latestPreferences = latestUser.data()?.notificationPreferences;
+        if (!allowsMissingPredictionReminderPush(
+          latestPreferences,
+          data.division
+        )) {
+          await notification.ref.delete();
+          continue;
+        }
+        if (data.pushSentAt || !tokenValues.length) continue;
         await admin.messaging().sendEachForMulticast({
           tokens: tokenValues,
           notification: {
