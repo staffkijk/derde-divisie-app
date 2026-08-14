@@ -110,6 +110,33 @@ List<SocialCardMatch> filterSocialMatches(
     ..sort(SocialCardMatch.compare);
 }
 
+Map<DateTime, List<SocialCardMatch>> groupSocialMatchesByDate(
+  Iterable<SocialCardMatch> matches,
+) {
+  final groups = <DateTime, List<SocialCardMatch>>{};
+  for (final match in matches) {
+    final value = match.dateTime;
+    if (value == null) continue;
+    final date = DateTime(value.year, value.month, value.day);
+    groups.putIfAbsent(date, () => []).add(match);
+  }
+  for (final group in groups.values) {
+    group.sort(SocialCardMatch.compare);
+  }
+  return Map.fromEntries(
+    groups.entries.toList()..sort((a, b) => a.key.compareTo(b.key)),
+  );
+}
+
+String socialDateHeader(DateTime date) {
+  const weekdays = ['MA', 'DI', 'WO', 'DO', 'VR', 'ZA', 'ZO'];
+  const months = [
+    'JAN', 'FEB', 'MRT', 'APR', 'MEI', 'JUN',
+    'JUL', 'AUG', 'SEP', 'OKT', 'NOV', 'DEC',
+  ];
+  return '${weekdays[date.weekday - 1]} ${date.day} ${months[date.month - 1]}';
+}
+
 String socialFileName(SocialCardMode mode, String division, int round) {
   switch (mode) {
     case SocialCardMode.program:

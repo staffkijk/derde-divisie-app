@@ -12,6 +12,7 @@ SocialCardMatch match(
   String? away,
   int? homeScore,
   int? awayScore,
+  DateTime? dateTime,
 }) {
   return SocialCardMatch(
     id: 'match-$index-$division-$round',
@@ -23,6 +24,7 @@ SocialCardMatch match(
     status: MatchStatus.scheduled,
     homeScore: homeScore,
     awayScore: awayScore,
+    dateTime: dateTime ?? DateTime(2026, 8, 15),
     data: {
       'division': division,
       'round': round,
@@ -68,10 +70,10 @@ Widget canvas({
   return MaterialApp(
     home: Scaffold(
       body: OverflowBox(
-        minWidth: socialExportSize.width,
-        maxWidth: socialExportSize.width,
-        minHeight: socialExportSize.height,
-        maxHeight: socialExportSize.height,
+        minWidth: socialExportSizeFor(mode).width,
+        maxWidth: socialExportSizeFor(mode).width,
+        minHeight: socialExportSizeFor(mode).height,
+        maxHeight: socialExportSizeFor(mode).height,
         child: SocialMediaExportCanvas(
           divisionName: 'Derde Divisie A',
           round: 1,
@@ -93,24 +95,47 @@ void main() {
         final size = tester.getSize(
           find.byKey(const ValueKey('social-export-canvas')),
         );
-        expect(size, socialExportSize);
+        expect(size, programSocialExportSize);
         expect(tester.takeException(), isNull);
       });
     }
   });
 
-  testWidgets('programma bevat alle negen wedstrijden en volledige stand',
+  testWidgets('programma toont A en B naast elkaar zonder stand',
       (tester) async {
-    await tester.binding.setSurfaceSize(const Size(1300, 1450));
+    await tester.binding.setSurfaceSize(const Size(1700, 1000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    await tester.pumpWidget(canvas());
+    final matches = [
+      ...List.generate(9, (index) => match(index)),
+      ...List.generate(7, (index) => match(index, division: 'B')),
+    ];
+    await tester.pumpWidget(canvas(value: data(matches: matches)));
     expect(find.text('PROGRAMMA'), findsOneWidget);
-    for (var i = 0; i < 9; i++) {
-      expect(find.text('Thuisclub $i'), findsOneWidget);
-      expect(find.text('Uitclub $i'), findsOneWidget);
-    }
-    expect(find.text('STAND'), findsOneWidget);
-    expect(find.text('Club 17'), findsOneWidget);
+    expect(find.text('DERDE DIVISIE A'), findsOneWidget);
+    expect(find.text('DERDE DIVISIE B'), findsOneWidget);
+    expect(find.text('BIJGEWERKTE STAND'), findsNothing);
+    expect(find.text('Club 17'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('programma groepeert zaterdag en ADO 20 op zondag',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1700, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final matches = [
+      match(0, dateTime: DateTime(2026, 8, 15)),
+      match(
+        1,
+        home: "ADO '20",
+        away: 'Hercules',
+        dateTime: DateTime(2026, 8, 16),
+      ),
+      match(2, division: 'B', dateTime: DateTime(2026, 8, 15)),
+    ];
+    await tester.pumpWidget(canvas(value: data(matches: matches)));
+    expect(find.text('ZA 15 AUG'), findsNWidgets(2));
+    expect(find.text('ZO 16 AUG'), findsOneWidget);
+    expect(find.text("ADO '20"), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -236,6 +261,7 @@ void main() {
           home: Scaffold(
             body: SingleChildScrollView(
               child: SocialMediaPreview(
+                mode: SocialCardMode.program,
                 child: SocialMediaExportCanvas(
                   divisionName: 'Derde Divisie A',
                   round: 1,

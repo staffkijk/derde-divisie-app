@@ -21,6 +21,10 @@ import 'package:derde_divisie/features/moderator/social_media_models.dart';
 export 'package:derde_divisie/features/moderator/social_media_models.dart';
 
 const socialExportSize = Size(1080, 1350);
+const programSocialExportSize = Size(1600, 900);
+
+Size socialExportSizeFor(SocialCardMode mode) =>
+    mode == SocialCardMode.program ? programSocialExportSize : socialExportSize;
 
 class SocialMediaCardScreen extends StatefulWidget {
   const SocialMediaCardScreen({super.key});
@@ -51,14 +55,18 @@ class _SocialMediaCardScreenState extends State<SocialMediaCardScreen> {
     final standings = all[1]
         .docs
         .map(SocialStanding.fromDoc)
-        .where((entry) => entry.division == division)
+        .where((entry) =>
+            mode == SocialCardMode.program || entry.division == division)
         .toList()
       ..sort(SocialStanding.compare);
     final users =
         all[2].docs.map((doc) => RankingUser(doc.id, doc.data())).toList();
     final predictions = all[3].docs.map((doc) => doc.data()).toList();
     return SocialCardData(
-      matches: filterSocialMatches(matches, division: division, round: round),
+      matches: mode == SocialCardMode.program
+          ? (matches.where((match) => match.round == round).toList()
+            ..sort(SocialCardMatch.compare))
+          : filterSocialMatches(matches, division: division, round: round),
       standings: standings,
       predictionSummary: buildPredictionSummary(
         users: users,
@@ -139,7 +147,8 @@ class _SocialMediaCardScreenState extends State<SocialMediaCardScreen> {
       if (bytes == null) throw StateError('PNG kon niet worden gemaakt.');
       downloadSocialPng(
         bytes.buffer.asUint8List(),
-        socialFileName(mode, division, round),
+        socialFileName(
+            mode, mode == SocialCardMode.program ? 'AB' : division, round),
       );
       await ActivityLogService().log(
         eventType: ActivityEventType.socialCardGenerated,
@@ -181,10 +190,11 @@ class _SocialMediaCardScreenState extends State<SocialMediaCardScreen> {
         backgroundColor: AppColors.background,
         appBar: AppBar(title: const Text('Sociale media')),
         body: FutureBuilder<SocialCardData>(
-          key: ValueKey('$division-$round-$refresh'),
+          key: ValueKey('$division-$round-${mode.name}-$refresh'),
           future: load(),
           builder: (context, snapshot) {
             final data = snapshot.data;
+            final exportSize = socialExportSizeFor(mode);
             return ListView(
               padding: const EdgeInsets.all(12),
               children: [
@@ -216,6 +226,7 @@ class _SocialMediaCardScreenState extends State<SocialMediaCardScreen> {
                           const Center(child: CircularProgressIndicator())
                         else ...[
                           SocialMediaPreview(
+                            mode: mode,
                             child: SocialMediaExportCanvas(
                               divisionName: SeasonConfig.divisionName(division),
                               round: round,
@@ -227,10 +238,10 @@ class _SocialMediaCardScreenState extends State<SocialMediaCardScreen> {
                             width: 0,
                             height: 0,
                             child: OverflowBox(
-                              minWidth: socialExportSize.width,
-                              maxWidth: socialExportSize.width,
-                              minHeight: socialExportSize.height,
-                              maxHeight: socialExportSize.height,
+                              minWidth: exportSize.width,
+                              maxWidth: exportSize.width,
+                              minHeight: exportSize.height,
+                              maxHeight: exportSize.height,
                               alignment: Alignment.topLeft,
                               child: Transform.translate(
                                 offset: const Offset(-2000, 0),
@@ -370,13 +381,15 @@ class SocialMediaControls extends StatelessWidget {
 }
 
 class SocialMediaPreview extends StatelessWidget {
-  const SocialMediaPreview({super.key, required this.child});
+  const SocialMediaPreview(
+      {super.key, required this.child, required this.mode});
   final Widget child;
+  final SocialCardMode mode;
   @override
   Widget build(BuildContext context) => LayoutBuilder(
         builder: (context, constraints) => SizedBox(
           width: constraints.maxWidth,
-          height: constraints.maxWidth / socialExportSize.aspectRatio,
+          height: constraints.maxWidth / socialExportSizeFor(mode).aspectRatio,
           child: ClipRect(
             child: FittedBox(fit: BoxFit.contain, child: child),
           ),
@@ -400,7 +413,7 @@ class SocialMediaExportCanvas extends StatelessWidget {
   @override
   Widget build(BuildContext context) => SizedBox.fromSize(
         key: const ValueKey('social-export-canvas'),
-        size: socialExportSize,
+        size: socialExportSizeFor(mode),
         child: DecoratedBox(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
@@ -449,7 +462,9 @@ class SocialMediaExportCanvas extends StatelessWidget {
                 Text(
                   mode == SocialCardMode.predictions
                       ? 'Speelronde $round'
-                      : 'Speelronde $round  \u{2022}  $divisionName',
+                      : mode == SocialCardMode.program
+                          ? 'Speelronde $round  \u{2022}  Derde Divisie A + B'
+                          : 'Speelronde $round  \u{2022}  $divisionName',
                   maxLines: 1,
                   style: const TextStyle(
                     color: Color(0xFFBDE8C8),
@@ -460,14 +475,14 @@ class SocialMediaExportCanvas extends StatelessWidget {
                 const SizedBox(height: 18),
                 Expanded(
                   child: mode == SocialCardMode.predictions
-                      ? PredictionContent(
-                          summary: data.predictionSummary,
-                        )
-                      : MatchStandContent(
-                          matches: data.matches,
-                          standings: data.standings,
-                          mode: mode,
-                        ),
+                      ? PredictionContent(summary: data.predictionSummary)
+                      : mode == SocialCardMode.program
+                          ? ProgramContent(matches: data.matches)
+                          : MatchStandContent(
+                              matches: data.matches,
+                              standings: data.standings,
+                              mode: mode,
+                            ),
                 ),
               ],
             ),
@@ -505,6 +520,111 @@ class SocialMediaMatchCard extends StatelessWidget {
       );
 }
 
+class ProgramContent extends StatelessWidget {
+  const ProgramContent({super.key, required this.matches});
+  final List<SocialCardMatch> matches;
+
+  @override
+  Widget build(BuildContext context) => Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final division in const ['A', 'B']) ...[
+            Expanded(
+              child: ProgramDivisionColumn(
+                division: division,
+                matches: matches
+                    .where((match) => match.division == division)
+                    .toList(),
+              ),
+            ),
+            if (division == 'A') const SizedBox(width: 28),
+          ],
+        ],
+      );
+}
+
+class ProgramDivisionColumn extends StatelessWidget {
+  const ProgramDivisionColumn({
+    super.key,
+    required this.division,
+    required this.matches,
+  });
+  final String division;
+  final List<SocialCardMatch> matches;
+
+  @override
+  Widget build(BuildContext context) {
+    final groups = groupSocialMatchesByDate(matches);
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: .07),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'DERDE DIVISIE $division',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 28,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (groups.isEmpty)
+            const Expanded(
+              child: Center(
+                child: Text(
+                  'Geen wedstrijden',
+                  style: TextStyle(color: Colors.white70),
+                ),
+              ),
+            )
+          else
+            Expanded(
+              child: Column(
+                children: [
+                  for (final entry in groups.entries) ...[
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 5,
+                        horizontal: 10,
+                      ),
+                      color: const Color(0xFF2E7D4F),
+                      child: Text(
+                        socialDateHeader(entry.key),
+                        key: ValueKey(
+                          'date-$division-${socialDateHeader(entry.key)}',
+                        ),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    for (final match in entry.value)
+                      Expanded(
+                        child: MatchRow(
+                          match: match,
+                          mode: SocialCardMode.program,
+                        ),
+                      ),
+                    const SizedBox(height: 5),
+                  ],
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 class MatchStandContent extends StatelessWidget {
   const MatchStandContent({
     super.key,
@@ -517,11 +637,11 @@ class MatchStandContent extends StatelessWidget {
   final SocialCardMode mode;
 
   @override
-  Widget build(BuildContext context) => Column(
+  Widget build(BuildContext context) => Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SizedBox(
-            height: 396,
+          Expanded(
+            flex: 11,
             child: matches.isEmpty
                 ? const Center(
                     child: Text(
@@ -532,23 +652,29 @@ class MatchStandContent extends StatelessWidget {
                 : Column(
                     children: [
                       for (final match in matches)
-                        Expanded(
-                          child: MatchRow(match: match, mode: mode),
-                        ),
+                        Expanded(child: MatchRow(match: match, mode: mode)),
                     ],
                   ),
           ),
-          const SizedBox(height: 15),
-          const Text(
-            'STAND',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 29,
-              fontWeight: FontWeight.w900,
+          const SizedBox(width: 20),
+          Expanded(
+            flex: 9,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  'BIJGEWERKTE STAND',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 25,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Expanded(child: StandTable(standings: standings)),
+              ],
             ),
           ),
-          const SizedBox(height: 5),
-          Expanded(child: StandTable(standings: standings)),
         ],
       );
 }
@@ -686,14 +812,7 @@ class StandTable extends StatelessWidget {
                     ),
                   ),
                   cell('${standings[i].played}', 37),
-                  cell('${standings[i].wins}', 37),
-                  cell('${standings[i].draws}', 37),
-                  cell('${standings[i].losses}', 37),
-                  cell(
-                    '${standings[i].goalsFor}-${standings[i].goalsAgainst}',
-                    61,
-                  ),
-                  cell('${standings[i].goalDifference}', 38),
+                  cell('${standings[i].goalDifference}', 42),
                   cell('${standings[i].points}', 38),
                 ],
               ),

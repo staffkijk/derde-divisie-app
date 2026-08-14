@@ -975,6 +975,18 @@ class _EditMatchDialog extends StatefulWidget {
   State<_EditMatchDialog> createState() => _EditMatchDialogState();
 }
 
+bool matchResultNeedsProcessing({
+  required String initialStatus,
+  required String newStatus,
+  required int? initialHomeScore,
+  required int? initialAwayScore,
+  required int? newHomeScore,
+  required int? newAwayScore,
+}) =>
+    initialStatus != newStatus ||
+    initialHomeScore != newHomeScore ||
+    initialAwayScore != newAwayScore;
+
 class _EditMatchDialogState extends State<_EditMatchDialog> {
   static const _statuses = [
     'scheduled',
@@ -1236,24 +1248,34 @@ class _EditMatchDialogState extends State<_EditMatchDialog> {
         'venueCity': _emptyToNull(_venueCityController.text),
       }, SetOptions(merge: true));
 
-      final processor = const ResultProcessingService();
-      if (_status == 'finished') {
-        await processor.saveFinishedResult(
-          matchRef: widget.match.ref,
-          homeScore: homeScore!,
-          awayScore: awayScore!,
-          division: widget.match.division,
-          round: widget.match.round,
-          homeTeam: widget.match.homeTeam,
-          awayTeam: widget.match.awayTeam,
-          homeTeamSlug: widget.match.homeTeamSlug,
-          awayTeamSlug: widget.match.awayTeamSlug,
-        );
-      } else {
-        await processor.clearResultAndSetStatus(
-          matchRef: widget.match.ref,
-          status: _status,
-        );
+      final resultChanged = matchResultNeedsProcessing(
+        initialStatus: widget.match.status,
+        newStatus: _status,
+        initialHomeScore: widget.match.homeScore,
+        initialAwayScore: widget.match.awayScore,
+        newHomeScore: homeScore,
+        newAwayScore: awayScore,
+      );
+      if (resultChanged) {
+        final processor = const ResultProcessingService();
+        if (_status == 'finished') {
+          await processor.saveFinishedResult(
+            matchRef: widget.match.ref,
+            homeScore: homeScore!,
+            awayScore: awayScore!,
+            division: widget.match.division,
+            round: widget.match.round,
+            homeTeam: widget.match.homeTeam,
+            awayTeam: widget.match.awayTeam,
+            homeTeamSlug: widget.match.homeTeamSlug,
+            awayTeamSlug: widget.match.awayTeamSlug,
+          );
+        } else {
+          await processor.clearResultAndSetStatus(
+            matchRef: widget.match.ref,
+            status: _status,
+          );
+        }
       }
 
       if (mounted) Navigator.of(context).pop(true);
