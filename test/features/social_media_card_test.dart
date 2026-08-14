@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:derde_divisie/core/widgets/match_status_badge.dart';
+import 'package:derde_divisie/core/widgets/team_logo.dart';
 import 'package:derde_divisie/features/moderator/social_media_card_screen.dart';
 
 SocialCardMatch match(
@@ -88,7 +89,8 @@ Widget canvas({
 void main() {
   group('vaste exportcanvas', () {
     for (final width in [360.0, 390.0, 412.0, 1300.0]) {
-      testWidgets('blijft 1080x1350 bij viewport $width', (tester) async {
+      testWidgets('behoudt vaste exportmaat bij viewport $width',
+          (tester) async {
         await tester.binding.setSurfaceSize(Size(width, 1600));
         addTearDown(() => tester.binding.setSurfaceSize(null));
         await tester.pumpWidget(canvas());
@@ -101,6 +103,24 @@ void main() {
     }
   });
 
+  testWidgets('programmaheader is compact en gecentreerd', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1700, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(canvas());
+    expect(find.text('PROGRAMMA'), findsOneWidget);
+    expect(
+      find.text('Speelronde 1  \u{2022}  Derde Divisie A + B'),
+      findsOneWidget,
+    );
+    expect(find.text('derdediv.nl'), findsOneWidget);
+    final canvasCenter = tester.getCenter(
+      find.byKey(const ValueKey('social-export-canvas')),
+    );
+    final titleCenter = tester.getCenter(
+      find.byKey(const ValueKey('social-header-title')),
+    );
+    expect((canvasCenter.dx - titleCenter.dx).abs(), lessThan(1));
+  });
   testWidgets('programma toont A en B naast elkaar zonder stand',
       (tester) async {
     await tester.binding.setSurfaceSize(const Size(1700, 1000));
@@ -162,8 +182,23 @@ void main() {
     await tester.pumpWidget(
       canvas(mode: SocialCardMode.results, value: data(matches: matches)),
     );
+    expect(find.text('Derde Divisie A'), findsOneWidget);
+    expect(find.text('Speelronde 1'), findsOneWidget);
     expect(find.text('UITSLAGEN'), findsOneWidget);
+    expect(find.text('STAND'), findsOneWidget);
+    expect(find.text('BIJGEWERKTE STAND'), findsNothing);
+    expect(find.text('Speelronde in cijfers'), findsNothing);
     expect(find.text('0 - 1'), findsWidgets);
+    expect(find.byKey(const ValueKey('stand-header')), findsOneWidget);
+    for (final header in ['#', 'Club', 'G', 'DS', 'Ptn']) {
+      expect(find.text(header), findsOneWidget);
+    }
+    expect(
+      tester
+          .getSize(find.byKey(const ValueKey('match-row-match-0-A-1')))
+          .height,
+      lessThanOrEqualTo(58),
+    );
     for (final name in names) {
       final widgets = tester.widgetList<Text>(
         find.byKey(ValueKey('team-$name')),
@@ -178,6 +213,21 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('clublogo’s gebruiken hoge filterkwaliteit in beide exports',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1700, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    for (final mode in [SocialCardMode.program, SocialCardMode.results]) {
+      await tester.pumpWidget(canvas(mode: mode));
+      final logos = find.byType(TeamLogo);
+      expect(logos, findsWidgets);
+      final images = find.descendant(of: logos, matching: find.byType(Image));
+      expect(images, findsWidgets);
+      for (final image in tester.widgetList<Image>(images)) {
+        expect(image.filterQuality, FilterQuality.high);
+      }
+    }
+  });
   test('filtert strikt op divisie en speelronde', () {
     final matches = [
       match(0, division: 'A', round: 1),
@@ -190,6 +240,18 @@ void main() {
     expect(b.map((entry) => entry.id), ['match-1-B-1']);
   });
 
+  test('Divisie B-selectie behoudt TOGB en Zwaluwen in speelronde 1', () {
+    final matches = [
+      match(0, division: 'B', round: 1, home: 'UNA', away: 'TOGB'),
+      match(1, division: 'B', round: 1, home: 'Dongen', away: 'Zwaluwen'),
+      match(2, division: 'B', round: 2, home: 'TOGB', away: 'Zwaluwen'),
+      match(3, division: 'A', round: 1, home: 'Andere', away: 'Wedstrijd'),
+    ];
+    final selected = filterSocialMatches(matches, division: 'B', round: 1);
+    expect(selected, hasLength(2));
+    expect(selected.expand((entry) => [entry.homeTeam, entry.awayTeam]),
+        containsAll(['TOGB', 'Zwaluwen']));
+  });
   test('weekwinnaars gebruiken opgeslagen rondepunten en delen de winst', () {
     final users = [
       const RankingUser('u1', {

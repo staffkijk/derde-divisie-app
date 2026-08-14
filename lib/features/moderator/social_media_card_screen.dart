@@ -1,12 +1,9 @@
-import 'dart:async';
 import 'dart:ui' as ui;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
-import 'package:universal_html/html.dart' as html;
 
 import 'package:derde_divisie/core/design/app_design.dart';
 import 'package:derde_divisie/core/widgets/derde_div_logo.dart';
@@ -17,6 +14,7 @@ import 'package:derde_divisie/data/firestore/season_paths.dart';
 import 'package:derde_divisie/data/services/activity_log_service.dart';
 import 'package:derde_divisie/data/services/analytics_service.dart';
 import 'package:derde_divisie/features/moderator/social_media_models.dart';
+import 'package:derde_divisie/features/moderator/social_png_delivery.dart';
 
 export 'package:derde_divisie/features/moderator/social_media_models.dart';
 
@@ -24,10 +22,14 @@ const socialExportSize = Size(1080, 1350);
 const programSocialExportSize = Size(1600, 900);
 
 Size socialExportSizeFor(SocialCardMode mode) =>
-    mode == SocialCardMode.program ? programSocialExportSize : socialExportSize;
+    mode == SocialCardMode.predictions
+        ? socialExportSize
+        : programSocialExportSize;
 
 class SocialMediaCardScreen extends StatefulWidget {
-  const SocialMediaCardScreen({super.key});
+  const SocialMediaCardScreen({super.key, this.pngDelivery});
+
+  final SocialPngDeliveryService? pngDelivery;
   @override
   State<SocialMediaCardScreen> createState() => _SocialMediaCardScreenState();
 }
@@ -145,10 +147,14 @@ class _SocialMediaCardScreenState extends State<SocialMediaCardScreen> {
       final image = await boundary.toImage(pixelRatio: 1);
       final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
       if (bytes == null) throw StateError('PNG kon niet worden gemaakt.');
-      downloadSocialPng(
+      final delivery =
+          await (widget.pngDelivery ?? SocialPngDeliveryService()).deliver(
         bytes.buffer.asUint8List(),
         socialFileName(
-            mode, mode == SocialCardMode.program ? 'AB' : division, round),
+          mode,
+          mode == SocialCardMode.program ? 'AB' : division,
+          round,
+        ),
       );
       await ActivityLogService().log(
         eventType: ActivityEventType.socialCardGenerated,
@@ -156,11 +162,9 @@ class _SocialMediaCardScreenState extends State<SocialMediaCardScreen> {
       );
       await AnalyticsService.instance
           .trackShareClicked(source: 'social_card_png');
-      if (mounted) {
+      if (mounted && delivery == SocialPngDeliveryResult.downloaded) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('PNG gereed. Op iPhone: bewaar via Delen.'),
-          ),
+          const SnackBar(content: Text('PNG gedownload.')),
         );
       }
     } catch (error) {
@@ -423,56 +427,27 @@ class SocialMediaExportCanvas extends StatelessWidget {
             ),
           ),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(48, 38, 48, 38),
+            padding: EdgeInsets.fromLTRB(
+              40,
+              mode == SocialCardMode.predictions ? 34 : 24,
+              40,
+              mode == SocialCardMode.predictions ? 34 : 28,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Row(
-                  children: [
-                    DerdeDivLogo.full(
-                      width: 205,
-                      height: 53,
-                      responsive: false,
-                    ),
-                    Spacer(),
-                    Text(
-                      'derdediv.nl',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 23,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 22),
-                Text(
-                  mode == SocialCardMode.program
+                SocialExportHeader(
+                  title: mode == SocialCardMode.program
                       ? 'PROGRAMMA'
                       : mode == SocialCardMode.results
-                          ? 'UITSLAGEN'
+                          ? divisionName
                           : 'VOORSPELPOULE',
-                  maxLines: 1,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 52,
-                    fontWeight: FontWeight.w900,
-                  ),
+                  subtitle: mode == SocialCardMode.program
+                      ? 'Speelronde $round  \u{2022}  Derde Divisie A + B'
+                      : 'Speelronde $round',
+                  compact: mode != SocialCardMode.predictions,
                 ),
-                Text(
-                  mode == SocialCardMode.predictions
-                      ? 'Speelronde $round'
-                      : mode == SocialCardMode.program
-                          ? 'Speelronde $round  \u{2022}  Derde Divisie A + B'
-                          : 'Speelronde $round  \u{2022}  $divisionName',
-                  maxLines: 1,
-                  style: const TextStyle(
-                    color: Color(0xFFBDE8C8),
-                    fontSize: 25,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 18),
+                SizedBox(height: mode == SocialCardMode.predictions ? 18 : 12),
                 Expanded(
                   child: mode == SocialCardMode.predictions
                       ? PredictionContent(summary: data.predictionSummary)
@@ -487,6 +462,73 @@ class SocialMediaExportCanvas extends StatelessWidget {
               ],
             ),
           ),
+        ),
+      );
+}
+
+class SocialExportHeader extends StatelessWidget {
+  const SocialExportHeader({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    required this.compact,
+  });
+  final String title;
+  final String subtitle;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        height: compact ? 76 : 122,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: DerdeDivLogo.full(
+                width: 180,
+                height: 47,
+                responsive: false,
+              ),
+            ),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  title,
+                  key: const ValueKey('social-header-title'),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: compact ? 39 : 52,
+                    fontWeight: FontWeight.w900,
+                    height: 1,
+                  ),
+                ),
+                const SizedBox(height: 7),
+                Text(
+                  subtitle,
+                  key: const ValueKey('social-header-subtitle'),
+                  style: TextStyle(
+                    color: const Color(0xFFBDE8C8),
+                    fontSize: compact ? 20 : 25,
+                    fontWeight: FontWeight.w800,
+                    height: 1,
+                  ),
+                ),
+              ],
+            ),
+            const Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                'derdediv.nl',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 21,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ],
         ),
       );
 }
@@ -636,41 +678,59 @@ class MatchStandContent extends StatelessWidget {
   final List<SocialStanding> standings;
   final SocialCardMode mode;
 
+  Widget sectionTitle(String title) => Padding(
+        padding: const EdgeInsets.only(left: 2, bottom: 8),
+        child: Text(
+          title,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 25,
+            fontWeight: FontWeight.w900,
+            height: 1,
+          ),
+        ),
+      );
+
   @override
   Widget build(BuildContext context) => Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Expanded(
             flex: 11,
-            child: matches.isEmpty
-                ? const Center(
-                    child: Text(
-                      'Geen wedstrijden voor deze selectie',
-                      style: TextStyle(color: Colors.white, fontSize: 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                sectionTitle('UITSLAGEN'),
+                if (matches.isEmpty)
+                  const Expanded(
+                    child: Center(
+                      child: Text(
+                        'Geen wedstrijden voor deze selectie',
+                        style: TextStyle(color: Colors.white, fontSize: 24),
+                      ),
                     ),
                   )
-                : Column(
+                else
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       for (final match in matches)
-                        Expanded(child: MatchRow(match: match, mode: mode)),
+                        SizedBox(
+                          height: 58,
+                          child: MatchRow(match: match, mode: mode),
+                        ),
                     ],
                   ),
+              ],
+            ),
           ),
-          const SizedBox(width: 20),
+          const SizedBox(width: 24),
           Expanded(
             flex: 9,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text(
-                  'BIJGEWERKTE STAND',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 25,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 8),
+                sectionTitle('STAND'),
                 Expanded(child: StandTable(standings: standings)),
               ],
             ),
@@ -687,7 +747,11 @@ class MatchRow extends StatelessWidget {
   Widget team(String name, bool end) => Row(
         textDirection: end ? ui.TextDirection.rtl : ui.TextDirection.ltr,
         children: [
-          TeamLogo(teamName: name, size: 31, padding: 1),
+          TeamLogo(
+            teamName: name,
+            size: mode == SocialCardMode.results ? 25 : 31,
+            padding: 1,
+          ),
           const SizedBox(width: 7),
           Expanded(
             child: Text(
@@ -697,9 +761,9 @@ class MatchRow extends StatelessWidget {
               maxLines: 1,
               softWrap: false,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
+              style: TextStyle(
                 color: Colors.white,
-                fontSize: 17,
+                fontSize: mode == SocialCardMode.results ? 15 : 17,
                 fontWeight: FontWeight.w800,
               ),
             ),
@@ -721,8 +785,14 @@ class MatchRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        margin: const EdgeInsets.symmetric(vertical: 3),
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+        key: ValueKey('match-row-${match.id}'),
+        margin: EdgeInsets.symmetric(
+          vertical: mode == SocialCardMode.results ? 2 : 3,
+        ),
+        padding: EdgeInsets.symmetric(
+          horizontal: mode == SocialCardMode.results ? 9 : 12,
+          vertical: mode == SocialCardMode.results ? 4 : 0,
+        ),
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: .09),
           borderRadius: BorderRadius.circular(7),
@@ -731,14 +801,14 @@ class MatchRow extends StatelessWidget {
           children: [
             Expanded(child: team(match.homeTeam, false)),
             SizedBox(
-              width: 130,
+              width: mode == SocialCardMode.results ? 104 : 130,
               child: Text(
                 center(),
                 textAlign: TextAlign.center,
                 maxLines: 1,
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.white,
-                  fontSize: 19,
+                  fontSize: mode == SocialCardMode.results ? 22 : 19,
                   fontWeight: FontWeight.w900,
                 ),
               ),
@@ -753,7 +823,12 @@ class StandTable extends StatelessWidget {
   const StandTable({super.key, required this.standings});
   final List<SocialStanding> standings;
 
-  Widget cell(String text, double width, {TextAlign align = TextAlign.right}) =>
+  Widget cell(
+    String text,
+    double width, {
+    TextAlign align = TextAlign.right,
+    bool bold = false,
+  }) =>
       SizedBox(
         width: width,
         child: Text(
@@ -762,7 +837,11 @@ class StandTable extends StatelessWidget {
           softWrap: false,
           overflow: TextOverflow.ellipsis,
           textAlign: align,
-          style: const TextStyle(color: Colors.white, fontSize: 13),
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 13,
+            fontWeight: bold ? FontWeight.w900 : FontWeight.normal,
+          ),
         ),
       );
 
@@ -778,6 +857,33 @@ class StandTable extends StatelessWidget {
     }
     return Column(
       children: [
+        Container(
+          key: const ValueKey('stand-header'),
+          height: 34,
+          padding: const EdgeInsets.symmetric(horizontal: 9),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: .13),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(7)),
+          ),
+          child: Row(
+            children: [
+              cell('#', 27, align: TextAlign.left, bold: true),
+              const Expanded(
+                child: Text(
+                  'Club',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              cell('G', 37, bold: true),
+              cell('DS', 42, bold: true),
+              cell('Ptn', 38, bold: true),
+            ],
+          ),
+        ),
         for (var i = 0; i < standings.length; i++)
           Expanded(
             child: Container(
@@ -791,7 +897,7 @@ class StandTable extends StatelessWidget {
                       children: [
                         TeamLogo(
                           teamName: standings[i].name,
-                          size: 21,
+                          size: 19,
                           padding: 1,
                         ),
                         const SizedBox(width: 5),
@@ -939,27 +1045,6 @@ class PredictionContent extends StatelessWidget {
             ),
           ),
       ],
-    );
-  }
-}
-
-void downloadSocialPng(Uint8List data, String fileName) {
-  if (!kIsWeb) return;
-  final blob = html.Blob([data], 'image/png');
-  final url = html.Url.createObjectUrlFromBlob(blob);
-  final isiOS = RegExp(r'iphone|ipad|ipod')
-      .hasMatch(html.window.navigator.userAgent.toLowerCase());
-  if (isiOS) {
-    html.window.open(url, '_blank');
-    Timer(
-      const Duration(minutes: 1),
-      () => html.Url.revokeObjectUrl(url),
-    );
-  } else {
-    (html.AnchorElement(href: url)..download = fileName).click();
-    Timer(
-      const Duration(seconds: 2),
-      () => html.Url.revokeObjectUrl(url),
     );
   }
 }
