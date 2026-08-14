@@ -2,7 +2,9 @@ import 'dart:developer' as developer;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import 'package:derde_divisie/Puntensysteem/puntenlogica.dart' show berekenPunten;
+import 'package:derde_divisie/Puntensysteem/puntenlogica.dart'
+    show berekenPunten;
+import 'package:derde_divisie/Puntensysteem/prediction_processing_helpers.dart';
 import 'package:derde_divisie/data/firestore/season_paths.dart';
 
 class GeneralPredictionPointsService {
@@ -31,7 +33,8 @@ class GeneralPredictionPointsService {
     }
 
     final docs = await _findAllPredictionDocs(matchId);
-    final selectedByUser = <String, QueryDocumentSnapshot<Map<String, dynamic>>>{};
+    final selectedByUser =
+        <String, QueryDocumentSnapshot<Map<String, dynamic>>>{};
     final selectedTimestamp = <String, int>{};
 
     for (final doc in docs) {
@@ -67,8 +70,8 @@ class GeneralPredictionPointsService {
 
       if (previousProcessed && previousResult == resultKey) continue;
 
-      final predictionHome = _int(data['scoreThuis']);
-      final predictionAway = _int(data['scoreUit']);
+      final predictionHome = predictionHomeScore(data);
+      final predictionAway = predictionAwayScore(data);
       final newPoints = berekenPunten(
         voorspeldThuis: predictionHome,
         voorspeldUit: predictionAway,
