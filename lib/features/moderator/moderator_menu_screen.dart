@@ -7,8 +7,29 @@ import 'package:derde_divisie/data/config/team_logo_assets.dart';
 import 'package:derde_divisie/data/firestore/season_paths.dart';
 import 'package:derde_divisie/features/moderator/result_processing_service.dart';
 
+typedef ModeratorMatchesStreamFactory = Stream<List<ModeratorMatchData>>
+    Function(
+  String division,
+  int round,
+);
+
+typedef ModeratorResultWriter = Future<void> Function({
+  required String matchId,
+  required String division,
+  required int round,
+  required int homeScore,
+  required int awayScore,
+});
+
 class ModeratorMenuScreen extends StatefulWidget {
-  const ModeratorMenuScreen({super.key});
+  const ModeratorMenuScreen({
+    super.key,
+    this.matchesStreamFactory,
+    this.resultWriter,
+  });
+
+  final ModeratorMatchesStreamFactory? matchesStreamFactory;
+  final ModeratorResultWriter? resultWriter;
 
   @override
   State<ModeratorMenuScreen> createState() => _ModeratorMenuScreenState();
@@ -25,11 +46,27 @@ class _ModeratorMenuScreenState extends State<ModeratorMenuScreen> {
 
   final Map<String, TextEditingController> _homeControllers = {};
   final Map<String, TextEditingController> _awayControllers = {};
+  late Stream<List<ModeratorMatchData>> _matchesStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _matchesStream = _createMatchesStream();
+  }
 
   Query<Map<String, dynamic>> _matchesQuery() {
     return SeasonPaths.currentSeasonMatches
         .where('division', isEqualTo: _division)
         .where('round', isEqualTo: _round);
+  }
+
+  Stream<List<ModeratorMatchData>> _createMatchesStream() {
+    final factory = widget.matchesStreamFactory;
+    if (factory != null) return factory(_division, _round);
+    return _matchesQuery().snapshots().map(
+          (snapshot) =>
+              snapshot.docs.map(ModeratorMatchData.fromSnapshot).toList(),
+        );
   }
 
   @override
@@ -58,7 +95,7 @@ class _ModeratorMenuScreenState extends State<ModeratorMenuScreen> {
     _awayControllers.clear();
   }
 
-  TextEditingController _homeControllerFor(_MatchDoc match) {
+  TextEditingController _homeControllerFor(ModeratorMatchData match) {
     return _homeControllers.putIfAbsent(
       match.id,
       () => TextEditingController(
@@ -67,7 +104,7 @@ class _ModeratorMenuScreenState extends State<ModeratorMenuScreen> {
     );
   }
 
-  TextEditingController _awayControllerFor(_MatchDoc match) {
+  TextEditingController _awayControllerFor(ModeratorMatchData match) {
     return _awayControllers.putIfAbsent(
       match.id,
       () => TextEditingController(
@@ -76,7 +113,7 @@ class _ModeratorMenuScreenState extends State<ModeratorMenuScreen> {
     );
   }
 
-  Future<void> _saveMatch(_MatchDoc match) async {
+  Future<void> _saveMatch(ModeratorMatchData match) async {
     final homeController = _homeControllerFor(match);
     final awayController = _awayControllerFor(match);
 
@@ -108,7 +145,7 @@ class _ModeratorMenuScreenState extends State<ModeratorMenuScreen> {
     _showSnack('${match.homeTeam} tegen ${match.awayTeam} opgeslagen.');
   }
 
-  Future<void> _saveAll(List<_MatchDoc> matches) async {
+  Future<void> _saveAll(List<ModeratorMatchData> matches) async {
     if (_savingAll) return;
 
     final updates = <_PendingResult>[];
@@ -172,12 +209,23 @@ class _ModeratorMenuScreenState extends State<ModeratorMenuScreen> {
   }
 
   Future<void> _writeResult({
-    required _MatchDoc match,
+    required ModeratorMatchData match,
     required int homeScore,
     required int awayScore,
   }) async {
+    final writer = widget.resultWriter;
+    if (writer != null) {
+      await writer(
+        matchId: match.id,
+        division: match.division,
+        round: match.round,
+        homeScore: homeScore,
+        awayScore: awayScore,
+      );
+      return;
+    }
     await _processor.saveFinishedResult(
-      matchRef: match.ref,
+      matchRef: match.reference!,
       homeScore: homeScore,
       awayScore: awayScore,
       division: match.division,
@@ -189,10 +237,10 @@ class _ModeratorMenuScreenState extends State<ModeratorMenuScreen> {
     );
   }
 
-  Future<void> _setStatus(_MatchDoc match, String status) async {
+  Future<void> _setStatus(ModeratorMatchData match, String status) async {
     try {
       await _processor.clearResultAndSetStatus(
-        matchRef: match.ref,
+        matchRef: match.reference!,
         status: status,
       );
       _homeControllerFor(match).clear();
@@ -211,12 +259,12 @@ class _ModeratorMenuScreenState extends State<ModeratorMenuScreen> {
     }
   }
 
-  void _setQuickScore(_MatchDoc match, int home, int away) {
+  void _setQuickScore(ModeratorMatchData match, int home, int away) {
     _homeControllerFor(match).text = '$home';
     _awayControllerFor(match).text = '$away';
   }
 
-  Future<void> _clearResult(_MatchDoc match) async {
+  Future<void> _clearResult(ModeratorMatchData match) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) {
@@ -243,7 +291,7 @@ class _ModeratorMenuScreenState extends State<ModeratorMenuScreen> {
 
     try {
       await _processor.clearResultAndSetStatus(
-        matchRef: match.ref,
+        matchRef: match.reference!,
         status: 'scheduled',
       );
 
@@ -293,6 +341,7 @@ class _ModeratorMenuScreenState extends State<ModeratorMenuScreen> {
                           setState(() {
                             _division = value;
                             _clearControllers();
+                            _matchesStream = _createMatchesStream();
                           });
                         },
                         onRoundChanged: (value) {
@@ -300,14 +349,14 @@ class _ModeratorMenuScreenState extends State<ModeratorMenuScreen> {
                           setState(() {
                             _round = value;
                             _clearControllers();
+                            _matchesStream = _createMatchesStream();
                           });
                         },
                       ),
                       const SizedBox(height: 16),
                       Expanded(
-                        child:
-                            StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                          stream: _matchesQuery().snapshots(),
+                        child: StreamBuilder<List<ModeratorMatchData>>(
+                          stream: _matchesStream,
                           builder: (context, snapshot) {
                             if (snapshot.hasError) {
                               return _StateCard(
@@ -326,9 +375,9 @@ class _ModeratorMenuScreenState extends State<ModeratorMenuScreen> {
                               );
                             }
 
-                            final docs = snapshot.data?.docs ?? [];
+                            final matches = snapshot.data ?? [];
 
-                            if (docs.isEmpty) {
+                            if (matches.isEmpty) {
                               return const _StateCard(
                                 icon: Icons.scoreboard_outlined,
                                 title: 'Geen wedstrijden gevonden',
@@ -338,10 +387,7 @@ class _ModeratorMenuScreenState extends State<ModeratorMenuScreen> {
                               );
                             }
 
-                            final matches = docs
-                                .map((doc) => _MatchDoc.fromSnapshot(doc))
-                                .toList()
-                              ..sort(_MatchDoc.compareForInput);
+                            matches.sort(ModeratorMatchData.compareForInput);
 
                             return Column(
                               children: [
@@ -360,6 +406,7 @@ class _ModeratorMenuScreenState extends State<ModeratorMenuScreen> {
                                       final match = matches[index];
 
                                       return _ResultRow(
+                                        key: ValueKey('result-${match.id}'),
                                         match: match,
                                         compact: !isDesktop,
                                         homeController:
@@ -437,6 +484,7 @@ class _HeaderCard extends StatelessWidget {
       runSpacing: 10,
       children: [
         _SelectBox<String>(
+          key: const ValueKey('moderator-division-select'),
           value: division,
           items: const [
             DropdownMenuItem(value: 'A', child: Text('Divisie A')),
@@ -445,6 +493,7 @@ class _HeaderCard extends StatelessWidget {
           onChanged: onDivisionChanged,
         ),
         _SelectBox<int>(
+          key: const ValueKey('moderator-round-select'),
           value: round,
           items: List.generate(
             34,
@@ -494,6 +543,7 @@ class _HeaderCard extends StatelessWidget {
 
 class _SelectBox<T> extends StatelessWidget {
   const _SelectBox({
+    super.key,
     required this.value,
     required this.items,
     required this.onChanged,
@@ -563,6 +613,7 @@ class _BulkBar extends StatelessWidget {
             ),
           ),
           ElevatedButton.icon(
+            key: const ValueKey('save-all-results'),
             onPressed: saving ? null : onSaveAll,
             icon: saving
                 ? const SizedBox(
@@ -581,6 +632,7 @@ class _BulkBar extends StatelessWidget {
 
 class _ResultRow extends StatelessWidget {
   const _ResultRow({
+    super.key,
     required this.match,
     required this.compact,
     required this.homeController,
@@ -591,7 +643,7 @@ class _ResultRow extends StatelessWidget {
     required this.onStatus,
   });
 
-  final _MatchDoc match;
+  final ModeratorMatchData match;
   final bool compact;
   final TextEditingController homeController;
   final TextEditingController awayController;
@@ -627,7 +679,10 @@ class _ResultRow extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 12),
-        _ScoreInput(controller: homeController),
+        _ScoreInput(
+          key: ValueKey('home-score-${match.id}'),
+          controller: homeController,
+        ),
         const SizedBox(width: 8),
         const Text(
           '-',
@@ -637,7 +692,10 @@ class _ResultRow extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 8),
-        _ScoreInput(controller: awayController),
+        _ScoreInput(
+          key: ValueKey('away-score-${match.id}'),
+          controller: awayController,
+        ),
         const SizedBox(width: 12),
         Expanded(
           flex: 5,
@@ -706,7 +764,10 @@ class _ResultRow extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 10),
-            _ScoreInput(controller: homeController),
+            _ScoreInput(
+              key: ValueKey('home-score-${match.id}'),
+              controller: homeController,
+            ),
           ],
         ),
         const SizedBox(height: 10),
@@ -720,7 +781,10 @@ class _ResultRow extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 10),
-            _ScoreInput(controller: awayController),
+            _ScoreInput(
+              key: ValueKey('away-score-${match.id}'),
+              controller: awayController,
+            ),
           ],
         ),
         const SizedBox(height: 12),
@@ -756,7 +820,7 @@ class _ResultRow extends StatelessWidget {
 }
 
 class _ScoreInput extends StatelessWidget {
-  const _ScoreInput({required this.controller});
+  const _ScoreInput({super.key, required this.controller});
 
   final TextEditingController controller;
 
@@ -768,7 +832,10 @@ class _ScoreInput extends StatelessWidget {
       child: TextField(
         controller: controller,
         textAlign: TextAlign.center,
-        keyboardType: TextInputType.number,
+        keyboardType: const TextInputType.numberWithOptions(
+          signed: false,
+          decimal: false,
+        ),
         inputFormatters: [
           FilteringTextInputFormatter.digitsOnly,
           LengthLimitingTextInputFormatter(2),
@@ -967,14 +1034,14 @@ class _PendingResult {
     required this.awayScore,
   });
 
-  final _MatchDoc match;
+  final ModeratorMatchData match;
   final int homeScore;
   final int awayScore;
 }
 
-class _MatchDoc {
-  const _MatchDoc({
-    required this.ref,
+class ModeratorMatchData {
+  const ModeratorMatchData({
+    this.reference,
     required this.id,
     required this.division,
     required this.round,
@@ -988,7 +1055,7 @@ class _MatchDoc {
     required this.awayScore,
   });
 
-  final DocumentReference<Map<String, dynamic>> ref;
+  final DocumentReference<Map<String, dynamic>>? reference;
   final String id;
   final String division;
   final int round;
@@ -1001,13 +1068,13 @@ class _MatchDoc {
   final int? homeScore;
   final int? awayScore;
 
-  factory _MatchDoc.fromSnapshot(
+  factory ModeratorMatchData.fromSnapshot(
     QueryDocumentSnapshot<Map<String, dynamic>> doc,
   ) {
     final data = doc.data();
 
-    return _MatchDoc(
-      ref: doc.reference,
+    return ModeratorMatchData(
+      reference: doc.reference,
       id: doc.id,
       division: _string(data['division'], ''),
       round: _int(data['round'], 0),
@@ -1044,7 +1111,7 @@ class _MatchDoc {
     );
   }
 
-  static int compareForInput(_MatchDoc a, _MatchDoc b) {
+  static int compareForInput(ModeratorMatchData a, ModeratorMatchData b) {
     final indexResult = a.roundMatchIndex.compareTo(b.roundMatchIndex);
     if (indexResult != 0) return indexResult;
     return a.homeTeam.compareTo(b.homeTeam);
