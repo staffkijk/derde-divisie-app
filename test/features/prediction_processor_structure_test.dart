@@ -29,12 +29,13 @@ void main() {
     expect(source, contains("'processingFailedAt'"));
   });
 
-  test('rollback gebruikt dezelfde canonieke service', () {
+  test('rollback gebruikt canonieke algemene en poule services', () {
     final source = File(
       'lib/features/moderator/result_processing_service.dart',
     ).readAsStringSync();
 
     expect(source, contains('GeneralPredictionPointsService().rollbackMatch'));
+    expect(source, contains('PoulePredictionRollbackService().rollbackMatch'));
     expect(source, isNot(contains('draaiVoorspellingenVoorWedstrijdTerug')));
   });
 }
