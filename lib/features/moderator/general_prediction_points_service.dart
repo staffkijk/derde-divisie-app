@@ -260,7 +260,7 @@ class GeneralPredictionPointsService {
   }) async {
     final snapshot =
         await SeasonPaths.currentSeasonPredictionContributions.get();
-    final grouped = <String, List<({String division, int points})>>{};
+    final grouped = <String, List<PredictionContributionValue>>{};
 
     for (final doc in snapshot.docs) {
       final data = doc.data();
@@ -268,10 +268,12 @@ class GeneralPredictionPointsService {
       final contributionUserId = (data['userId'] ?? '').toString().trim();
       if (contributionUserId.isEmpty) continue;
       if (userId != null && contributionUserId != userId) continue;
-      grouped.putIfAbsent(contributionUserId, () => []).add((
-        division: (data['division'] ?? '').toString(),
-        points: _int(data['points']),
-      ));
+      grouped.putIfAbsent(contributionUserId, () => []).add(
+            PredictionContributionValue(
+              division: (data['division'] ?? '').toString(),
+              points: _int(data['points']),
+            ),
+          );
     }
 
     return {
