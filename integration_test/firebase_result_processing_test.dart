@@ -155,6 +155,17 @@ void main() {
     expect(aliceLedger['resultKey'], '0-3');
     expect(aliceLedger['processed'], true);
 
+    var pouleParticipant = (await db
+            .doc('poules/regression-poule/deelnemers/regression-alice')
+            .get())
+        .data()!;
+    var poulePrediction =
+        (await db.doc('poule_predictions/regression-poule-alice-A1').get())
+            .data()!;
+    expect(pouleParticipant['punten'], 7);
+    expect(poulePrediction['punten'], 7);
+    expect(poulePrediction['verwerkt'], true);
+
     await processor.clearResultAndSetStatus(
       matchRef: matchRef,
       status: 'scheduled',
@@ -194,5 +205,17 @@ void main() {
         .data()!;
     expect(aliceLedger['points'], 0);
     expect(aliceLedger['processed'], false);
+
+    pouleParticipant = (await db
+            .doc('poules/regression-poule/deelnemers/regression-alice')
+            .get())
+        .data()!;
+    poulePrediction =
+        (await db.doc('poule_predictions/regression-poule-alice-A1').get())
+            .data()!;
+    expect(pouleParticipant['punten'], 0);
+    expect(poulePrediction['punten'], 0);
+    expect(poulePrediction['verwerkt'], false);
+    expect(poulePrediction.containsKey('verwerktVoorUitslag'), isFalse);
   });
 }
