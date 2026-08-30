@@ -185,6 +185,19 @@ String canonicalSocialTeamKey(
   return '$normalizedDivision:${SeasonConfig.normalizeTeamKey(value)}';
 }
 
+bool _socialMatchCanCountForForm(SocialCardMatch match) {
+  if (match.homeScore == null || match.awayScore == null) return false;
+  switch (match.status) {
+    case MatchStatus.postponed:
+    case MatchStatus.cancelled:
+    case MatchStatus.abandoned:
+      return false;
+    case MatchStatus.scheduled:
+    case MatchStatus.finished:
+      return true;
+  }
+}
+
 Map<String, List<SocialFormResult>> buildSocialForm({
   required Iterable<SocialStanding> standings,
   required Iterable<SocialCardMatch> matches,
@@ -192,27 +205,37 @@ Map<String, List<SocialFormResult>> buildSocialForm({
 }) {
   final result = <String, List<SocialFormResult>>{};
   for (final standing in standings) {
-    final key = canonicalSocialTeamKey(standing.name,
-        division: standing.division, teamId: standing.teamId);
+    final key = canonicalSocialTeamKey(
+      standing.name,
+      division: standing.division,
+      teamId: standing.teamId,
+    );
     final teamMatches = matches.where((match) {
       if (match.division != standing.division ||
-          match.status != MatchStatus.finished ||
-          match.homeScore == null ||
-          match.awayScore == null) {
+          !_socialMatchCanCountForForm(match)) {
         return false;
       }
-      return canonicalSocialTeamKey(match.homeTeam,
-                  division: match.division, teamId: match.homeTeamId) ==
+      return canonicalSocialTeamKey(
+                match.homeTeam,
+                division: match.division,
+                teamId: match.homeTeamId,
+              ) ==
               key ||
-          canonicalSocialTeamKey(match.awayTeam,
-                  division: match.division, teamId: match.awayTeamId) ==
+          canonicalSocialTeamKey(
+                match.awayTeam,
+                division: match.division,
+                teamId: match.awayTeamId,
+              ) ==
               key;
     }).toList()
       ..sort(SocialCardMatch.compare);
     result[key] =
         teamMatches.reversed.take(limit).toList().reversed.map((match) {
-      final home = canonicalSocialTeamKey(match.homeTeam,
-              division: match.division, teamId: match.homeTeamId) ==
+      final home = canonicalSocialTeamKey(
+            match.homeTeam,
+            division: match.division,
+            teamId: match.homeTeamId,
+          ) ==
           key;
       final own = home ? match.homeScore! : match.awayScore!;
       final other = home ? match.awayScore! : match.homeScore!;
@@ -229,8 +252,11 @@ List<int> socialRoundChoices(SocialCardMode mode) =>
         ? PredictionSocialPeriod.publicationRounds
         : List.generate(34, (index) => index + 1);
 
-String predictionSocialText(PredictionSummary summary, int round,
-    {bool compact = false}) {
+String predictionSocialText(
+  PredictionSummary summary,
+  int round, {
+  bool compact = false,
+}) {
   final period = PredictionSocialPeriod.forRound(round);
   final winner = summary.periodWinners.isEmpty
       ? 'Nog geen periodewinnaar'
@@ -418,32 +444,95 @@ class SocialCardMatch {
     QueryDocumentSnapshot<Map<String, dynamic>> doc,
   ) {
     final data = doc.data();
+
     int? nullableInt(Object? value) {
       if (value is num) return value.toInt();
       return int.tryParse(value?.toString() ?? '');
     }
+
+    String readableTeamValue(Object? value) {
+      if (value == null) return '';
+      if (value is DocumentReference) return value.id.trim();
+      if (value is Map) {
+        for (final key in const [
+          'name',
+          'teamName',
+          'displayName',
+          'id',
+          'teamId',
+          'clubId',
+          'code',
+        ]) {
+          final candidate = value[key];
+          if (candidate != null && candidate.toString().trim().isNotEmpty) {
+            return candidate.toString().trim();
+          }
+        }
+        return '';
+      }
+      return value.toString().trim();
+    }
+
+    String firstTeamValue(List<Object?> values) {
+      for (final value in values) {
+        final candidate = readableTeamValue(value);
+        if (candidate.isNotEmpty) return candidate;
+      }
+      return '';
+    }
+
+    final homeScore = nullableInt(
+      data['homeScore'] ?? data['uitslagThuis'] ?? data['thuisScore'],
+    );
+    final awayScore = nullableInt(
+      data['awayScore'] ?? data['uitslagUit'] ?? data['uitScore'],
+    );
 
     return SocialCardMatch(
       id: doc.id,
       division: SeasonConfig.normalizeDivisionCode(
         (data['division'] ?? data['competitie'] ?? '').toString(),
       ),
-      round: rankingInt(data['round'] ?? data['speelronde']),
-      homeTeam:
-          (data['homeTeamName'] ?? data['homeTeam'] ?? data['thuisteam'] ?? '')
-              .toString()
-              .trim(),
-      awayTeam:
-          (data['awayTeamName'] ?? data['awayTeam'] ?? data['uitteam'] ?? '')
-              .toString()
-              .trim(),
+      round: rankingInt(data['round'] ?? data['speelronde'] ?? data['ronde']),
+      homeTeam: firstTeamValue([
+        data['homeTeamName'],
+        data['homeTeam'],
+        data['thuisteam'],
+        data['thuisTeam'],
+        data['home'],
+        data['homeTeamCode'],
+        data['homeTeamId'],
+        data['homeClubId'],
+      ]),
+      awayTeam: firstTeamValue([
+        data['awayTeamName'],
+        data['awayTeam'],
+        data['uitteam'],
+        data['uitTeam'],
+        data['away'],
+        data['awayTeamCode'],
+        data['awayTeamId'],
+        data['awayClubId'],
+      ]),
       kickoffTime: MatchDateTimeFormatter.publicTime(data),
       status: parseMatchStatus(data['status']),
       dateTime: MatchDateTimeFormatter.dateTimeFromData(data),
-      homeScore: nullableInt(data['homeScore'] ?? data['uitslagThuis']),
-      awayScore: nullableInt(data['awayScore'] ?? data['uitslagUit']),
-      homeTeamId: (data['homeTeamId'] ?? data['homeClubId'])?.toString(),
-      awayTeamId: (data['awayTeamId'] ?? data['awayClubId'])?.toString(),
+      homeScore: homeScore,
+      awayScore: awayScore,
+      homeTeamId: firstTeamValue([
+        data['homeTeamId'],
+        data['homeClubId'],
+        data['homeTeamCode'],
+        data['thuisTeamId'],
+        data['thuisteamId'],
+      ]),
+      awayTeamId: firstTeamValue([
+        data['awayTeamId'],
+        data['awayClubId'],
+        data['awayTeamCode'],
+        data['uitTeamId'],
+        data['uitteamId'],
+      ]),
       data: data,
     );
   }
