@@ -5,6 +5,7 @@ import 'package:derde_divisie/data/config/season_config.dart';
 import 'package:derde_divisie/data/services/activity_log_service.dart';
 import 'package:derde_divisie/features/moderator/general_prediction_points_service.dart';
 import 'package:derde_divisie/features/moderator/periodestand_service.dart';
+import 'package:derde_divisie/features/moderator/poule_prediction_rollback_service.dart';
 import 'package:derde_divisie/features/moderator/standen_service.dart';
 
 class ResultProcessingService {
@@ -143,6 +144,7 @@ class ResultProcessingService {
       matchId: matchRef.id,
       userPointsField: division == 'B' ? 'punten_B' : 'punten_A',
     );
+    await const PoulePredictionRollbackService().rollbackMatch(matchRef.id);
 
     await matchRef.set(
       {
