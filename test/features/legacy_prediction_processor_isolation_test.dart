@@ -3,37 +3,30 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('legacy algemene puntenverwerker heeft geen productieaanroepers', () {
-    const legacyPath = 'lib/Puntensysteem/puntenverwerker.dart';
-    const forbiddenSymbols = <String>[
-      'verwerkUitslagVoorWedstrijd(',
-      'verwerkVoorspellingenVoorWedstrijd(',
-      'draaiVoorspellingenVoorWedstrijdTerug(',
-      'resetWedstrijd(',
-    ];
+  test('legacy puntenverwerker is alleen een canonieke compatibiliteitslaag', () {
+    final source = File(
+      'lib/Puntensysteem/puntenverwerker.dart',
+    ).readAsStringSync();
 
-    final offenders = <String>[];
-    final lib = Directory('lib');
-
-    for (final entity in lib.listSync(recursive: true)) {
-      if (entity is! File || !entity.path.endsWith('.dart')) continue;
-      final normalized = entity.path.replaceAll('\\', '/');
-      if (normalized == legacyPath) continue;
-
-      final source = entity.readAsStringSync();
-      final importsLegacy = source.contains(
-        'package:derde_divisie/Puntensysteem/puntenverwerker.dart',
-      );
-      final callsLegacy = forbiddenSymbols.any(source.contains);
-      if (importsLegacy || callsLegacy) offenders.add(normalized);
-    }
+    expect(source, contains('GeneralPredictionPointsService().processMatch'));
+    expect(source, contains('GeneralPredictionPointsService().rollbackMatch'));
+    expect(source, contains('ResultProcessingService().saveFinishedResult'));
+    expect(source, contains('ResultProcessingService().clearResultAndSetStatus'));
 
     expect(
-      offenders,
-      isEmpty,
-      reason:
-          'Algemene wedstrijdpunten moeten uitsluitend via GeneralPredictionPointsService lopen. '
-          'De legacy puntenverwerker mag niet opnieuw aan een productiepad worden gekoppeld.',
+      source,
+      isNot(contains('FieldValue.increment')),
+      reason: 'De compatibiliteitslaag mag userpunten niet zelfstandig muteren.',
+    );
+    expect(
+      source,
+      isNot(contains("collection('users')")),
+      reason: 'Userpunten horen uitsluitend via de canonieke service te lopen.',
+    );
+    expect(
+      File('lib/Puntensysteem/puntensysteemvoorspellen.dart').existsSync(),
+      isFalse,
+      reason: 'De oude parallelle puntenprocessor mag niet terugkomen.',
     );
   });
 }
