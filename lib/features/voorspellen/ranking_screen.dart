@@ -7,13 +7,20 @@ import 'package:derde_divisie/features/voorspellen/user_display_name.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-class RankingScreen extends StatelessWidget {
+class RankingScreen extends StatefulWidget {
   const RankingScreen({super.key, required this.type});
 
   final RankingType type;
 
+  @override
+  State<RankingScreen> createState() => _RankingScreenState();
+}
+
+class _RankingScreenState extends State<RankingScreen> {
+  String query = '';
+
   void _showUserActions(BuildContext context, DocumentSnapshot user) {
-    final contextType = rankingContextType(type);
+    final contextType = rankingContextType(widget.type);
     showModalBottomSheet<void>(
       context: context,
       builder: (_) => Column(
@@ -61,7 +68,7 @@ class RankingScreen extends StatelessWidget {
       backgroundColor: const Color(0xFFF3F6F1),
       appBar: RankingAppBar(
         context: context,
-        title: rankingTitle(type),
+        title: rankingTitle(widget.type),
         fallbackRoute: predictionsRankingsRoute,
       ),
       body: FutureBuilder<QuerySnapshot<Map<String, dynamic>>>(
@@ -69,7 +76,8 @@ class RankingScreen extends StatelessWidget {
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return const Center(
-                child: Text('Ranglijst kon niet worden geladen.'));
+              child: Text('Ranglijst kon niet worden geladen.'),
+            );
           }
           if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
@@ -78,12 +86,24 @@ class RankingScreen extends StatelessWidget {
           final users =
               sortRanking<QueryDocumentSnapshot<Map<String, dynamic>>>(
             snapshot.data!.docs,
-            type: type,
+            type: widget.type,
             dataOf: (user) => user.data(),
             idOf: (user) => user.id,
           );
           final ownIndex = users.indexWhere((user) => user.id == uid);
           final visible = users.take(10).toList();
+          final normalizedQuery = query.trim().toLowerCase();
+          final searchResults = normalizedQuery.isEmpty
+              ? const <QueryDocumentSnapshot<Map<String, dynamic>>>[]
+              : users
+                  .where((user) => resolveUserDisplayName(user.data())
+                      .toLowerCase()
+                      .contains(normalizedQuery))
+                  .take(25)
+                  .toList();
+          final positions = <String, int>{
+            for (var i = 0; i < users.length; i++) users[i].id: i,
+          };
 
           Widget userTile(
             QueryDocumentSnapshot<Map<String, dynamic>> user,
@@ -102,27 +122,25 @@ class RankingScreen extends StatelessWidget {
             }
             return ListTile(
               tileColor: user.id == uid ? Colors.green[50] : null,
-              leading: GestureDetector(
-                onTap: () => _showUserActions(context, user),
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    CircleAvatar(
-                      radius: 22,
-                      backgroundImage: avatar,
-                      child: avatar == null ? const Icon(Icons.person) : null,
+              onTap: () => _showUserActions(context, user),
+              leading: Stack(
+                alignment: Alignment.center,
+                children: [
+                  CircleAvatar(
+                    radius: 22,
+                    backgroundImage: avatar,
+                    child: avatar == null ? const Icon(Icons.person) : null,
+                  ),
+                  if (medalColor != null)
+                    Positioned(
+                      right: -4,
+                      bottom: -2,
+                      child: Icon(Icons.emoji_events, color: medalColor),
                     ),
-                    if (medalColor != null)
-                      Positioned(
-                        right: -4,
-                        bottom: -2,
-                        child: Icon(Icons.emoji_events, color: medalColor),
-                      ),
-                  ],
-                ),
+                ],
               ),
               title: Text(resolveUserDisplayName(data)),
-              subtitle: Text('Punten: ${rankingScore(data, type)}'),
+              subtitle: Text('Punten: ${rankingScore(data, widget.type)}'),
               trailing: Text('#${index + 1}'),
             );
           }
@@ -130,16 +148,38 @@ class RankingScreen extends StatelessWidget {
           return ListView(
             padding: const EdgeInsets.all(12),
             children: [
-              ...visible.asMap().entries.map(
-                    (entry) => userTile(entry.value, entry.key),
-                  ),
-              if (ownIndex >= visible.length) ...[
-                const Divider(),
-                const Text(
-                  'Jouw positie',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+              TextField(
+                decoration: const InputDecoration(
+                  labelText: 'Zoek gebruiker',
+                  prefixIcon: Icon(Icons.search),
+                  border: OutlineInputBorder(),
                 ),
-                userTile(users[ownIndex], ownIndex),
+                textInputAction: TextInputAction.search,
+                onChanged: (value) => setState(() => query = value),
+              ),
+              const SizedBox(height: 12),
+              if (normalizedQuery.isNotEmpty) ...[
+                if (searchResults.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 20),
+                    child: Center(child: Text('Geen gebruiker gevonden.')),
+                  )
+                else
+                  ...searchResults.map(
+                    (user) => userTile(user, positions[user.id] ?? 0),
+                  ),
+              ] else ...[
+                ...visible.asMap().entries.map(
+                      (entry) => userTile(entry.value, entry.key),
+                    ),
+                if (ownIndex >= visible.length) ...[
+                  const Divider(),
+                  const Text(
+                    'Jouw positie',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  userTile(users[ownIndex], ownIndex),
+                ],
               ],
             ],
           );
