@@ -1,57 +1,70 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:logging/logging.dart';
 
-// Gebruik dezelfde paden als in jouw project
-import 'package:derde_divisie/Puntensysteem/puntenverwerker.dart';
-import 'package:derde_divisie/features/moderator/standen_service.dart';
+import 'package:derde_divisie/data/config/season_config.dart';
+import 'package:derde_divisie/data/firestore/season_paths.dart';
 import 'package:derde_divisie/features/moderator/periodestand_service.dart';
+import 'package:derde_divisie/features/moderator/result_processing_service.dart';
+import 'package:derde_divisie/features/moderator/standen_service.dart';
 
 final Logger _log = Logger('SpeelrondeResetService');
 
 class SpeelrondeResetService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  const SpeelrondeResetService();
 
-  /// Reset alle wedstrijden van [speelronde] in divisie 'A' of 'B'.
-  /// - Draait punten van alle betrokken voorspellingen terug (algemeen + alle poules)
-  /// - Leegt de wedstrijdvelden
-  /// - Corrigeert standen & periodestanden
-  /// - Herberekent competitie- en periodestanden
+  /// Reset alle wedstrijden van [speelronde] in divisie A of B via de
+  /// canonieke resultaatverwerker. Daardoor worden algemene voorspellerspunten
+  /// transactioneel teruggedraaid en kan de legacy puntenverwerker niet meer
+  /// buiten de contribution-ledger om usertotalen aanpassen.
   Future<void> resetSpeelronde(String divisie, int speelronde) async {
+    final normalizedDivision = SeasonConfig.normalizeDivisionCode(divisie);
+    if (normalizedDivision != 'A' && normalizedDivision != 'B') {
+      throw ArgumentError.value(divisie, 'divisie');
+    }
+
     try {
-      final competitieNaam =
-          divisie == 'A' ? 'Derde Divisie A' : 'Derde Divisie B';
-      final periodeCode =
-          divisie == 'A' ? 'dda' : 'ddb'; // <- vereist door PeriodestandService
+      final snapshot = await SeasonPaths.currentSeasonMatches.get();
+      final matches = snapshot.docs.where((doc) {
+        final data = doc.data();
+        final rawDivision =
+            data['division'] ?? data['divisie'] ?? data['competitie'] ?? '';
+        final matchDivision =
+            SeasonConfig.normalizeDivisionCode(rawDivision.toString());
+        final rawRound = data['round'] ??
+            data['speelronde'] ??
+            data['ronde'] ??
+            data['wedstrijdRonde'];
+        final matchRound = rawRound is num
+            ? rawRound.toInt()
+            : int.tryParse(rawRound?.toString() ?? '');
+        return matchDivision == normalizedDivision && matchRound == speelronde;
+      }).toList();
 
-      final wedstrijdenSnapshot = await _firestore
-          .collection('matches')
-          .where('competitie', isEqualTo: competitieNaam)
-          .where('speelronde', isEqualTo: speelronde)
-          .get();
-
-      if (wedstrijdenSnapshot.docs.isEmpty) {
+      if (matches.isEmpty) {
         _log.info(
-            'ℹ️ Geen wedstrijden voor $competitieNaam – speelronde $speelronde');
+          'Geen wedstrijden voor divisie $normalizedDivision, speelronde $speelronde',
+        );
         return;
       }
 
-      // Per wedstrijd resetten via puntenverwerker.resetWedstrijd()
-      for (final w in wedstrijdenSnapshot.docs) {
-        await resetWedstrijd(w.id);
-        _log.info('🔁 Wedstrijd ${w.id} gereset via resetWedstrijd()');
+      const processor = ResultProcessingService();
+      for (final match in matches) {
+        await processor.clearResultAndSetStatus(
+          matchRef: match.reference,
+          status: 'scheduled',
+        );
+        _log.info('Wedstrijd ${match.id} canoniek gereset');
       }
 
-      // Herbereken competitie-stand (service verwacht hier jouw eigen divisie-indicatie)
-      await StandenService().herberekenStandVoorDivisie(divisie);
-
-      // Herbereken periodestanden (service verwacht 'dda' of 'ddb')
+      await StandenService().herberekenStandVoorDivisie(normalizedDivision);
       await PeriodestandService()
-          .herberekenAllePeriodesVoorDivisie(periodeCode);
+          .herberekenAllePeriodesVoorDivisie(normalizedDivision);
 
-      _log.info('✅ Speelronde $speelronde ($competitieNaam) volledig gereset.');
-    } catch (e, st) {
-      _log.severe('❌ Fout bij resetten speelronde: $e');
-      _log.severe(st.toString());
+      _log.info(
+        'Speelronde $speelronde, divisie $normalizedDivision volledig gereset',
+      );
+    } catch (error, stackTrace) {
+      _log.severe('Fout bij resetten speelronde: $error', error, stackTrace);
       rethrow;
     }
   }
