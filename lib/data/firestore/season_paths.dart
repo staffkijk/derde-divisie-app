@@ -37,6 +37,11 @@ class SeasonPaths {
     return predictions(SeasonConfig.activeSeasonId);
   }
 
+  static CollectionReference<Map<String, dynamic>>
+      get currentSeasonPredictionContributions {
+    return predictionContributions(SeasonConfig.activeSeasonId);
+  }
+
   static CollectionReference<Map<String, dynamic>> get currentSeasonPoules {
     return poules(SeasonConfig.activeSeasonId);
   }
@@ -83,6 +88,12 @@ class SeasonPaths {
     String seasonId,
   ) {
     return seasonDoc(seasonId).collection('predictions');
+  }
+
+  static CollectionReference<Map<String, dynamic>> predictionContributions(
+    String seasonId,
+  ) {
+    return seasonDoc(seasonId).collection('predictionContributions');
   }
 
   static CollectionReference<Map<String, dynamic>> poules(String seasonId) {
