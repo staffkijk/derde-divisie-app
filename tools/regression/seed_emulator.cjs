@@ -90,6 +90,29 @@ async function main() {
     verwerkt: false,
   });
 
+  // Een reeds verwerkte poulevoorspelling simuleert de bestaande productieflow.
+  // De result reset moet zowel deze prediction als het deelnemerstotaal terugdraaien.
+  batch.set(db.doc('poules/regression-poule'), {
+    name: 'Regression Poule',
+    ownerId: 'regression-moderator',
+  });
+  batch.set(db.doc('poules/regression-poule/deelnemers/regression-alice'), {
+    userId: 'regression-alice',
+    punten: 7,
+  });
+  batch.set(db.doc('poule_predictions/regression-poule-alice-A1'), {
+    pouleId: 'regression-poule',
+    gebruikerId: 'regression-alice',
+    wedstrijdId: 'A_REGRESSION_01',
+    matchId: 'A_REGRESSION_01',
+    scoreThuis: 1,
+    scoreUit: 0,
+    punten: 7,
+    verwerkt: true,
+    verwerktVoorUitslag: '0-3',
+    timestamp: Timestamp.fromDate(new Date('2026-08-08T18:10:00Z')),
+  });
+
   await batch.commit();
   console.log('Regression emulator seed gereed.');
 }

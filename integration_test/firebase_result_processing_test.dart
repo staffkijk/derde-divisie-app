@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
+import 'package:derde_divisie/Puntensysteem/prediction_contribution_logic.dart';
 import 'package:derde_divisie/data/firestore/season_paths.dart';
 import 'package:derde_divisie/features/moderator/result_processing_service.dart';
 import 'package:derde_divisie/firebase_options.dart';
@@ -41,7 +42,7 @@ void main() {
     await auth.signOut();
   });
 
-  testWidgets('uitslag verwerken, wijzigen en terugdraaien blijft consistent',
+  testWidgets('uitslag verwerken, rerunnen, wijzigen en terugdraaien blijft consistent',
       (tester) async {
     final matchRef = SeasonPaths.currentSeasonMatches.doc(matchId);
 
@@ -63,6 +64,7 @@ void main() {
     expect(match['awayScore'], 1);
     expect(match['processed'], true);
     expect(match['verwerkt'], true);
+    expect(match['processingStatus'], 'processed');
 
     var acv = (await SeasonPaths.currentSeasonStandings.doc('A_acv').get()).data()!;
     var ado = (await SeasonPaths.currentSeasonStandings.doc('A_ado20').get()).data()!;
@@ -85,6 +87,38 @@ void main() {
     expect(alice['punten_A'], 10);
     expect(alice['totalen'], 10);
     expect(bob['punten_A'], 0);
+
+    final aliceLedgerId = predictionContributionDocumentId(
+      division: 'A',
+      userId: 'regression-alice',
+      matchId: matchId,
+    );
+    var aliceLedger = (await SeasonPaths.currentSeasonPredictionContributions
+            .doc(aliceLedgerId)
+            .get())
+        .data()!;
+    expect(aliceLedger['points'], 10);
+    expect(aliceLedger['resultKey'], '2-1');
+    expect(aliceLedger['processed'], true);
+
+    await processor.saveFinishedResult(
+      matchRef: matchRef,
+      homeScore: 2,
+      awayScore: 1,
+      division: 'A',
+      round: 1,
+      homeTeam: 'ACV',
+      awayTeam: 'ADO20',
+      homeTeamSlug: 'acv',
+      awayTeamSlug: 'ado20',
+    );
+
+    alice = (await db.collection('users').doc('regression-alice').get()).data()!;
+    expect(
+      alice['punten_A'],
+      10,
+      reason: 'dezelfde uitslag opnieuw verwerken mag geen punten verdubbelen',
+    );
 
     await processor.saveFinishedResult(
       matchRef: matchRef,
@@ -113,6 +147,25 @@ void main() {
     expect(bob['punten_A'], 7, reason: '0-2 voorspeld bij 0-3 levert 7 punten op');
     expect(bob['totalen'], 7);
 
+    aliceLedger = (await SeasonPaths.currentSeasonPredictionContributions
+            .doc(aliceLedgerId)
+            .get())
+        .data()!;
+    expect(aliceLedger['points'], 0);
+    expect(aliceLedger['resultKey'], '0-3');
+    expect(aliceLedger['processed'], true);
+
+    var pouleParticipant = (await db
+            .doc('poules/regression-poule/deelnemers/regression-alice')
+            .get())
+        .data()!;
+    var poulePrediction =
+        (await db.doc('poule_predictions/regression-poule-alice-A1').get())
+            .data()!;
+    expect(pouleParticipant['punten'], 7);
+    expect(poulePrediction['punten'], 7);
+    expect(poulePrediction['verwerkt'], true);
+
     await processor.clearResultAndSetStatus(
       matchRef: matchRef,
       status: 'scheduled',
@@ -123,6 +176,7 @@ void main() {
     expect(match.containsKey('homeScore'), isFalse);
     expect(match.containsKey('awayScore'), isFalse);
     expect(match['processed'], false);
+    expect(match['processingStatus'], 'not_processed');
 
     acv = (await SeasonPaths.currentSeasonStandings.doc('A_acv').get()).data()!;
     ado = (await SeasonPaths.currentSeasonStandings.doc('A_ado20').get()).data()!;
@@ -144,5 +198,24 @@ void main() {
     expect(alice['totalen'], 0);
     expect(bob['punten_A'], 0, reason: 'punten van gewijzigde uitslag moeten rollbacken');
     expect(bob['totalen'], 0);
+
+    aliceLedger = (await SeasonPaths.currentSeasonPredictionContributions
+            .doc(aliceLedgerId)
+            .get())
+        .data()!;
+    expect(aliceLedger['points'], 0);
+    expect(aliceLedger['processed'], false);
+
+    pouleParticipant = (await db
+            .doc('poules/regression-poule/deelnemers/regression-alice')
+            .get())
+        .data()!;
+    poulePrediction =
+        (await db.doc('poule_predictions/regression-poule-alice-A1').get())
+            .data()!;
+    expect(pouleParticipant['punten'], 0);
+    expect(poulePrediction['punten'], 0);
+    expect(poulePrediction['verwerkt'], false);
+    expect(poulePrediction.containsKey('verwerktVoorUitslag'), isFalse);
   });
 }
