@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:derde_divisie/core/widgets/match_status_badge.dart';
 import 'package:derde_divisie/core/widgets/team_logo.dart';
+import 'package:derde_divisie/data/config/season_config.dart';
 import 'package:derde_divisie/features/moderator/social_media_card_screen.dart';
 
 SocialCardMatch match(
@@ -14,6 +15,8 @@ SocialCardMatch match(
   int? homeScore,
   int? awayScore,
   DateTime? dateTime,
+  MatchStatus status = MatchStatus.scheduled,
+  bool processed = false,
 }) {
   return SocialCardMatch(
     id: 'match-$index-$division-$round',
@@ -22,7 +25,7 @@ SocialCardMatch match(
     homeTeam: home ?? 'Thuisclub $index',
     awayTeam: away ?? 'Uitclub $index',
     kickoffTime: '15:00',
-    status: MatchStatus.scheduled,
+    status: status,
     homeScore: homeScore,
     awayScore: awayScore,
     dateTime: dateTime ?? DateTime(2026, 8, 15),
@@ -32,6 +35,7 @@ SocialCardMatch match(
       'date': '2026-08-15',
       'kickoffTime': '15:00',
       'roundMatchIndex': index,
+      'processed': processed,
     },
   );
 }
@@ -252,7 +256,8 @@ void main() {
     expect(selected.expand((entry) => [entry.homeTeam, entry.awayTeam]),
         containsAll(['TOGB', 'Zwaluwen']));
   });
-  test('weekwinnaars gebruiken opgeslagen rondepunten en delen de winst', () {
+  test('periodewinnaars gebruiken opgeslagen rondepunten en delen de winst',
+      () {
     final users = [
       const RankingUser('u1', {
         'username': 'Ada',
@@ -271,7 +276,8 @@ void main() {
     ];
     final summary = buildPredictionSummary(
       users: users,
-      roundMatchIds: {'m1', 'm2'},
+      periodMatchDivisions: const {'m1': 'A', 'm2': 'B'},
+      throughMatchDivisions: const {'m1': 'A', 'm2': 'B'},
       predictions: const [
         {'wedstrijdId': 'm1', 'gebruikerId': 'u1', 'punten': 3},
         {'wedstrijdId': 'm2', 'gebruikerId': 'u1', 'punten': 1},
@@ -279,19 +285,19 @@ void main() {
         {'wedstrijdId': 'andere-ronde', 'gebruikerId': 'u3', 'punten': 9},
       ],
     );
-    expect(summary.weekWinners.map((entry) => entry.name), ['Ada', 'Bram']);
-    expect(summary.weekWinners.first.score, 4);
+    expect(summary.periodWinners.map((entry) => entry.name), ['Bram']);
+    expect(summary.periodWinners.first.score, 4);
     expect(
       summary.globalTop.map((entry) => entry.name),
-      ['Cato', 'Ada', 'Bram'],
+      ['Bram', 'Ada', 'Cato'],
     );
   });
 
-  testWidgets('voorspelpoule rendert weekwinnaar en top 5', (tester) async {
+  testWidgets('voorspelpoule rendert periodewinnaar en top 5', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1300, 1450));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final summary = PredictionSummary(
-      weekWinners: const [PredictionRankEntry('1', 'Ada', 12)],
+      periodWinners: const [PredictionRankEntry('1', 'Ada', 12)],
       globalTop: List.generate(
         5,
         (index) => PredictionRankEntry(
@@ -308,7 +314,7 @@ void main() {
       ),
     );
     expect(find.text('VOORSPELPOULE'), findsOneWidget);
-    expect(find.text('WEEKWINNAAR'), findsOneWidget);
+    expect(find.text('PERIODEWINNAAR'), findsOneWidget);
     expect(find.text('Ada'), findsOneWidget);
     expect(find.text('Speler 4'), findsOneWidget);
     expect(tester.takeException(), isNull);
@@ -349,8 +355,288 @@ void main() {
       'derdediv_uitslagen_B_speelronde_4.png',
     );
     expect(
-      socialFileName(SocialCardMode.predictions, 'A', 3),
-      'derdediv_voorspelpoule_speelronde_3.png',
+      socialFileName(SocialCardMode.predictions, 'A', 10),
+      'derdediv_voorspelpoule_speelronde_10.png',
     );
+  });
+
+  test('prediction publicatiemomenten gebruiken vaste competitieblokken', () {
+    expect(
+        PredictionSocialPeriod.publicationRounds, [5, 10, 15, 20, 25, 30, 34]);
+    for (final expected in const {
+      5: [1, 5],
+      10: [6, 10],
+      15: [11, 15],
+      30: [26, 30],
+      34: [31, 34]
+    }.entries) {
+      final period = PredictionSocialPeriod.forRound(expected.key);
+      expect([period.startRound, period.endRound], expected.value);
+    }
+    expect(PredictionSocialPeriod.forRound(7).endRound, 10);
+  });
+
+  test('historische top gebruikt beste divisiescore tot gekozen ronde', () {
+    final summary = buildPredictionSummary(
+      users: const [
+        RankingUser('u1', {'username': 'Ada', 'punten_A': 999}),
+        RankingUser('u2', {'username': 'Bram'})
+      ],
+      predictions: const [
+        {'wedstrijdId': 'a1', 'gebruikerId': 'u1', 'punten': 3},
+        {'wedstrijdId': 'b1', 'gebruikerId': 'u1', 'punten': 8},
+        {'wedstrijdId': 'a1', 'gebruikerId': 'u2', 'punten': 7},
+        {'wedstrijdId': 'later', 'gebruikerId': 'u1', 'punten': 100},
+      ],
+      periodMatchDivisions: const {'a1': 'A'},
+      throughMatchDivisions: const {'a1': 'A', 'b1': 'B'},
+    );
+    expect(summary.periodWinners.single.name, 'Bram');
+    expect(summary.globalTop.first.name, 'Ada');
+    expect(summary.globalTop.first.score, 8);
+  });
+
+  test('vorm koppelt aliases, divisie en perspectief correct', () {
+    final standings = [standing(0, 'A')];
+    final custom = SocialStanding(
+        division: 'A',
+        name: 'ADO ’20',
+        position: 1,
+        played: 3,
+        wins: 1,
+        draws: 1,
+        losses: 1,
+        goalsFor: 3,
+        goalsAgainst: 3,
+        goalDifference: 0,
+        points: 4);
+    final matches = [
+      match(1,
+          home: "ADO '20",
+          away: 'ACV',
+          homeScore: 2,
+          awayScore: 0,
+          status: MatchStatus.finished),
+      match(2,
+          home: 'ACV',
+          away: 'ADO20',
+          homeScore: 1,
+          awayScore: 1,
+          status: MatchStatus.finished),
+      match(3,
+          home: 'ADO20',
+          away: 'ACV',
+          homeScore: 0,
+          awayScore: 1,
+          status: MatchStatus.finished),
+      match(4,
+          division: 'B',
+          home: 'ADO20',
+          away: 'UNA',
+          homeScore: 9,
+          awayScore: 0,
+          status: MatchStatus.finished),
+      match(5,
+          home: 'ADO20',
+          away: 'ACV',
+          homeScore: 9,
+          awayScore: 0,
+          status: MatchStatus.postponed),
+    ];
+    final form =
+        buildSocialForm(standings: [custom, ...standings], matches: matches);
+    expect(form[canonicalSocialTeamKey(custom.name, division: 'A')],
+        [SocialFormResult.win, SocialFormResult.draw, SocialFormResult.loss]);
+  });
+
+  test('alle 36 actuele clubs koppelen met centrale teamconfig', () {
+    for (final team in SeasonConfig.teams) {
+      expect(canonicalSocialTeamKey(team.label, division: team.division),
+          '${team.division}:${team.id}');
+      for (final alias in team.aliases) {
+        expect(canonicalSocialTeamKey(alias, division: team.division),
+            '${team.division}:${team.id}');
+      }
+    }
+    expect(SeasonConfig.teamsForDivision('A'), hasLength(18));
+    expect(SeasonConfig.teamsForDivision('B'), hasLength(18));
+  });
+
+  test('dropdownkeuzes verschillen alleen voor voorspelpoule', () {
+    expect(socialRoundChoices(SocialCardMode.predictions),
+        [5, 10, 15, 20, 25, 30, 34]);
+    expect(socialRoundChoices(SocialCardMode.program),
+        List.generate(34, (i) => i + 1));
+    expect(socialRoundChoices(SocialCardMode.results),
+        List.generate(34, (i) => i + 1));
+  });
+
+  test('X-tekst noemt periodewinnaar en nooit weekwinnaar', () {
+    const summary = PredictionSummary(
+      periodWinners: [PredictionRankEntry('u1', 'Ada', 84)],
+      globalTop: [PredictionRankEntry('u1', 'Ada', 120)],
+    );
+    final text = predictionSocialText(summary, 10);
+    expect(text, contains('Voorspelpoule na speelronde 10'));
+    expect(text, contains('Periodewinnaar speelronde 6 t/m 10'));
+    expect(text, isNot(contains('Weekwinnaar')));
+    expect(text.runes.length, lessThanOrEqualTo(280));
+  });
+
+  test('onvolledig blok wordt niet exporteerbaar gemarkeerd', () {
+    final period = PredictionSocialPeriod.forRound(5);
+    expect(
+        predictionPeriodIsComplete([
+          match(1, round: 1, status: MatchStatus.finished, processed: true),
+          match(2, round: 2, status: MatchStatus.finished, processed: false),
+        ], period),
+        isFalse);
+    expect(
+        predictionPeriodIsComplete([
+          for (var round = 1; round <= 5; round++)
+            match(round,
+                round: round, status: MatchStatus.finished, processed: true),
+        ], period),
+        isTrue);
+  });
+
+  test('alle clubs met drie afgeronde wedstrijden hebben drie vormblokjes', () {
+    for (final division in ['A', 'B']) {
+      final teams = SeasonConfig.teamsForDivision(division);
+      final matches = <SocialCardMatch>[];
+      final rotating = teams.toList();
+      for (var round = 1; round <= 3; round++) {
+        for (var index = 0; index < 9; index++) {
+          matches.add(match(
+            round * 10 + index,
+            division: division,
+            round: round,
+            home: rotating[index].label,
+            away: rotating[17 - index].label,
+            homeScore: index % 3,
+            awayScore: (index + round) % 3,
+            status: MatchStatus.finished,
+            processed: true,
+          ));
+        }
+        rotating.insert(1, rotating.removeLast());
+      }
+      final standings = teams.map((team) => SocialStanding(
+            division: division,
+            name: team.label,
+            teamId: team.id,
+            position: 1,
+            played: 3,
+            wins: 1,
+            draws: 1,
+            losses: 1,
+            goalsFor: 3,
+            goalsAgainst: 3,
+            goalDifference: 0,
+            points: 4,
+          ));
+      final form = buildSocialForm(standings: standings, matches: matches);
+      for (final team in teams) {
+        expect(form['$division:${team.id}'], hasLength(3), reason: team.label);
+      }
+    }
+  });
+
+  group('periodewinnaar gebruikt officiële globale max(A, B)', () {
+    PredictionSummary summaryFor(Map<String, List<int>> scores) {
+      final users = <RankingUser>[];
+      final predictions = <Map<String, dynamic>>[];
+      final matches = <String, String>{};
+      for (final entry in scores.entries) {
+        users.add(RankingUser(entry.key, {'username': entry.key}));
+        final aId = '${entry.key}-A';
+        final bId = '${entry.key}-B';
+        matches[aId] = 'A';
+        matches[bId] = 'B';
+        if (entry.value[0] >= 0) {
+          predictions.add({
+            'wedstrijdId': aId,
+            'gebruikerId': entry.key,
+            'punten': entry.value[0]
+          });
+        }
+        if (entry.value[1] >= 0) {
+          predictions.add({
+            'wedstrijdId': bId,
+            'gebruikerId': entry.key,
+            'punten': entry.value[1]
+          });
+        }
+      }
+      return buildPredictionSummary(
+        users: users,
+        predictions: predictions,
+        periodMatchDivisions: matches,
+        throughMatchDivisions: matches,
+      );
+    }
+
+    test('A 80 en B 70 geeft 80', () {
+      final summary = summaryFor({
+        'speler': [80, 70]
+      });
+      expect(summary.periodWinners.single.score, 80);
+    });
+
+    test('A 50 en B 90 geeft 90', () {
+      final summary = summaryFor({
+        'speler': [50, 90]
+      });
+      expect(summary.periodWinners.single.score, 90);
+    });
+
+    test('A plus B wordt niet bij elkaar opgeteld', () {
+      final summary = summaryFor({
+        'beide': [60, 60],
+        'alleenA': [100, -1]
+      });
+      expect(summary.periodWinners.single.name, 'alleenA');
+      expect(summary.periodWinners.single.score, 100);
+    });
+
+    test('gelijke maxscore geeft gedeelde periodewinst', () {
+      final summary = summaryFor({
+        'eerste': [80, 20],
+        'tweede': [10, 80]
+      });
+      expect(summary.periodWinners.map((entry) => entry.name),
+          ['eerste', 'tweede']);
+      expect(
+          summary.periodWinners.map((entry) => entry.score), everyElement(80));
+    });
+
+    test('gebruiker met alleen A kan winnen', () {
+      final summary = summaryFor({
+        'alleenA': [91, -1],
+        'ander': [40, 80]
+      });
+      expect(summary.periodWinners.single.name, 'alleenA');
+    });
+
+    test('gebruiker met alleen B kan winnen', () {
+      final summary = summaryFor({
+        'alleenB': [-1, 92],
+        'ander': [80, 40]
+      });
+      expect(summary.periodWinners.single.name, 'alleenB');
+    });
+
+    test(
+        'periodewinnaar en historische top gebruiken dezelfde globale definitie',
+        () {
+      final summary = summaryFor({
+        'beide': [60, 60],
+        'beste': [20, 100]
+      });
+      expect(summary.periodWinners.single.name, 'beste');
+      expect(summary.periodWinners.single.score, 100);
+      expect(summary.globalTop.first.name, 'beste');
+      expect(summary.globalTop.first.score, 100);
+    });
   });
 }

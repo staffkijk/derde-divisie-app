@@ -12,10 +12,39 @@ class SocialCardData {
     required this.matches,
     required this.standings,
     required this.predictionSummary,
+    this.formByTeam = const {},
+    this.predictionPeriodComplete = true,
   });
   final List<SocialCardMatch> matches;
   final List<SocialStanding> standings;
   final PredictionSummary predictionSummary;
+  final Map<String, List<SocialFormResult>> formByTeam;
+  final bool predictionPeriodComplete;
+}
+
+enum SocialFormResult { win, draw, loss }
+
+class PredictionSocialPeriod {
+  const PredictionSocialPeriod(this.startRound, this.endRound);
+  final int startRound;
+  final int endRound;
+  String get label => 'Na speelronde $endRound';
+  String get rangeLabel => 'Speelronde $startRound t/m $endRound';
+  static const periods = [
+    PredictionSocialPeriod(1, 5),
+    PredictionSocialPeriod(6, 10),
+    PredictionSocialPeriod(11, 15),
+    PredictionSocialPeriod(16, 20),
+    PredictionSocialPeriod(21, 25),
+    PredictionSocialPeriod(26, 30),
+    PredictionSocialPeriod(31, 34),
+  ];
+  static List<int> get publicationRounds =>
+      periods.map((period) => period.endRound).toList(growable: false);
+  static PredictionSocialPeriod forRound(int round) => periods.firstWhere(
+        (period) => round <= period.endRound,
+        orElse: () => periods.last,
+      );
 }
 
 class RankingUser {
@@ -33,70 +62,191 @@ class PredictionRankEntry {
 
 class PredictionSummary {
   const PredictionSummary({
-    this.weekWinners = const [],
+    this.periodWinners = const [],
     this.globalTop = const [],
   });
-  final List<PredictionRankEntry> weekWinners;
+  final List<PredictionRankEntry> periodWinners;
   final List<PredictionRankEntry> globalTop;
 }
 
 PredictionSummary buildPredictionSummary({
   required List<RankingUser> users,
   required List<Map<String, dynamic>> predictions,
-  required Set<String> roundMatchIds,
+  required Map<String, String> periodMatchDivisions,
+  required Map<String, String> throughMatchDivisions,
 }) {
   final byId = {for (final user in users) user.id: user};
-  final scores = <String, int>{};
+  final periodScoresA = <String, int>{};
+  final periodScoresB = <String, int>{};
+  final scoresA = <String, int>{};
+  final scoresB = <String, int>{};
   for (final prediction in predictions) {
     final matchId =
         (prediction['wedstrijdId'] ?? prediction['matchId'] ?? '').toString();
-    if (!roundMatchIds.contains(matchId)) continue;
     final uid = (prediction['gebruikerId'] ??
             prediction['userId'] ??
             prediction['uid'] ??
             '')
         .toString();
     if (uid.isEmpty) continue;
-    scores.update(
-      uid,
-      (old) => old + rankingInt(prediction['punten']),
-      ifAbsent: () => rankingInt(prediction['punten']),
-    );
+    final points = rankingInt(prediction['punten']);
+    final periodDivision = periodMatchDivisions[matchId];
+    if (periodDivision == 'A') {
+      periodScoresA.update(uid, (old) => old + points, ifAbsent: () => points);
+    } else if (periodDivision == 'B') {
+      periodScoresB.update(uid, (old) => old + points, ifAbsent: () => points);
+    }
+    final division = throughMatchDivisions[matchId];
+    if (division == 'A') {
+      scoresA.update(uid, (old) => old + points, ifAbsent: () => points);
+    } else if (division == 'B') {
+      scoresB.update(uid, (old) => old + points, ifAbsent: () => points);
+    }
   }
-  final best = scores.values.fold<int>(
-    0,
-    (old, score) => score > old ? score : old,
-  );
-  final winners = scores.entries
+  final periodUserIds = {...periodScoresA.keys, ...periodScoresB.keys};
+  final periodScores = {
+    for (final uid in periodUserIds)
+      uid: rankingScore({
+        'punten_A': periodScoresA[uid] ?? 0,
+        'punten_B': periodScoresB[uid] ?? 0,
+      }, RankingType.global),
+  };
+  final best = periodScores.values
+      .fold<int>(0, (old, score) => score > old ? score : old);
+  final winners = periodScores.entries
       .where((entry) => best > 0 && entry.value == best)
-      .map((entry) {
-    final user = byId[entry.key];
-    return PredictionRankEntry(
-      entry.key,
-      user == null ? 'Onbekende gebruiker' : resolveUserDisplayName(user.data),
-      entry.value,
-    );
-  }).toList()
+      .map((entry) => PredictionRankEntry(
+            entry.key,
+            byId[entry.key] == null
+                ? 'Onbekende gebruiker'
+                : resolveUserDisplayName(byId[entry.key]!.data),
+            entry.value,
+          ))
+      .toList()
     ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+  final historicalUsers = users.map((user) => RankingUser(user.id, {
+        ...user.data,
+        'punten_A': scoresA[user.id] ?? 0,
+        'punten_B': scoresB[user.id] ?? 0,
+      }));
   final sorted = sortRanking<RankingUser>(
-    users,
+    historicalUsers,
     type: RankingType.global,
     dataOf: (user) => user.data,
     idOf: (user) => user.id,
   );
   return PredictionSummary(
-    weekWinners: winners,
+    periodWinners: winners,
     globalTop: sorted
         .take(5)
-        .map(
-          (user) => PredictionRankEntry(
-            user.id,
-            resolveUserDisplayName(user.data),
-            rankingScore(user.data, RankingType.global),
-          ),
-        )
+        .map((user) => PredictionRankEntry(
+              user.id,
+              resolveUserDisplayName(user.data),
+              rankingScore(user.data, RankingType.global),
+            ))
         .toList(),
   );
+}
+
+bool predictionPeriodIsComplete(
+  Iterable<SocialCardMatch> matches,
+  PredictionSocialPeriod period,
+) {
+  final relevant = matches.where((match) =>
+      match.round >= period.startRound && match.round <= period.endRound);
+  if (relevant.isEmpty) {
+    return false;
+  }
+  final rounds = relevant.map((match) => match.round).toSet();
+  for (var round = period.startRound; round <= period.endRound; round++) {
+    if (!rounds.contains(round)) {
+      return false;
+    }
+  }
+  return relevant.every((match) =>
+      match.status == MatchStatus.finished &&
+      (match.data['processed'] == true || match.data['verwerkt'] == true));
+}
+
+String canonicalSocialTeamKey(
+  String value, {
+  required String division,
+  String? teamId,
+}) {
+  final normalizedDivision = SeasonConfig.normalizeDivisionCode(division);
+  final byId = teamId == null ? null : SeasonConfig.teamById(teamId);
+  if (byId != null && byId.division == normalizedDivision) {
+    return '$normalizedDivision:${byId.id}';
+  }
+  final team = SeasonConfig.teamByName(value);
+  if (team != null && team.division == normalizedDivision) {
+    return '$normalizedDivision:${team.id}';
+  }
+  return '$normalizedDivision:${SeasonConfig.normalizeTeamKey(value)}';
+}
+
+Map<String, List<SocialFormResult>> buildSocialForm({
+  required Iterable<SocialStanding> standings,
+  required Iterable<SocialCardMatch> matches,
+  int limit = 5,
+}) {
+  final result = <String, List<SocialFormResult>>{};
+  for (final standing in standings) {
+    final key = canonicalSocialTeamKey(standing.name,
+        division: standing.division, teamId: standing.teamId);
+    final teamMatches = matches.where((match) {
+      if (match.division != standing.division ||
+          match.status != MatchStatus.finished ||
+          match.homeScore == null ||
+          match.awayScore == null) {
+        return false;
+      }
+      return canonicalSocialTeamKey(match.homeTeam,
+                  division: match.division, teamId: match.homeTeamId) ==
+              key ||
+          canonicalSocialTeamKey(match.awayTeam,
+                  division: match.division, teamId: match.awayTeamId) ==
+              key;
+    }).toList()
+      ..sort(SocialCardMatch.compare);
+    result[key] =
+        teamMatches.reversed.take(limit).toList().reversed.map((match) {
+      final home = canonicalSocialTeamKey(match.homeTeam,
+              division: match.division, teamId: match.homeTeamId) ==
+          key;
+      final own = home ? match.homeScore! : match.awayScore!;
+      final other = home ? match.awayScore! : match.homeScore!;
+      if (own > other) return SocialFormResult.win;
+      if (own < other) return SocialFormResult.loss;
+      return SocialFormResult.draw;
+    }).toList();
+  }
+  return result;
+}
+
+List<int> socialRoundChoices(SocialCardMode mode) =>
+    mode == SocialCardMode.predictions
+        ? PredictionSocialPeriod.publicationRounds
+        : List.generate(34, (index) => index + 1);
+
+String predictionSocialText(PredictionSummary summary, int round,
+    {bool compact = false}) {
+  final period = PredictionSocialPeriod.forRound(round);
+  final winner = summary.periodWinners.isEmpty
+      ? 'Nog geen periodewinnaar'
+      : summary.periodWinners
+          .map((entry) => '${entry.name} - ${entry.score} punten')
+          .join('\n');
+  final top = summary.globalTop
+      .asMap()
+      .entries
+      .map((entry) =>
+          '${entry.key + 1}. ${entry.value.name} - ${entry.value.score}')
+      .join('\n');
+  return 'Voorspelpoule na speelronde $round 🏆\n\n'
+      'Periodewinnaar speelronde ${period.startRound} t/m ${period.endRound}:\n$winner\n\n'
+      '${compact ? '' : 'Top 5 algemeen:\n$top\n\n'}'
+      'Volledige ranglijst: derdediv.nl';
 }
 
 List<SocialCardMatch> filterSocialMatches(
@@ -131,8 +281,18 @@ Map<DateTime, List<SocialCardMatch>> groupSocialMatchesByDate(
 String socialDateHeader(DateTime date) {
   const weekdays = ['MA', 'DI', 'WO', 'DO', 'VR', 'ZA', 'ZO'];
   const months = [
-    'JAN', 'FEB', 'MRT', 'APR', 'MEI', 'JUN',
-    'JUL', 'AUG', 'SEP', 'OKT', 'NOV', 'DEC',
+    'JAN',
+    'FEB',
+    'MRT',
+    'APR',
+    'MEI',
+    'JUN',
+    'JUL',
+    'AUG',
+    'SEP',
+    'OKT',
+    'NOV',
+    'DEC',
   ];
   return '${weekdays[date.weekday - 1]} ${date.day} ${months[date.month - 1]}';
 }
@@ -161,6 +321,7 @@ class SocialStanding {
     required this.goalsAgainst,
     required this.goalDifference,
     required this.points,
+    this.teamId,
   });
   final String division;
   final String name;
@@ -173,6 +334,7 @@ class SocialStanding {
   final int goalsAgainst;
   final int goalDifference;
   final int points;
+  final String? teamId;
 
   factory SocialStanding.fromDoc(
     QueryDocumentSnapshot<Map<String, dynamic>> doc,
@@ -204,6 +366,7 @@ class SocialStanding {
         data['goalDifference'] ?? data['doelsaldo'] ?? goalsFor - goalsAgainst,
       ),
       points: rankingInt(data['points'] ?? data['punten']),
+      teamId: (data['teamId'] ?? data['clubId'])?.toString(),
     );
   }
 
@@ -234,6 +397,8 @@ class SocialCardMatch {
     this.dateTime,
     this.homeScore,
     this.awayScore,
+    this.homeTeamId,
+    this.awayTeamId,
   });
   final String id;
   final String division;
@@ -246,6 +411,8 @@ class SocialCardMatch {
   final DateTime? dateTime;
   final int? homeScore;
   final int? awayScore;
+  final String? homeTeamId;
+  final String? awayTeamId;
 
   factory SocialCardMatch.fromDoc(
     QueryDocumentSnapshot<Map<String, dynamic>> doc,
@@ -275,6 +442,8 @@ class SocialCardMatch {
       dateTime: MatchDateTimeFormatter.dateTimeFromData(data),
       homeScore: nullableInt(data['homeScore'] ?? data['uitslagThuis']),
       awayScore: nullableInt(data['awayScore'] ?? data['uitslagUit']),
+      homeTeamId: (data['homeTeamId'] ?? data['homeClubId'])?.toString(),
+      awayTeamId: (data['awayTeamId'] ?? data['awayClubId'])?.toString(),
       data: data,
     );
   }

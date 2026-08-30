@@ -64,6 +64,11 @@ class _SocialMediaCardScreenState extends State<SocialMediaCardScreen> {
     final users =
         all[2].docs.map((doc) => RankingUser(doc.id, doc.data())).toList();
     final predictions = all[3].docs.map((doc) => doc.data()).toList();
+    final period = PredictionSocialPeriod.forRound(round);
+    final periodMatches = matches.where((match) =>
+        match.round >= period.startRound && match.round <= period.endRound);
+    final throughMatches =
+        matches.where((match) => match.round <= period.endRound);
     return SocialCardData(
       matches: mode == SocialCardMode.program
           ? (matches.where((match) => match.round == round).toList()
@@ -73,11 +78,18 @@ class _SocialMediaCardScreenState extends State<SocialMediaCardScreen> {
       predictionSummary: buildPredictionSummary(
         users: users,
         predictions: predictions,
-        roundMatchIds: matches
-            .where((match) => match.round == round)
-            .map((match) => match.id)
-            .toSet(),
+        periodMatchDivisions: {
+          for (final match in periodMatches) match.id: match.division,
+        },
+        throughMatchDivisions: {
+          for (final match in throughMatches) match.id: match.division,
+        },
       ),
+      formByTeam: buildSocialForm(
+        standings: standings,
+        matches: matches.where((match) => match.round <= round),
+      ),
+      predictionPeriodComplete: predictionPeriodIsComplete(matches, period),
     );
   }
 
@@ -85,21 +97,9 @@ class _SocialMediaCardScreenState extends State<SocialMediaCardScreen> {
     String fit(String full, String short) =>
         full.runes.length <= 280 ? full : short;
     if (mode == SocialCardMode.predictions) {
-      final winner = data.predictionSummary.weekWinners.isEmpty
-          ? 'Nog geen weekwinnaar'
-          : data.predictionSummary.weekWinners
-              .map((e) => '${e.name} - ${e.score} punten')
-              .join('\n');
-      final top = data.predictionSummary.globalTop
-          .asMap()
-          .entries
-          .map((e) => '${e.key + 1}. ${e.value.name} - ${e.value.score}')
-          .join('\n');
       return fit(
-        'Weekwinnaar speelronde $round \u{1F3C6}\n$winner\n\n'
-            'Top 5 algemeen:\n$top\n\nderdediv.nl',
-        'Weekwinnaar speelronde $round \u{1F3C6}\n$winner\n\n'
-            'Volledige ranglijst: derdediv.nl',
+        predictionSocialText(data.predictionSummary, round),
+        predictionSocialText(data.predictionSummary, round, compact: true),
       );
     }
     final title = mode == SocialCardMode.program ? 'Programma' : 'Uitslagen';
@@ -215,12 +215,30 @@ class _SocialMediaCardScreenState extends State<SocialMediaCardScreen> {
                           exporting: exporting,
                           onDivision: (v) => setState(() => division = v),
                           onRound: (v) => setState(() => round = v),
-                          onMode: (v) => setState(() => mode = v),
-                          onDownload:
-                              data == null ? null : () => download(data),
+                          onMode: (v) => setState(() {
+                            mode = v;
+                            if (v == SocialCardMode.predictions) {
+                              round = PredictionSocialPeriod.forRound(round)
+                                  .endRound;
+                            }
+                          }),
+                          onDownload: data == null ||
+                                  (mode == SocialCardMode.predictions &&
+                                      !data.predictionPeriodComplete)
+                              ? null
+                              : () => download(data),
                           onCopy: data == null ? null : () => copy(data),
                           onRefresh: () => setState(() => refresh++),
                         ),
+                        if (data != null &&
+                            mode == SocialCardMode.predictions &&
+                            !data.predictionPeriodComplete)
+                          const Padding(
+                            padding: EdgeInsets.only(bottom: 12),
+                            child: Text(
+                              'Deze periode is nog niet volledig verwerkt.',
+                            ),
+                          ),
                         const SizedBox(height: 16),
                         if (snapshot.hasError)
                           const AppCard(
@@ -332,10 +350,12 @@ class SocialMediaControls extends StatelessWidget {
                 DropdownButton<int>(
                   value: round,
                   items: [
-                    for (var i = 1; i <= 34; i++)
+                    for (final i in socialRoundChoices(mode))
                       DropdownMenuItem(
                         value: i,
-                        child: Text('Speelronde $i'),
+                        child: Text(mode == SocialCardMode.predictions
+                            ? 'Na speelronde $i'
+                            : 'Speelronde $i'),
                       ),
                   ],
                   onChanged: (v) {
@@ -444,19 +464,25 @@ class SocialMediaExportCanvas extends StatelessWidget {
                           : 'VOORSPELPOULE',
                   subtitle: mode == SocialCardMode.program
                       ? 'Speelronde $round  \u{2022}  Derde Divisie A + B'
-                      : 'Speelronde $round',
+                      : mode == SocialCardMode.predictions
+                          ? 'Na speelronde $round'
+                          : 'Speelronde $round',
                   compact: mode != SocialCardMode.predictions,
                 ),
                 SizedBox(height: mode == SocialCardMode.predictions ? 18 : 12),
                 Expanded(
                   child: mode == SocialCardMode.predictions
-                      ? PredictionContent(summary: data.predictionSummary)
+                      ? PredictionContent(
+                          summary: data.predictionSummary,
+                          period: PredictionSocialPeriod.forRound(round),
+                        )
                       : mode == SocialCardMode.program
                           ? ProgramContent(matches: data.matches)
                           : MatchStandContent(
                               matches: data.matches,
                               standings: data.standings,
                               mode: mode,
+                              formByTeam: data.formByTeam,
                             ),
                 ),
               ],
@@ -673,10 +699,12 @@ class MatchStandContent extends StatelessWidget {
     required this.matches,
     required this.standings,
     required this.mode,
+    required this.formByTeam,
   });
   final List<SocialCardMatch> matches;
   final List<SocialStanding> standings;
   final SocialCardMode mode;
+  final Map<String, List<SocialFormResult>> formByTeam;
 
   Widget sectionTitle(String title) => Padding(
         padding: const EdgeInsets.only(left: 2, bottom: 8),
@@ -731,7 +759,12 @@ class MatchStandContent extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 sectionTitle('STAND'),
-                Expanded(child: StandTable(standings: standings)),
+                Expanded(
+                  child: StandTable(
+                    standings: standings,
+                    formByTeam: formByTeam,
+                  ),
+                ),
               ],
             ),
           ),
@@ -820,8 +853,13 @@ class MatchRow extends StatelessWidget {
 }
 
 class StandTable extends StatelessWidget {
-  const StandTable({super.key, required this.standings});
+  const StandTable({
+    super.key,
+    required this.standings,
+    this.formByTeam = const {},
+  });
   final List<SocialStanding> standings;
+  final Map<String, List<SocialFormResult>> formByTeam;
 
   Widget cell(
     String text,
@@ -917,6 +955,29 @@ class StandTable extends StatelessWidget {
                       ],
                     ),
                   ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (final value in formByTeam[canonicalSocialTeamKey(
+                            standings[i].name,
+                            division: standings[i].division,
+                            teamId: standings[i].teamId,
+                          )] ??
+                          const <SocialFormResult>[])
+                        Container(
+                          key: ValueKey(
+                              'form-${standings[i].name}-${value.name}'),
+                          width: 8,
+                          height: 8,
+                          margin: const EdgeInsets.only(right: 2),
+                          color: value == SocialFormResult.win
+                              ? Colors.green
+                              : value == SocialFormResult.draw
+                                  ? Colors.orange
+                                  : Colors.red,
+                        ),
+                    ],
+                  ),
                   cell('${standings[i].played}', 37),
                   cell('${standings[i].goalDifference}', 42),
                   cell('${standings[i].points}', 38),
@@ -930,11 +991,16 @@ class StandTable extends StatelessWidget {
 }
 
 class PredictionContent extends StatelessWidget {
-  const PredictionContent({super.key, required this.summary});
+  const PredictionContent({
+    super.key,
+    required this.summary,
+    required this.period,
+  });
   final PredictionSummary summary;
+  final PredictionSocialPeriod period;
   @override
   Widget build(BuildContext context) {
-    final winners = summary.weekWinners;
+    final winners = summary.periodWinners;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -952,12 +1018,16 @@ class PredictionContent extends StatelessWidget {
                 size: 56,
               ),
               const Text(
-                'WEEKWINNAAR',
+                'PERIODEWINNAAR',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 29,
                   fontWeight: FontWeight.w900,
                 ),
+              ),
+              Text(
+                period.rangeLabel,
+                style: const TextStyle(color: Colors.white70, fontSize: 20),
               ),
               const SizedBox(height: 12),
               Text(

@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:derde_divisie/data/firestore/season_paths.dart';
 import 'package:derde_divisie/features/voorspellen/user_display_name.dart';
 
 class BekijkVoorspellingenScreen extends StatefulWidget {
@@ -22,6 +23,8 @@ class BekijkVoorspellingenScreen extends StatefulWidget {
 class _BekijkVoorspellingenScreenState
     extends State<BekijkVoorspellingenScreen> {
   bool geladen = false;
+  bool _laadfout = false;
+  bool _eindstandLaadfout = false;
   bool voorspellingenZichtbaar = true;
   String gebruikersnaam = 'Gebruiker';
 
@@ -41,10 +44,29 @@ class _BekijkVoorspellingenScreenState
   }
 
   Future<void> _laadAlles() async {
-    await _laadGebruikerData();
-    await _laadVoorspellingenVoorContext();
-    await _laadEindstandVoorContext();
-    setState(() => geladen = true);
+    if (mounted) {
+      setState(() {
+        geladen = false;
+        _laadfout = false;
+      });
+    }
+    try {
+      await _laadGebruikerData();
+      try {
+        await _laadVoorspellingenVoorContext();
+      } catch (_) {
+        _laadfout = true;
+      }
+      try {
+        await _laadEindstandVoorContext();
+      } catch (_) {
+        _eindstandLaadfout = true;
+      }
+    } catch (_) {
+      _laadfout = true;
+    } finally {
+      if (mounted) setState(() => geladen = true);
+    }
   }
 
   Future<void> _laadGebruikerData() async {
@@ -62,34 +84,44 @@ class _BekijkVoorspellingenScreenState
   Future<void> _laadVoorspellingenVoorContext() async {
     _perSpeelronde.clear();
     _tabsRondes.clear();
-
-    final snapshot = await FirebaseFirestore.instance
-        .collection('voorspellingen')
-        .where('gebruikerId', isEqualTo: widget.userId)
-        .get();
-
-    final futures = <Future<_PredictionViewItem?>>[];
-    for (final doc in snapshot.docs) {
-      final data = doc.data();
-      final wedstrijdId = data['wedstrijdId'] as String? ?? '';
-      if (wedstrijdId.isEmpty) continue;
-      futures.add(_bouwItem(data));
+    final byMatch = <String, Map<String, dynamic>>{};
+    Object? seasonError;
+    Object? legacyError;
+    try {
+      final season = await SeasonPaths.currentSeasonPredictions
+          .where('gebruikerId', isEqualTo: widget.userId)
+          .get();
+      for (final doc in season.docs) {
+        final id = (doc.data()['wedstrijdId'] ?? doc.data()['matchId'] ?? '')
+            .toString();
+        if (id.isNotEmpty) byMatch[id] = doc.data();
+      }
+    } catch (error) {
+      seasonError = error;
     }
-
-    final items = await Future.wait(futures);
-    final geldigeItems = items.whereType<_PredictionViewItem>().toList();
-
-    final doelDivisie =
+    try {
+      final legacy = await FirebaseFirestore.instance
+          .collection('voorspellingen')
+          .where('gebruikerId', isEqualTo: widget.userId)
+          .get();
+      for (final doc in legacy.docs) {
+        final id = (doc.data()['wedstrijdId'] ?? doc.data()['matchId'] ?? '')
+            .toString();
+        if (id.isNotEmpty) byMatch.putIfAbsent(id, () => doc.data());
+      }
+    } catch (error) {
+      legacyError = error;
+    }
+    if (seasonError != null && legacyError != null) throw seasonError;
+    final items = await Future.wait(byMatch.values.map(_bouwItem));
+    final target =
         widget.contextType == 'algemeen' ? _gekozenDivisie : widget.contextType;
-
-    for (final it in geldigeItems) {
-      final divisie =
-          it.divisie ?? (it.wedstrijdId.startsWith('B') ? 'B' : 'A');
-      if (doelDivisie != 'algemeen' && divisie != doelDivisie) continue;
-      if (!_magTonen(it.wedstrijdId, it.wedstrijdDatum)) continue;
-      _perSpeelronde.putIfAbsent(it.speelronde, () => []).add(it);
+    for (final item in items.whereType<_PredictionViewItem>()) {
+      final division =
+          item.divisie ?? (item.wedstrijdId.startsWith('B') ? 'B' : 'A');
+      if (division != target || !_magTonen(item.wedstrijdDatum)) continue;
+      _perSpeelronde.putIfAbsent(item.speelronde, () => []).add(item);
     }
-
     _tabsRondes = _perSpeelronde.keys.toList()..sort();
   }
 
@@ -101,10 +133,7 @@ class _BekijkVoorspellingenScreenState
         widget.contextType == 'algemeen' ? _gekozenDivisie : widget.contextType;
 
     List<QueryDocumentSnapshot<Map<String, dynamic>>> docs = [];
-    for (final coll in [
-      'eindstand_voorspellingen',
-      'eindstandVoorspellingen'
-    ]) {
+    for (final coll in ['eindstand_voorspellingen']) {
       final q1 = await FirebaseFirestore.instance
           .collection(coll)
           .where('gebruikerId', isEqualTo: widget.userId)
@@ -150,51 +179,62 @@ class _BekijkVoorspellingenScreenState
 
   Future<_PredictionViewItem?> _bouwItem(
       Map<String, dynamic> voorspelling) async {
-    try {
-      final wedstrijdId = voorspelling['wedstrijdId'] as String;
-      final matchSnap = await FirebaseFirestore.instance
+    final wedstrijdId =
+        (voorspelling['wedstrijdId'] ?? voorspelling['matchId'] ?? '')
+            .toString();
+    if (wedstrijdId.isEmpty) return null;
+    DocumentSnapshot<Map<String, dynamic>> matchSnap =
+        await SeasonPaths.currentSeasonMatches.doc(wedstrijdId).get();
+    if (!matchSnap.exists) {
+      matchSnap = await FirebaseFirestore.instance
           .collection('matches')
           .doc(wedstrijdId)
           .get();
-      if (!matchSnap.exists) return null;
-
-      final m = matchSnap.data() as Map<String, dynamic>;
-      final thuis = m['thuisteam'] as String? ?? '?';
-      final uit = m['uitteam'] as String? ?? '?';
-      final uitslagThuis = m['uitslagThuis'] as int?;
-      final uitslagUit = m['uitslagUit'] as int?;
-      final speelronde = (m['speelronde'] ?? m['ronde'] ?? 0) as int;
-      final datum = (m['datum'] as Timestamp).toDate();
-      final competitie = (m['competitie'] as String?)?.toUpperCase();
-
-      return _PredictionViewItem(
-        wedstrijdId: wedstrijdId,
-        speelronde: speelronde,
-        wedstrijdDatum: datum,
-        thuis: thuis,
-        uit: uit,
-        uitslagThuis: uitslagThuis,
-        uitslagUit: uitslagUit,
-        divisie: (competitie == 'A' || competitie == 'B') ? competitie : null,
-        scoreThuis: (voorspelling['scoreThuis']?.toString() ?? '-'),
-        scoreUit: (voorspelling['scoreUit']?.toString() ?? '-'),
-        punten: voorspelling['punten'] as int?,
-        verwerkt: voorspelling['verwerkt'] == true,
-      );
-    } catch (_) {
-      return null;
     }
+    final m = matchSnap.data();
+    if (m == null) return null;
+    int? asInt(Object? value) =>
+        value is num ? value.toInt() : int.tryParse(value?.toString() ?? '');
+    DateTime? asDate(Object? value) {
+      if (value is Timestamp) return value.toDate();
+      if (value is DateTime) return value;
+      return DateTime.tryParse(value?.toString() ?? '');
+    }
+
+    final division =
+        (m['division'] ?? m['competitie'] ?? '').toString().toUpperCase();
+    return _PredictionViewItem(
+      wedstrijdId: wedstrijdId,
+      speelronde: asInt(m['round'] ?? m['speelronde'] ?? m['ronde']) ?? 0,
+      wedstrijdDatum:
+          asDate(m['kickoff'] ?? m['datum'] ?? m['timestamp'] ?? m['date']) ??
+              DateTime.fromMillisecondsSinceEpoch(0),
+      thuis: (m['homeTeamName'] ?? m['homeTeam'] ?? m['thuisteam'] ?? '?')
+          .toString(),
+      uit: (m['awayTeamName'] ?? m['awayTeam'] ?? m['uitteam'] ?? '?')
+          .toString(),
+      uitslagThuis: asInt(m['homeScore'] ?? m['uitslagThuis']),
+      uitslagUit: asInt(m['awayScore'] ?? m['uitslagUit']),
+      divisie: division.contains('B')
+          ? 'B'
+          : division.contains('A')
+              ? 'A'
+              : null,
+      scoreThuis:
+          (voorspelling['scoreThuis'] ?? voorspelling['homeScore'] ?? '-')
+              .toString(),
+      scoreUit: (voorspelling['scoreUit'] ?? voorspelling['awayScore'] ?? '-')
+          .toString(),
+      punten: asInt(voorspelling['punten']),
+      verwerkt:
+          voorspelling['verwerkt'] == true || voorspelling['processed'] == true,
+    );
   }
 
-  bool _magTonen(String wedstrijdId, DateTime wedstrijdDatum) {
-    final isCorrectContext = widget.contextType == 'algemeen' ||
-        (widget.contextType == 'A' && wedstrijdId.startsWith('A')) ||
-        (widget.contextType == 'B' && wedstrijdId.startsWith('B'));
-
-    final deadlineVerstreken = DateTime.now().isAfter(DateTime(
-        wedstrijdDatum.year, wedstrijdDatum.month, wedstrijdDatum.day, 12));
-
-    return isCorrectContext && (voorspellingenZichtbaar || deadlineVerstreken);
+  bool _magTonen(DateTime wedstrijdDatum) {
+    final deadline = DateTime(
+        wedstrijdDatum.year, wedstrijdDatum.month, wedstrijdDatum.day, 12);
+    return voorspellingenZichtbaar || DateTime.now().isAfter(deadline);
   }
 
   String getLogoPath(String team) {
@@ -286,7 +326,7 @@ class _BekijkVoorspellingenScreenState
   }
 
   Widget _eindstandView() {
-    if (!_heeftEindstand) {
+    if (_eindstandLaadfout || !_heeftEindstand) {
       return const Center(
           child: Text('Geen zichtbare eindstand-voorspelling.'));
     }
@@ -344,10 +384,21 @@ class _BekijkVoorspellingenScreenState
     setState(() {
       geladen = false;
       _gekozenDivisie = nieuw;
+      _laadfout = false;
+      _eindstandLaadfout = false;
     });
-    await _laadVoorspellingenVoorContext();
-    await _laadEindstandVoorContext();
-    setState(() => geladen = true);
+    try {
+      await _laadVoorspellingenVoorContext();
+      try {
+        await _laadEindstandVoorContext();
+      } catch (_) {
+        _eindstandLaadfout = true;
+      }
+    } catch (_) {
+      _laadfout = true;
+    } finally {
+      if (mounted) setState(() => geladen = true);
+    }
   }
 
   @override
@@ -356,6 +407,21 @@ class _BekijkVoorspellingenScreenState
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
+    if (_laadfout) {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('De voorspellingen konden niet worden geladen.'),
+              const SizedBox(height: 12),
+              FilledButton(
+                  onPressed: _laadAlles, child: const Text('Opnieuw proberen')),
+            ],
+          ),
+        ),
+      );
+    }
     final titel = widget.contextType == 'algemeen'
         ? 'Voorspellingen van $gebruikersnaam'
         : 'Voorspellingen (${widget.contextType}) van $gebruikersnaam';
