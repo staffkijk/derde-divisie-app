@@ -61,6 +61,16 @@ String predictionContributionDocumentId({
   return '${safe(division)}__${safe(userId)}__${safe(matchId)}';
 }
 
+class PredictionContributionValue {
+  const PredictionContributionValue({
+    required this.division,
+    required this.points,
+  });
+
+  final String division;
+  final int points;
+}
+
 class PredictionTotals {
   const PredictionTotals({
     required this.pointsA,
@@ -74,7 +84,7 @@ class PredictionTotals {
 }
 
 PredictionTotals rebuildPredictionTotals(
-  Iterable<({String division, int points})> contributions,
+  Iterable<PredictionContributionValue> contributions,
 ) {
   var pointsA = 0;
   var pointsB = 0;
