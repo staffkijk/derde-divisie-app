@@ -134,9 +134,9 @@ void main() {
   group('read-only herberekening', () {
     test('A en B blijven onafhankelijk en totalen is max', () {
       final totals = rebuildPredictionTotals(const [
-        (division: 'A', points: 10),
-        (division: 'A', points: 2),
-        (division: 'B', points: 7),
+        PredictionContributionValue(division: 'A', points: 10),
+        PredictionContributionValue(division: 'A', points: 2),
+        PredictionContributionValue(division: 'B', points: 7),
       ]);
       expect(totals.pointsA, 12);
       expect(totals.pointsB, 7);
