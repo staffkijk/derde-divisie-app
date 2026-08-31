@@ -330,7 +330,7 @@ class _ModeratorMenuScreenState extends State<ModeratorMenuScreen> {
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 1180),
                 child: Padding(
-                  padding: EdgeInsets.all(isDesktop ? 24 : 14),
+                  padding: EdgeInsets.all(isDesktop ? 24 : 8),
                   child: Column(
                     children: [
                       _HeaderCard(
@@ -353,7 +353,7 @@ class _ModeratorMenuScreenState extends State<ModeratorMenuScreen> {
                           });
                         },
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: isDesktop ? 16 : 8),
                       Expanded(
                         child: StreamBuilder<List<ModeratorMatchData>>(
                           stream: _matchesStream,
@@ -456,83 +456,87 @@ class _HeaderCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final compact = MediaQuery.sizeOf(context).width < 700;
-
-    final title = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Uitslagen invoeren',
-          style: TextStyle(
-            color: Color(0xFF153B2A),
-            fontSize: 24,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Vul uitslagen in per divisie en speelronde. Opslaan zet de wedstrijd op Afgelopen.',
-          style: TextStyle(
-            color: Colors.grey.shade700,
-            height: 1.35,
-          ),
-        ),
+    final divisionSelect = _SelectBox<String>(
+      key: const ValueKey('moderator-division-select'),
+      value: division,
+      items: const [
+        DropdownMenuItem(value: 'A', child: Text('Divisie A')),
+        DropdownMenuItem(value: 'B', child: Text('Divisie B')),
       ],
+      onChanged: onDivisionChanged,
+      expanded: compact,
     );
-
-    final controls = Wrap(
-      spacing: 10,
-      runSpacing: 10,
-      children: [
-        _SelectBox<String>(
-          key: const ValueKey('moderator-division-select'),
-          value: division,
-          items: const [
-            DropdownMenuItem(value: 'A', child: Text('Divisie A')),
-            DropdownMenuItem(value: 'B', child: Text('Divisie B')),
-          ],
-          onChanged: onDivisionChanged,
+    final roundSelect = _SelectBox<int>(
+      key: const ValueKey('moderator-round-select'),
+      value: round,
+      items: List.generate(
+        34,
+        (index) => DropdownMenuItem(
+          value: index + 1,
+          child: Text('Speelronde ${index + 1}'),
         ),
-        _SelectBox<int>(
-          key: const ValueKey('moderator-round-select'),
-          value: round,
-          items: List.generate(
-            34,
-            (index) => DropdownMenuItem(
-              value: index + 1,
-              child: Text('Speelronde ${index + 1}'),
-            ),
-          ),
-          onChanged: onRoundChanged,
-        ),
-      ],
+      ),
+      onChanged: onRoundChanged,
+      expanded: compact,
     );
+    final controls = compact
+        ? Row(
+            children: [
+              Expanded(child: divisionSelect),
+              const SizedBox(width: 8),
+              Expanded(flex: 2, child: roundSelect),
+            ],
+          )
+        : Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [divisionSelect, roundSelect],
+          );
 
     return Container(
-      padding: const EdgeInsets.all(18),
+      key: const ValueKey('moderator-results-controls'),
+      padding: EdgeInsets.all(compact ? 8 : 18),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Color(0xFFE3EADF)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: .04),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(compact ? 16 : 24),
+        border: Border.all(color: const Color(0xFFE3EADF)),
+        boxShadow: compact
+            ? const []
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: .04),
+                  blurRadius: 16,
+                  offset: const Offset(0, 8),
+                ),
+              ],
       ),
       child: compact
-          ? Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                title,
-                const SizedBox(height: 14),
-                controls,
-              ],
-            )
+          ? controls
           : Row(
               children: [
-                Expanded(child: title),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Uitslagen invoeren',
+                        style: TextStyle(
+                          color: Color(0xFF153B2A),
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Vul uitslagen in per divisie en speelronde. Opslaan zet de wedstrijd op Afgelopen.',
+                        style: TextStyle(
+                          color: Colors.grey.shade700,
+                          height: 1.35,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
                 const SizedBox(width: 16),
                 controls,
               ],
@@ -547,17 +551,19 @@ class _SelectBox<T> extends StatelessWidget {
     required this.value,
     required this.items,
     required this.onChanged,
+    this.expanded = false,
   });
 
   final T value;
   final List<DropdownMenuItem<T>> items;
   final ValueChanged<T?> onChanged;
+  final bool expanded;
 
   @override
   Widget build(BuildContext context) {
     return DropdownButtonHideUnderline(
       child: Container(
-        height: 46,
+        height: 44,
         padding: const EdgeInsets.symmetric(horizontal: 14),
         decoration: BoxDecoration(
           color: const Color(0xFFF8FAF6),
@@ -565,6 +571,7 @@ class _SelectBox<T> extends StatelessWidget {
           border: Border.all(color: const Color(0xFFE3EADF)),
         ),
         child: DropdownButton<T>(
+          isExpanded: expanded,
           value: value,
           borderRadius: BorderRadius.circular(16),
           icon: const Icon(Icons.keyboard_arrow_down),
@@ -589,41 +596,54 @@ class _BulkBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final compact = MediaQuery.sizeOf(context).width < 700;
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      padding: EdgeInsets.symmetric(
+          horizontal: compact ? 10 : 16, vertical: compact ? 6 : 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(compact ? 14 : 18),
         border: Border.all(color: const Color(0xFFE3EADF)),
       ),
       child: Row(
         children: [
-          Icon(
-            Icons.fact_check_outlined,
-            color: const Color(0xFF2F8F3B),
-          ),
-          const SizedBox(width: 10),
+          const Icon(Icons.fact_check_outlined,
+              color: Color(0xFF2F8F3B), size: 20),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(
-              '$matchesCount wedstrijden gevonden',
+              compact
+                  ? '$matchesCount wedstrijden'
+                  : '$matchesCount wedstrijden gevonden',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                color: Color(0xFF153B2A),
-                fontWeight: FontWeight.w800,
-              ),
+                  color: Color(0xFF153B2A), fontWeight: FontWeight.w800),
             ),
           ),
-          ElevatedButton.icon(
-            key: const ValueKey('save-all-results'),
-            onPressed: saving ? null : onSaveAll,
-            icon: saving
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.save_outlined),
-            label: Text(saving ? 'Opslaan' : 'Alles opslaan'),
-          ),
+          if (compact)
+            IconButton(
+              key: const ValueKey('save-all-results'),
+              tooltip: 'Alles opslaan',
+              onPressed: saving ? null : onSaveAll,
+              icon: saving
+                  ? const SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.save_outlined),
+            )
+          else
+            ElevatedButton.icon(
+              key: const ValueKey('save-all-results'),
+              onPressed: saving ? null : onSaveAll,
+              icon: saving
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.save_outlined),
+              label: Text(saving ? 'Opslaan' : 'Alles opslaan'),
+            ),
         ],
       ),
     );
@@ -801,16 +821,15 @@ class _ResultRow extends StatelessWidget {
               ],
             ),
             const Spacer(),
-            TextButton.icon(
+            IconButton(
+              tooltip: 'Uitslag wissen',
               onPressed: hasScore ? onClear : null,
               icon: const Icon(Icons.delete_outline),
-              label: const Text('Wis'),
             ),
-            const SizedBox(width: 8),
-            ElevatedButton.icon(
+            IconButton.filled(
+              tooltip: 'Opslaan',
               onPressed: onSave,
               icon: const Icon(Icons.save_outlined),
-              label: const Text('Opslaan'),
             ),
           ],
         ),

@@ -23,6 +23,19 @@ void main() {
     expect(source, contains("collection('voorspellingen')"));
   });
 
+  test('wedstrijdmetadata wordt eenmalig in bulk geladen en lokaal hergebruikt',
+      () {
+    expect(source, contains('Map<String, Map<String, dynamic>>? _matchesById'));
+    expect(source, contains('SeasonPaths.currentSeasonMatches.get()'));
+    expect(source, contains('final m = matches[wedstrijdId]'));
+    expect(
+        source, isNot(contains('currentSeasonMatches.doc(wedstrijdId).get()')));
+  });
+
+  test('wedstrijd- en eindstandlogo gebruiken dezelfde centrale widget', () {
+    expect(RegExp(r'TeamLogo\(teamName:').allMatches(source), hasLength(2));
+    expect(source, isNot(contains('String getLogoPath')));
+  });
   test('alleen ondersteunde eindstandcollectie wordt gelezen', () {
     expect(source, contains("'eindstand_voorspellingen'"));
     expect(source, isNot(contains("'eindstandVoorspellingen'")));

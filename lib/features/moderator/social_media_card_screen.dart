@@ -37,60 +37,97 @@ class SocialMediaCardScreen extends StatefulWidget {
 class _SocialMediaCardScreenState extends State<SocialMediaCardScreen> {
   final exportKey = GlobalKey();
   String division = SeasonConfig.divisionA;
-  int round = 1;
+  int round = 0;
   SocialCardMode mode = SocialCardMode.program;
   bool exporting = false;
   int refresh = 0;
+  Future<QuerySnapshot<Map<String, dynamic>>>? _matchesFuture;
+  Future<QuerySnapshot<Map<String, dynamic>>>? _standingsFuture;
+  Future<QuerySnapshot<Map<String, dynamic>>>? _usersFuture;
+  Future<QuerySnapshot<Map<String, dynamic>>>? _predictionsFuture;
 
   Future<SocialCardData> load() async {
-    final all = await Future.wait([
-      SeasonPaths.currentSeasonMatches.get(),
-      SeasonPaths.currentSeasonStandings.get(),
-      FirebaseFirestore.instance.collection('users').get(),
-      SeasonPaths.currentSeasonPredictions.get(),
-    ]);
-    final matches = all[0]
-        .docs
+    final matchSnapshot =
+        await (_matchesFuture ??= SeasonPaths.currentSeasonMatches.get());
+    final matches = matchSnapshot.docs
         .where((doc) => doc.id != '_meta')
         .map(SocialCardMatch.fromDoc)
         .toList();
-    final standings = all[1]
-        .docs
-        .map(SocialStanding.fromDoc)
-        .where((entry) =>
-            mode == SocialCardMode.program || entry.division == division)
-        .toList()
-      ..sort(SocialStanding.compare);
-    final users =
-        all[2].docs.map((doc) => RankingUser(doc.id, doc.data())).toList();
-    final predictions = all[3].docs.map((doc) => doc.data()).toList();
-    final period = PredictionSocialPeriod.forRound(round);
+    final effectiveRound = round == 0 ? currentProgramRound(matches) : round;
+    if (round == 0 && mounted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && round == 0) setState(() => round = effectiveRound);
+      });
+    }
+
+    var standings = <SocialStanding>[];
+    var users = <RankingUser>[];
+    var predictions = <Map<String, dynamic>>[];
+    if (mode == SocialCardMode.results) {
+      final snapshot =
+          await (_standingsFuture ??= SeasonPaths.currentSeasonStandings.get());
+      standings = snapshot.docs
+          .map(SocialStanding.fromDoc)
+          .where((entry) => entry.division == division)
+          .toList()
+        ..sort(SocialStanding.compare);
+    } else if (mode == SocialCardMode.predictions) {
+      final loaded = await Future.wait([
+        _usersFuture ??= FirebaseFirestore.instance.collection('users').get(),
+        _predictionsFuture ??= SeasonPaths.currentSeasonPredictions.get(),
+      ]);
+      users =
+          loaded[0].docs.map((doc) => RankingUser(doc.id, doc.data())).toList();
+      predictions = loaded[1].docs.map((doc) => doc.data()).toList();
+    }
+
+    final period = PredictionSocialPeriod.forRound(effectiveRound);
     final periodMatches = matches.where((match) =>
         match.round >= period.startRound && match.round <= period.endRound);
     final throughMatches =
         matches.where((match) => match.round <= period.endRound);
     return SocialCardData(
       matches: mode == SocialCardMode.program
-          ? (matches.where((match) => match.round == round).toList()
+          ? (matches.where((match) => match.round == effectiveRound).toList()
             ..sort(SocialCardMatch.compare))
-          : filterSocialMatches(matches, division: division, round: round),
+          : filterSocialMatches(
+              matches,
+              division: division,
+              round: effectiveRound,
+            ),
       standings: standings,
-      predictionSummary: buildPredictionSummary(
-        users: users,
-        predictions: predictions,
-        periodMatchDivisions: {
-          for (final match in periodMatches) match.id: match.division,
-        },
-        throughMatchDivisions: {
-          for (final match in throughMatches) match.id: match.division,
-        },
-      ),
-      formByTeam: buildSocialForm(
-        standings: standings,
-        matches: matches.where((match) => match.round <= round),
-      ),
-      predictionPeriodComplete: predictionPeriodIsComplete(matches, period),
+      predictionSummary: mode == SocialCardMode.predictions
+          ? buildPredictionSummary(
+              users: users,
+              predictions: predictions,
+              periodMatchDivisions: {
+                for (final match in periodMatches) match.id: match.division,
+              },
+              throughMatchDivisions: {
+                for (final match in throughMatches) match.id: match.division,
+              },
+            )
+          : const PredictionSummary(),
+      formByTeam: mode == SocialCardMode.results
+          ? buildSocialForm(
+              standings: standings,
+              matches: matches.where((match) => match.round <= effectiveRound),
+            )
+          : const {},
+      predictionPeriodComplete: mode == SocialCardMode.predictions
+          ? predictionPeriodIsComplete(matches, period)
+          : true,
     );
+  }
+
+  void _refreshRelevant() {
+    _matchesFuture = null;
+    if (mode == SocialCardMode.results) _standingsFuture = null;
+    if (mode == SocialCardMode.predictions) {
+      _usersFuture = null;
+      _predictionsFuture = null;
+    }
+    setState(() => refresh++);
   }
 
   String xText(SocialCardData data) {
@@ -215,20 +252,36 @@ class _SocialMediaCardScreenState extends State<SocialMediaCardScreen> {
                           exporting: exporting,
                           onDivision: (v) => setState(() => division = v),
                           onRound: (v) => setState(() => round = v),
-                          onMode: (v) => setState(() {
-                            mode = v;
-                            if (v == SocialCardMode.predictions) {
-                              round = PredictionSocialPeriod.forRound(round)
-                                  .endRound;
-                            }
-                          }),
+                          onMode: (v) async {
+                            final matches = (await (_matchesFuture ??=
+                                    SeasonPaths.currentSeasonMatches.get()))
+                                .docs
+                                .where((doc) => doc.id != '_meta')
+                                .map(SocialCardMatch.fromDoc)
+                                .toList();
+                            if (!mounted) return;
+                            setState(() {
+                              mode = v;
+                              if (v == SocialCardMode.predictions) {
+                                round = PredictionSocialPeriod.forRound(
+                                  round == 0
+                                      ? currentProgramRound(matches)
+                                      : round,
+                                ).endRound;
+                              } else if (v == SocialCardMode.results) {
+                                round = currentResultsRound(matches);
+                              } else {
+                                round = currentProgramRound(matches);
+                              }
+                            });
+                          },
                           onDownload: data == null ||
                                   (mode == SocialCardMode.predictions &&
                                       !data.predictionPeriodComplete)
                               ? null
                               : () => download(data),
                           onCopy: data == null ? null : () => copy(data),
-                          onRefresh: () => setState(() => refresh++),
+                          onRefresh: _refreshRelevant,
                         ),
                         if (data != null &&
                             mode == SocialCardMode.predictions &&
@@ -348,7 +401,7 @@ class SocialMediaControls extends StatelessWidget {
                   onSelectionChanged: (v) => onDivision(v.first),
                 ),
                 DropdownButton<int>(
-                  value: round,
+                  value: round == 0 ? null : round,
                   items: [
                     for (final i in socialRoundChoices(mode))
                       DropdownMenuItem(

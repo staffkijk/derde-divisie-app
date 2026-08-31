@@ -639,4 +639,45 @@ void main() {
       expect(summary.globalTop.first.score, 100);
     });
   });
+
+  test('programma kiest eerste ronde met scheduled wedstrijd', () {
+    final matches = [
+      match(1,
+          round: 1, status: MatchStatus.finished, homeScore: 1, awayScore: 0),
+      match(2,
+          round: 2, status: MatchStatus.finished, homeScore: 1, awayScore: 0),
+      match(3,
+          round: 3, status: MatchStatus.finished, homeScore: 1, awayScore: 0),
+      match(4, round: 4),
+    ];
+    expect(currentProgramRound(matches), 4);
+    expect(currentResultsRound(matches), 3);
+  });
+
+  test('postponed houdt ronde relevant en volledig gespeeld kiest hoogste', () {
+    expect(
+        currentProgramRound([
+          match(1,
+              round: 1,
+              status: MatchStatus.finished,
+              homeScore: 0,
+              awayScore: 0),
+          match(2, round: 2, status: MatchStatus.postponed),
+        ]),
+        2);
+    expect(
+        currentProgramRound([
+          match(1,
+              round: 1,
+              status: MatchStatus.finished,
+              homeScore: 0,
+              awayScore: 0),
+          match(2,
+              round: 4,
+              status: MatchStatus.finished,
+              homeScore: 2,
+              awayScore: 1),
+        ]),
+        4);
+  });
 }

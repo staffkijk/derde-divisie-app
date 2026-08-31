@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:derde_divisie/core/widgets/team_logo.dart';
 import 'package:derde_divisie/data/firestore/season_paths.dart';
 import 'package:derde_divisie/features/voorspellen/user_display_name.dart';
 
@@ -35,6 +36,7 @@ class _BekijkVoorspellingenScreenState
 
   List<String> _eindstandVolgorde = [];
   bool _heeftEindstand = false;
+  Map<String, Map<String, dynamic>>? _matchesById;
 
   @override
   void initState() {
@@ -113,7 +115,10 @@ class _BekijkVoorspellingenScreenState
       legacyError = error;
     }
     if (seasonError != null && legacyError != null) throw seasonError;
-    final items = await Future.wait(byMatch.values.map(_bouwItem));
+    final matches = await _loadMatchesById();
+    final items = byMatch.values
+        .map((prediction) => _bouwItem(prediction, matches))
+        .toList();
     final target =
         widget.contextType == 'algemeen' ? _gekozenDivisie : widget.contextType;
     for (final item in items.whereType<_PredictionViewItem>()) {
@@ -177,21 +182,43 @@ class _BekijkVoorspellingenScreenState
     }
   }
 
-  Future<_PredictionViewItem?> _bouwItem(
-      Map<String, dynamic> voorspelling) async {
+  Future<Map<String, Map<String, dynamic>>> _loadMatchesById() async {
+    final cached = _matchesById;
+    if (cached != null) return cached;
+    final result = <String, Map<String, dynamic>>{};
+    Object? seasonError;
+    try {
+      final season = await SeasonPaths.currentSeasonMatches.get();
+      for (final doc in season.docs) {
+        if (doc.id != '_meta') result[doc.id] = doc.data();
+      }
+    } catch (error) {
+      seasonError = error;
+    }
+    if (result.isEmpty) {
+      try {
+        final legacy =
+            await FirebaseFirestore.instance.collection('matches').get();
+        for (final doc in legacy.docs) {
+          result.putIfAbsent(doc.id, () => doc.data());
+        }
+      } catch (_) {
+        if (seasonError != null) rethrow;
+      }
+    }
+    _matchesById = result;
+    return result;
+  }
+
+  _PredictionViewItem? _bouwItem(
+    Map<String, dynamic> voorspelling,
+    Map<String, Map<String, dynamic>> matches,
+  ) {
     final wedstrijdId =
         (voorspelling['wedstrijdId'] ?? voorspelling['matchId'] ?? '')
             .toString();
     if (wedstrijdId.isEmpty) return null;
-    DocumentSnapshot<Map<String, dynamic>> matchSnap =
-        await SeasonPaths.currentSeasonMatches.doc(wedstrijdId).get();
-    if (!matchSnap.exists) {
-      matchSnap = await FirebaseFirestore.instance
-          .collection('matches')
-          .doc(wedstrijdId)
-          .get();
-    }
-    final m = matchSnap.data();
+    final m = matches[wedstrijdId];
     if (m == null) return null;
     int? asInt(Object? value) =>
         value is num ? value.toInt() : int.tryParse(value?.toString() ?? '');
@@ -237,26 +264,11 @@ class _BekijkVoorspellingenScreenState
     return voorspellingenZichtbaar || DateTime.now().isAfter(deadline);
   }
 
-  String getLogoPath(String team) {
-    final cleanName = team
-        .replaceAll(" ", "")
-        .replaceAll("'", "")
-        .replaceAll("/", "")
-        .replaceAll(".", "")
-        .replaceAll("-", "");
-    return 'assets/images/logo_$cleanName.png';
-  }
-
   Widget _teamColumn(String naam) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Image.asset(
-          getLogoPath(naam),
-          width: 36,
-          height: 36,
-          errorBuilder: (_, __, ___) => const Icon(Icons.shield),
-        ),
+        TeamLogo(teamName: naam, size: 36),
         const SizedBox(height: 6),
         Text(
           naam,
@@ -363,11 +375,7 @@ class _BekijkVoorspellingenScreenState
                       style: const TextStyle(fontWeight: FontWeight.bold)),
                 ),
                 const SizedBox(width: 12),
-                Image.asset(getLogoPath(team),
-                    width: 28,
-                    height: 28,
-                    errorBuilder: (_, __, ___) =>
-                        const Icon(Icons.shield, size: 20)),
+                TeamLogo(teamName: team, size: 28),
                 const SizedBox(width: 12),
                 Expanded(
                     child: Text(team, style: const TextStyle(fontSize: 16))),

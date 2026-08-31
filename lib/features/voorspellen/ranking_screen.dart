@@ -18,6 +18,13 @@ class RankingScreen extends StatefulWidget {
 
 class _RankingScreenState extends State<RankingScreen> {
   String query = '';
+  late final Future<QuerySnapshot<Map<String, dynamic>>> _usersFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _usersFuture = FirebaseFirestore.instance.collection('users').get();
+  }
 
   void _showUserActions(BuildContext context, DocumentSnapshot user) {
     final contextType = rankingContextType(widget.type);
@@ -72,7 +79,7 @@ class _RankingScreenState extends State<RankingScreen> {
         fallbackRoute: predictionsRankingsRoute,
       ),
       body: FutureBuilder<QuerySnapshot<Map<String, dynamic>>>(
-        future: FirebaseFirestore.instance.collection('users').get(),
+        future: _usersFuture,
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return const Center(
@@ -110,8 +117,10 @@ class _RankingScreenState extends State<RankingScreen> {
             int index,
           ) {
             final data = user.data();
-            final avatar =
-                _avatarProvider((data['avatarUrl'] ?? '').toString());
+            final avatarUrl = (data['avatarUrl'] ?? '').toString();
+            final avatar = _avatarProvider(avatarUrl);
+            final containAsset = avatarUrl.startsWith('assets/') &&
+                avatarUrl != 'assets/images/profiel_bal.png';
             Color? medalColor;
             if (index == 0) {
               medalColor = Colors.amber;
@@ -128,8 +137,15 @@ class _RankingScreenState extends State<RankingScreen> {
                 children: [
                   CircleAvatar(
                     radius: 22,
-                    backgroundImage: avatar,
-                    child: avatar == null ? const Icon(Icons.person) : null,
+                    backgroundImage: containAsset ? null : avatar,
+                    child: containAsset
+                        ? Padding(
+                            padding: const EdgeInsets.all(5),
+                            child: Image.asset(avatarUrl, fit: BoxFit.contain),
+                          )
+                        : avatar == null
+                            ? const Icon(Icons.person)
+                            : null,
                   ),
                   if (medalColor != null)
                     Positioned(

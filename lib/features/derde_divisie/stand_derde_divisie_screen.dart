@@ -64,49 +64,79 @@ String _divisieCode(String divisie) {
 Map<String, List<String>> berekenVormPerTeam(
   List<Map<String, dynamic>> matches,
 ) {
-  final Map<String, List<Map<String, dynamic>>> perTeam = {};
+  final perTeam = <String, List<Map<String, dynamic>>>{};
 
-  for (final m in matches) {
-    final home = (m['homeTeamCode'] ?? '').toString().toLowerCase();
-    final away = (m['awayTeamCode'] ?? '').toString().toLowerCase();
+  String teamKey(Map<String, dynamic> match, bool home) {
+    final id = (match[home ? 'homeTeamId' : 'awayTeamId'] ??
+            match[home ? 'homeClubId' : 'awayClubId'] ??
+            '')
+        .toString();
+    final byId = id.isEmpty ? null : SeasonConfig.teamById(id);
+    final raw = (match[home ? 'homeTeamName' : 'awayTeamName'] ??
+            match[home ? 'homeTeam' : 'awayTeam'] ??
+            match[home ? 'thuisteam' : 'uitteam'] ??
+            match[home ? 'homeTeamCode' : 'awayTeamCode'] ??
+            id)
+        .toString();
+    final team = byId ?? SeasonConfig.teamByName(raw);
+    return _normName(team?.listLabel ?? raw);
+  }
 
-    void add(String teamCode, bool isHome) {
-      if (teamCode.isEmpty) return;
+  int? score(Map<String, dynamic> match, bool home) {
+    final value = match[home ? 'homeScore' : 'awayScore'] ??
+        match[home ? 'uitslagThuis' : 'uitslagUit'] ??
+        match[home ? 'thuisScore' : 'uitScore'];
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '');
+  }
 
-      final thuisGoals = _toInt(m['uitslagThuis']);
-      final uitGoals = _toInt(m['uitslagUit']);
+  DateTime date(Map<String, dynamic> match) {
+    final value = match['kickoff'] ?? match['datum'] ?? match['date'];
+    if (value is Timestamp) return value.toDate();
+    if (value is DateTime) return value;
+    return DateTime.tryParse(value?.toString() ?? '') ?? DateTime(2000);
+  }
 
-      final diff = isHome ? thuisGoals - uitGoals : uitGoals - thuisGoals;
-      final result = diff > 0
-          ? 'W'
-          : diff == 0
-              ? 'G'
-              : 'V';
+  for (final match in matches) {
+    final status = (match['status'] ?? '').toString().toLowerCase();
+    if (const {'postponed', 'cancelled', 'canceled', 'abandoned'}
+        .contains(status)) {
+      continue;
+    }
+    final homeScore = score(match, true);
+    final awayScore = score(match, false);
+    if (homeScore == null || awayScore == null) continue;
+    final home = teamKey(match, true);
+    final away = teamKey(match, false);
+    if (home.isEmpty || away.isEmpty) continue;
 
-      perTeam.putIfAbsent(teamCode, () => []);
-      perTeam[teamCode]!.add({
-        'datum': m['datum'] is Timestamp
-            ? (m['datum'] as Timestamp).toDate()
-            : DateTime(2000),
-        'result': result,
+    void add(String key, int own, int other) {
+      perTeam.putIfAbsent(key, () => []).add({
+        'datum': date(match),
+        'result': own > other
+            ? 'W'
+            : own < other
+                ? 'V'
+                : 'G',
       });
     }
 
-    add(home, true);
-    add(away, false);
+    add(home, homeScore, awayScore);
+    add(away, awayScore, homeScore);
   }
 
-  final Map<String, List<String>> resultaat = {};
-
-  perTeam.forEach((team, lijst) {
-    lijst.sort(
-      (a, b) => (b['datum'] as DateTime).compareTo(a['datum'] as DateTime),
-    );
-
-    resultaat[team] = lijst.take(5).map((e) => e['result'] as String).toList();
-  });
-
-  return resultaat;
+  return {
+    for (final entry in perTeam.entries)
+      entry.key: ((entry.value
+                ..sort((a, b) =>
+                    (a['datum'] as DateTime).compareTo(b['datum'] as DateTime)))
+              .reversed
+              .take(5)
+              .toList()
+              .reversed)
+          .map((value) => value['result'] as String)
+          .toList(),
+  };
 }
 
 class StandEntry {
@@ -578,12 +608,7 @@ class StandDerdeDivisie extends StatelessWidget {
     if (!_isActueel) return {};
     final data = await const DivisionDataService().loadDivision(divisie);
     return berekenVormPerTeam(
-      data.matches
-          .where(
-            (match) => (match.data['status'] ?? '').toString() == 'finished',
-          )
-          .map((match) => match.data)
-          .toList(),
+      data.matches.map((match) => match.data).toList(),
     );
   }
 

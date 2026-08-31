@@ -107,16 +107,22 @@ class _ProgramScreenState extends State<ProgramScreen> {
   @override
   Widget build(BuildContext context) {
     final title = 'Programma Derde Divisie ${widget.division}';
+    final compact = MediaQuery.sizeOf(context).width < 720;
 
     return Container(
       color: _cream,
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+          padding: EdgeInsets.fromLTRB(
+            compact ? 8 : 24,
+            compact ? 8 : 20,
+            compact ? 8 : 24,
+            compact ? 12 : 24,
+          ),
           child: Column(
             children: [
-              _HeaderCard(
+              ProgramHeaderCard(
                 title: title,
                 selectedRound: _selectedRound,
                 rounds: _rounds,
@@ -126,7 +132,7 @@ class _ProgramScreenState extends State<ProgramScreen> {
                   setState(() => _selectedRound = round);
                 },
               ),
-              const SizedBox(height: 18),
+              SizedBox(height: compact ? 8 : 18),
               Expanded(
                 child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
                   stream: _matchesQuery().snapshots(),
@@ -200,10 +206,11 @@ class _ProgramScreenState extends State<ProgramScreen> {
   }
 }
 
-class _HeaderCard extends StatelessWidget {
+class ProgramHeaderCard extends StatelessWidget {
   static const _border = Color(0xFFE3EADF);
 
-  const _HeaderCard({
+  const ProgramHeaderCard({
+    super.key,
     required this.title,
     required this.selectedRound,
     required this.rounds,
@@ -220,34 +227,49 @@ class _HeaderCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final compact = MediaQuery.sizeOf(context).width < 720;
+    final selector = showRoundSelector
+        ? _RoundSelector(
+            selectedRound: selectedRound,
+            rounds: rounds,
+            onRoundChanged: onRoundChanged,
+            compact: compact,
+          )
+        : const _AllMatchesLabel();
 
     return Container(
-      padding: const EdgeInsets.all(18),
+      key: const ValueKey('program-controls'),
+      padding: EdgeInsets.all(compact ? 8 : 18),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(compact ? 16 : 24),
         border: Border.all(color: _border),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: .05),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        boxShadow: compact
+            ? const []
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: .05),
+                  blurRadius: 18,
+                  offset: const Offset(0, 8),
+                ),
+              ],
       ),
       child: compact
-          ? Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+          ? Row(
               children: [
-                _TitleBlock(title: title),
-                if (showRoundSelector) ...[
-                  const SizedBox(height: 14),
-                  _RoundSelector(
-                    selectedRound: selectedRound,
-                    rounds: rounds,
-                    onRoundChanged: onRoundChanged,
+                Expanded(
+                  child: Text(
+                    'Programma · ${title.split(' ').last}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Color(0xFF153B2A),
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
-                ],
+                ),
+                const SizedBox(width: 8),
+                selector,
               ],
             )
           : Row(
@@ -255,16 +277,28 @@ class _HeaderCard extends StatelessWidget {
                 Expanded(child: _TitleBlock(title: title)),
                 if (showRoundSelector) ...[
                   const SizedBox(width: 18),
-                  _RoundSelector(
-                    selectedRound: selectedRound,
-                    rounds: rounds,
-                    onRoundChanged: onRoundChanged,
-                  ),
+                  selector,
                 ],
               ],
             ),
     );
   }
+}
+
+class _AllMatchesLabel extends StatelessWidget {
+  const _AllMatchesLabel();
+
+  @override
+  Widget build(BuildContext context) => const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 8),
+        child: Text(
+          'Alle wedstrijden',
+          style: TextStyle(
+            color: Color(0xFF153B2A),
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      );
 }
 
 class _TitleBlock extends StatelessWidget {
@@ -321,11 +355,13 @@ class _RoundSelector extends StatelessWidget {
 
   const _RoundSelector({
     required this.selectedRound,
+    this.compact = false,
     required this.rounds,
     required this.onRoundChanged,
   });
 
   final int selectedRound;
+  final bool compact;
   final List<int> rounds;
   final ValueChanged<int?> onRoundChanged;
 
@@ -333,14 +369,16 @@ class _RoundSelector extends StatelessWidget {
   Widget build(BuildContext context) {
     return DropdownButtonHideUnderline(
       child: Container(
-        height: 48,
-        padding: const EdgeInsets.symmetric(horizontal: 14),
+        width: compact ? 112 : null,
+        height: compact ? 44 : 48,
+        padding: EdgeInsets.symmetric(horizontal: compact ? 10 : 14),
         decoration: BoxDecoration(
           color: const Color(0xFFF8FAF6),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(compact ? 12 : 16),
           border: Border.all(color: _border),
         ),
         child: DropdownButton<int>(
+          isExpanded: compact,
           value: selectedRound,
           borderRadius: BorderRadius.circular(16),
           icon: const Icon(Icons.keyboard_arrow_down),
@@ -349,7 +387,7 @@ class _RoundSelector extends StatelessWidget {
                 (round) => DropdownMenuItem<int>(
                   value: round,
                   child: Text(
-                    'Speelronde $round',
+                    compact ? 'Ronde $round' : 'Speelronde $round',
                     style: const TextStyle(
                       color: _darkGreen,
                       fontWeight: FontWeight.w700,
@@ -437,11 +475,12 @@ class _DateGroupCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final displayDate = _formatDate(date, weekdayNL);
+    final compact = MediaQuery.sizeOf(context).width < 720;
 
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(compact ? 16 : 24),
         border: Border.all(color: _border),
         boxShadow: [
           BoxShadow(
@@ -454,7 +493,12 @@ class _DateGroupCard extends StatelessWidget {
       child: Column(
         children: [
           Container(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 9),
+            padding: EdgeInsets.fromLTRB(
+              compact ? 10 : 16,
+              compact ? 7 : 10,
+              compact ? 10 : 16,
+              compact ? 6 : 9,
+            ),
             decoration: const BoxDecoration(
               border: Border(bottom: BorderSide(color: _border)),
             ),
@@ -531,7 +575,7 @@ class _MatchRow extends StatelessWidget {
       child: Container(
         padding: EdgeInsets.symmetric(
           horizontal: compact ? 12 : 18,
-          vertical: compact ? 12 : 7,
+          vertical: compact ? 8 : 7,
         ),
         decoration: const BoxDecoration(
           border: Border(bottom: BorderSide(color: _border)),
@@ -687,7 +731,7 @@ class _MatchRow extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 6),
         Row(
           children: [
             _StatusBadge(status: match.status),

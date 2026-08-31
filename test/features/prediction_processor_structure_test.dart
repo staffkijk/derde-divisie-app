@@ -7,14 +7,17 @@ void main() {
     final source = File(
       'lib/features/moderator/general_prediction_points_service.dart',
     ).readAsStringSync();
+    final normalized = source.replaceAll('\r\n', '\n');
+    final compact = normalized.replaceAll(RegExp(r'\s+'), ' ');
 
-    expect(source, contains('runTransaction'));
-    expect(source, contains('transaction.set(\n          predictionRef'));
-    expect(source, contains('transaction.set(\n          ledgerRef'));
-    expect(source, contains('transaction.set(\n          userRef'));
+    expect(compact, contains('runTransaction'));
+    expect(compact, contains('transaction.set( predictionRef'));
+    expect(compact, contains('transaction.set( ledgerRef'));
+    expect(compact, contains('transaction.set( userRef'));
   });
 
-  test('result processing markeert processing, processed en failed expliciet', () {
+  test('result processing markeert processing, processed en failed expliciet',
+      () {
     final source = File(
       'lib/features/moderator/result_processing_service.dart',
     ).readAsStringSync();

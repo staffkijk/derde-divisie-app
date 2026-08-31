@@ -247,6 +247,36 @@ Map<String, List<SocialFormResult>> buildSocialForm({
   return result;
 }
 
+int currentProgramRound(Iterable<SocialCardMatch> matches) {
+  final rounds =
+      matches.map((match) => match.round).where((round) => round > 0);
+  if (rounds.isEmpty) return 1;
+  final highest = rounds.reduce((a, b) => a > b ? a : b);
+  for (var round = 1; round <= highest; round++) {
+    final inRound = matches.where((match) => match.round == round);
+    if (inRound.any((match) =>
+        match.status == MatchStatus.scheduled ||
+        match.status == MatchStatus.postponed)) {
+      return round;
+    }
+  }
+  return highest;
+}
+
+int currentResultsRound(Iterable<SocialCardMatch> matches) {
+  final playedRounds = matches
+      .where((match) =>
+          match.homeScore != null &&
+          match.awayScore != null &&
+          match.status != MatchStatus.cancelled &&
+          match.status != MatchStatus.abandoned &&
+          match.status != MatchStatus.postponed)
+      .map((match) => match.round)
+      .where((round) => round > 0);
+  if (playedRounds.isEmpty) return currentProgramRound(matches);
+  return playedRounds.reduce((a, b) => a > b ? a : b);
+}
+
 List<int> socialRoundChoices(SocialCardMode mode) =>
     mode == SocialCardMode.predictions
         ? PredictionSocialPeriod.publicationRounds

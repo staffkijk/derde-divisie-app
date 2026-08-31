@@ -1,4 +1,4 @@
-﻿/* eslint-disable no-console */
+/* eslint-disable no-console */
 /**
  * Apply the validated synthetic 2026/2027 dataset.
  * Default is a read-only dry run. Firestore writes require explicit --apply.
@@ -21,7 +21,7 @@ const PILOT_CONFIG_HASH = '045a3e1f';
 const EFFECTIVE_CONFIG_HASH = 'e665f878b1ab1880da46230d2c25668340c52075e4700ed8724a6633e0825a13';
 const PILOT_IDS = new Set(Array.from({ length: 5 }, (_, index) => `syn_2026_2027_${String(index + 1).padStart(3, '0')}`));
 const MARKERS = { isFake: true, accountType: 'synthetic', syntheticSeason: SEASON };
-const AVATAR = 'assets/images/profiel_bal.png';
+const { resolveLocalLogoAsset, selectSyntheticAvatar } = require('./synthetic_avatar_selector');
 const APPLY = process.argv.includes('--apply');
 const pilotArg = process.argv.find((arg) => arg.startsWith('--pilot='));
 const PILOT = pilotArg ? Number(pilotArg.split('=')[1]) : null;
@@ -79,7 +79,8 @@ function buildOperations(dataset, teams) {
   const ops = { users: [], usernames: [], predictions: [], finals: [], pools: [] };
   for (const p of dataset.players.filter((player) => !PILOT_IDS.has(player.syntheticId))) {
     const key = normalize(p.username); const team = teams.byName.get(normalize(p.favoriteClub)); const counts = poolCounts(dataset, p.syntheticId);
-    ops.users.push({ path: `users/${p.syntheticId}`, data: { uid: p.syntheticId, displayName: p.displayName, username: p.username, usernameLower: p.username.toLowerCase().trim(), usernameKey: key, email: `${p.syntheticId}@synthetic.invalid`, ismoderator: false, isModerator: false, heeftGebruikersnaamGewijzigd: false, avatarUrl: AVATAR, woonplaats: '', favorieteCompetitie: p.competitions.length === 1 ? p.competitions[0] : 'A+B', favorieteClub: p.favoriteClub || 'Geen voorkeur', ...(team ? { favoriteTeamSlug: team.id, favoriteTeamName: teams.name(team), favoriteDivision: teams.division(team) } : {}), allowEmailSharingWithPouleOwner: false, notificationPreferences: {}, points: 0, punten: 0, punten_A: 0, punten_B: 0, totaalPunten: 0, totalPoints: 0, competitions: p.competitions, ranglijstZichtbaar: true, voorspellingenZichtbaar: true, eigenPoules: counts.owned, gejoinedePoules: counts.joined, isIdle: p.isIdle, predictionProfile: p.predictionProfile, aangemaaktOp: timestamp(), ...marker(dataset.runId) } });
+    const avatar = selectSyntheticAvatar({ uid: p.syntheticId, displayName: p.displayName, username: p.username, favoriteTeamSlug: team?.id, favoriteTeamName: team ? teams.name(team) : '', favorieteClub: p.favoriteClub }, teams.rows.map((row) => ({ id: row.id, name: teams.name(row), label: teams.name(row), aliases: row.aliases || [], logoPath: row.logoPath || row.logoAsset || row.assetPath || resolveLocalLogoAsset([row.id, teams.name(row), row.assetCode, row.code, row.slug], path.resolve(__dirname, '..')), nameTokens: String(teams.name(row)).split(/\s+/) })), path.resolve(__dirname, '..')).avatarUrl;
+    ops.users.push({ path: `users/${p.syntheticId}`, data: { uid: p.syntheticId, displayName: p.displayName, username: p.username, usernameLower: p.username.toLowerCase().trim(), usernameKey: key, email: `${p.syntheticId}@synthetic.invalid`, ismoderator: false, isModerator: false, heeftGebruikersnaamGewijzigd: false, avatarUrl: avatar, woonplaats: '', favorieteCompetitie: p.competitions.length === 1 ? p.competitions[0] : 'A+B', favorieteClub: p.favoriteClub || 'Geen voorkeur', ...(team ? { favoriteTeamSlug: team.id, favoriteTeamName: teams.name(team), favoriteDivision: teams.division(team) } : {}), allowEmailSharingWithPouleOwner: false, notificationPreferences: {}, points: 0, punten: 0, punten_A: 0, punten_B: 0, totaalPunten: 0, totalPoints: 0, competitions: p.competitions, ranglijstZichtbaar: true, voorspellingenZichtbaar: true, eigenPoules: counts.owned, gejoinedePoules: counts.joined, isIdle: p.isIdle, predictionProfile: p.predictionProfile, aangemaaktOp: timestamp(), ...marker(dataset.runId) } });
     ops.usernames.push({ path: `usernames/${key}`, data: { uid: p.syntheticId, username: p.username, displayName: p.displayName, email: `${p.syntheticId}@synthetic.invalid`, usernameKey: key, updatedAt: timestamp(), ...marker(dataset.runId) } });
   }
   for (const p of dataset.predictions.filter((prediction) => !(PILOT_IDS.has(prediction.syntheticId) && prediction.round === 1))) ops.predictions.push({ path: `seasons/${SEASON}/predictions/${p.syntheticId}_${p.matchId}`, data: { gebruikerId: p.syntheticId, userId: p.syntheticId, wedstrijdId: p.matchId, matchId: p.matchId, thuisScore: p.homeGoals, uitScore: p.awayGoals, homeScore: p.homeGoals, awayScore: p.awayGoals, divisie: p.division, division: p.division, seasonId: SEASON, punten: 0, verwerkt: false, timestamp: timestamp(), predictionProfile: p.profile, ...marker(dataset.runId) } });
