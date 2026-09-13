@@ -90,20 +90,24 @@ async function main() {
       continue;
     }
 
-    // Historical matches were processed before these diagnostic fields existed.
-    // They are not automatically errors just because the new metadata is absent.
+    // Matches completed before the guard was deployed can have either no
+    // processingStatus or processingStatus='processed', but none of the new
+    // prediction-processing metadata. Treat those as legacy successes rather
+    // than false-positive problems; point drift is audited separately.
     if (
       processed &&
-      !processingStatus &&
+      (processingStatus === '' || processingStatus === 'processed') &&
       complete === undefined &&
       selectedUsers === null &&
-      processedUsers === null
+      processedUsers === null &&
+      !firstString(data, ['processingError'])
     ) {
       legacyProcessed.push({
         matchId: doc.id,
         division: firstString(data, ['division', 'divisie', 'competitie']),
         round: firstInt(data, ['round', 'speelronde', 'ronde']),
         result: `${homeScore}-${awayScore}`,
+        processingStatus,
       });
       continue;
     }
