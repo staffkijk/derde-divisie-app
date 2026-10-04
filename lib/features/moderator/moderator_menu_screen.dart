@@ -2,6 +2,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:derde_divisie/core/widgets/match_status_badge.dart';
 
 import 'package:derde_divisie/data/config/team_logo_assets.dart';
 import 'package:derde_divisie/data/firestore/season_paths.dart';
@@ -199,11 +200,7 @@ class _ModeratorMenuScreenState extends State<ModeratorMenuScreen> {
       _awayControllerFor(match).clear();
       if (mounted) {
         _showSnack(
-          status == 'postponed'
-              ? 'Wedstrijd gemarkeerd als In te halen.'
-              : status == 'cancelled'
-                  ? 'Wedstrijd afgelast.'
-                  : 'Wedstrijd gestaakt.',
+          'Wedstrijd gemarkeerd als ${parseMatchStatus(status).adminLabel}.',
         );
       }
     } catch (e) {
@@ -666,10 +663,16 @@ class _ResultRow extends StatelessWidget {
         PopupMenuButton<String>(
           tooltip: 'Status zonder uitslag',
           onSelected: onStatus,
-          itemBuilder: (_) => const [
-            PopupMenuItem(value: 'postponed', child: Text('In te halen')),
-            PopupMenuItem(value: 'cancelled', child: Text('Afgelast')),
-            PopupMenuItem(value: 'abandoned', child: Text('Gestaakt')),
+          itemBuilder: (_) => [
+            PopupMenuItem(
+                value: MatchStatus.postponed.firestoreValue,
+                child: Text(MatchStatus.postponed.adminLabel)),
+            PopupMenuItem(
+                value: MatchStatus.cancelled.firestoreValue,
+                child: Text(MatchStatus.cancelled.adminLabel)),
+            PopupMenuItem(
+                value: MatchStatus.abandoned.firestoreValue,
+                child: Text(MatchStatus.abandoned.adminLabel)),
           ],
         ),
         const SizedBox(width: 10),
@@ -730,10 +733,16 @@ class _ResultRow extends StatelessWidget {
             PopupMenuButton<String>(
               tooltip: 'Status',
               onSelected: onStatus,
-              itemBuilder: (_) => const [
-                PopupMenuItem(value: 'postponed', child: Text('In te halen')),
-                PopupMenuItem(value: 'cancelled', child: Text('Afgelast')),
-                PopupMenuItem(value: 'abandoned', child: Text('Gestaakt')),
+              itemBuilder: (_) => [
+                PopupMenuItem(
+                    value: MatchStatus.postponed.firestoreValue,
+                    child: Text(MatchStatus.postponed.adminLabel)),
+                PopupMenuItem(
+                    value: MatchStatus.cancelled.firestoreValue,
+                    child: Text(MatchStatus.cancelled.adminLabel)),
+                PopupMenuItem(
+                    value: MatchStatus.abandoned.firestoreValue,
+                    child: Text(MatchStatus.abandoned.adminLabel)),
               ],
             ),
             const Spacer(),
@@ -873,21 +882,7 @@ class _StatusPill extends StatelessWidget {
     );
   }
 
-  String _statusLabel(String value) {
-    switch (value) {
-      case 'finished':
-        return '';
-      case 'postponed':
-        return 'Uitgesteld';
-      case 'cancelled':
-        return 'Afgelast';
-      case 'abandoned':
-        return 'Gestaakt';
-      case 'scheduled':
-      default:
-        return '';
-    }
-  }
+  String _statusLabel(String value) => parseMatchStatus(value).label;
 
   Color _statusColor(String value) {
     switch (value) {

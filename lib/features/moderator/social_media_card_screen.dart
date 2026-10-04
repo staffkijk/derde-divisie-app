@@ -10,7 +10,6 @@ import 'package:universal_html/html.dart' as html;
 
 import 'package:derde_divisie/core/design/app_design.dart';
 import 'package:derde_divisie/core/widgets/derde_div_logo.dart';
-import 'package:derde_divisie/core/widgets/match_status_badge.dart';
 import 'package:derde_divisie/core/widgets/team_logo.dart';
 import 'package:derde_divisie/data/config/season_config.dart';
 import 'package:derde_divisie/data/firestore/season_paths.dart';
@@ -94,11 +93,7 @@ class _SocialMediaCardScreenState extends State<SocialMediaCardScreen> {
     }
     final title = mode == SocialCardMode.program ? 'Programma' : 'Uitslagen';
     final lines = data.matches.map((match) {
-      final center = mode == SocialCardMode.results &&
-              match.homeScore != null &&
-              match.awayScore != null
-          ? '${match.homeScore}-${match.awayScore}'
-          : match.kickoffTime;
+      final center = socialMatchCenterLabel(match, mode);
       return '${match.homeTeam} $center ${match.awayTeam}';
     }).join('\n');
     final name = SeasonConfig.divisionName(division);
@@ -581,18 +576,6 @@ class MatchRow extends StatelessWidget {
         ],
       );
 
-  String center() {
-    if (match.status == MatchStatus.postponed) return 'Uitgesteld';
-    if (match.status == MatchStatus.cancelled) return 'Afgelast';
-    if (match.status == MatchStatus.abandoned) return 'Gestaakt';
-    if (mode == SocialCardMode.results &&
-        match.homeScore != null &&
-        match.awayScore != null) {
-      return '${match.homeScore} - ${match.awayScore}';
-    }
-    return match.kickoffTime;
-  }
-
   @override
   Widget build(BuildContext context) => Container(
         margin: const EdgeInsets.symmetric(vertical: 3),
@@ -606,14 +589,18 @@ class MatchRow extends StatelessWidget {
             Expanded(child: team(match.homeTeam, false)),
             SizedBox(
               width: 130,
-              child: Text(
-                center(),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 19,
-                  fontWeight: FontWeight.w900,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  socialMatchCenterLabel(match, mode),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  softWrap: false,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 19,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ),
             ),

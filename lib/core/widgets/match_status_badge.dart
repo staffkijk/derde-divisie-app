@@ -26,6 +26,17 @@ extension MatchStatusPresentation on MatchStatus {
     }
   }
 
+  String get adminLabel {
+    switch (this) {
+      case MatchStatus.scheduled:
+        return 'Gepland';
+      case MatchStatus.finished:
+        return 'Afgelopen';
+      default:
+        return label;
+    }
+  }
+
   String get label {
     switch (this) {
       case MatchStatus.scheduled:
