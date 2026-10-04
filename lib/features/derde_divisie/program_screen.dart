@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:derde_divisie/core/widgets/match_status_badge.dart';
 
 import '../../data/config/team_logo_assets.dart';
 import '../../data/config/season_config.dart';
@@ -893,11 +894,12 @@ class _StatusBadge extends StatelessWidget {
       case 'finished':
         return _StatusConfig('', const Color(0xFF2F8F3B));
       case 'postponed':
-        return _StatusConfig('Uitgesteld', Colors.blueGrey.shade700);
+        return _StatusConfig(
+            MatchStatus.postponed.label, Colors.blueGrey.shade700);
       case 'cancelled':
-        return _StatusConfig('Afgelast', Colors.red.shade700);
+        return _StatusConfig(MatchStatus.cancelled.label, Colors.red.shade700);
       case 'abandoned':
-        return _StatusConfig('Gestaakt', Colors.red.shade700);
+        return _StatusConfig(MatchStatus.abandoned.label, Colors.red.shade700);
       case 'scheduled':
       default:
         return _StatusConfig('', const Color(0xFF153B2A));
@@ -1319,21 +1321,8 @@ class _EditMatchDialogState extends State<_EditMatchDialog> {
     );
   }
 
-  static String _statusLabel(String status) {
-    switch (status) {
-      case 'finished':
-        return 'Afgelopen';
-      case 'postponed':
-        return 'In te halen';
-      case 'cancelled':
-        return 'Afgelast';
-      case 'abandoned':
-        return 'Gestaakt';
-      case 'scheduled':
-      default:
-        return 'Gepland';
-    }
-  }
+  static String _statusLabel(String status) =>
+      parseMatchStatus(status).adminLabel;
 }
 
 class _MatchDoc {

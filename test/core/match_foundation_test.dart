@@ -40,6 +40,15 @@ void main() {
   });
 
   group('matchstatus', () {
+    test('behoudt canonical Firestorewaarden en centrale editorlabels', () {
+      expect(MatchStatus.values, hasLength(5));
+      expect(MatchStatus.values.map((status) => status.firestoreValue),
+          ['scheduled', 'finished', 'postponed', 'cancelled', 'abandoned']);
+      expect(MatchStatus.values.map((status) => status.adminLabel),
+          ['Gepland', 'Afgelopen', 'Uitgesteld', 'Afgelast', 'Gestaakt']);
+      expect(parseMatchStatus('uitgesteld').firestoreValue, 'postponed');
+    });
+
     test('ondersteunt de vijf publieke statussen', () {
       expect(parseMatchStatus('scheduled'), MatchStatus.scheduled);
       expect(parseMatchStatus('finished'), MatchStatus.finished);

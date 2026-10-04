@@ -7,6 +7,27 @@ import 'package:derde_divisie/features/voorspellen/user_display_name.dart';
 
 enum SocialCardMode { program, results, predictions }
 
+/// Shared by the preview, PNG export and copied X text.
+/// Exceptional statuses take precedence over any stale scores or kickoff time.
+String socialMatchCenterLabel(SocialCardMatch match, SocialCardMode mode) {
+  switch (match.status) {
+    case MatchStatus.postponed:
+    case MatchStatus.cancelled:
+    case MatchStatus.abandoned:
+      return match.status.label;
+    case MatchStatus.scheduled:
+    case MatchStatus.finished:
+      if (mode == SocialCardMode.results &&
+          match.homeScore != null &&
+          match.awayScore != null &&
+          match.homeScore! >= 0 &&
+          match.awayScore! >= 0) {
+        return '${match.homeScore} - ${match.awayScore}';
+      }
+      return match.kickoffTime;
+  }
+}
+
 class SocialCardData {
   const SocialCardData({
     required this.matches,

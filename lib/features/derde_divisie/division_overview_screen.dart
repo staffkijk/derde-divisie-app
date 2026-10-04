@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:derde_divisie/core/widgets/match_status_badge.dart';
 
 import '../../data/config/team_logo_assets.dart';
 import '../../data/config/season_config.dart';
@@ -643,11 +644,11 @@ class _MatchTile extends StatelessWidget {
             alignment: Alignment.center,
             child: Text(
               match.status == 'postponed'
-                  ? 'In te halen'
+                  ? MatchStatus.postponed.label
                   : match.status == 'cancelled'
-                      ? 'Afgelast'
+                      ? MatchStatus.cancelled.label
                       : match.status == 'abandoned'
-                          ? 'Gestaakt'
+                          ? MatchStatus.abandoned.label
                           : scoreKnown
                               ? '${match.homeScore}-${match.awayScore}'
                               : 'vs',

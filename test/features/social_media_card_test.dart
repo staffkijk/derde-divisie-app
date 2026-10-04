@@ -1,3 +1,6 @@
+import 'dart:ui' as ui;
+
+import 'package:flutter/rendering.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -12,6 +15,7 @@ SocialCardMatch match(
   String? away,
   int? homeScore,
   int? awayScore,
+  MatchStatus status = MatchStatus.scheduled,
 }) {
   return SocialCardMatch(
     id: 'match-$index-$division-$round',
@@ -20,7 +24,7 @@ SocialCardMatch match(
     homeTeam: home ?? 'Thuisclub $index',
     awayTeam: away ?? 'Uitclub $index',
     kickoffTime: '15:00',
-    status: MatchStatus.scheduled,
+    status: status,
     homeScore: homeScore,
     awayScore: awayScore,
     data: {
@@ -84,6 +88,124 @@ Widget canvas({
 }
 
 void main() {
+  group('gedeelde PNG- en X-statusformatter', () {
+    for (final entry in {
+      MatchStatus.postponed: 'Uitgesteld',
+      MatchStatus.cancelled: 'Afgelast',
+      MatchStatus.abandoned: 'Gestaakt',
+    }.entries) {
+      for (final mode in [SocialCardMode.program, SocialCardMode.results]) {
+        test('${entry.key.name} in ${mode.name}, ook met oude scores', () {
+          for (final score in [null, 2]) {
+            final value = match(0,
+                status: entry.key,
+                home: 'Eemdijk',
+                away: 'Hollandia',
+                homeScore: score,
+                awayScore: score);
+            final label = socialMatchCenterLabel(value, mode);
+            expect(label, entry.value);
+            expect(label, isNot('15:00'));
+            expect('${value.homeTeam} $label ${value.awayTeam}',
+                'Eemdijk ${entry.value} Hollandia');
+          }
+        });
+      }
+    }
+    test(
+        'scores alleen in uitslagen; ontbrekende of ongeldige scores vallen terug',
+        () {
+      final finished =
+          match(0, status: MatchStatus.finished, homeScore: 2, awayScore: 1);
+      expect(socialMatchCenterLabel(finished, SocialCardMode.results), '2 - 1');
+      expect(socialMatchCenterLabel(finished, SocialCardMode.program), '15:00');
+      expect(
+          socialMatchCenterLabel(
+              match(0, homeScore: 0, awayScore: 0), SocialCardMode.results),
+          '0 - 0');
+      for (final value in [
+        match(0),
+        match(0, homeScore: 2),
+        match(0, awayScore: 1),
+        match(0, homeScore: -1, awayScore: 0)
+      ]) {
+        expect(socialMatchCenterLabel(value, SocialCardMode.results), '15:00');
+      }
+    });
+  });
+
+  final statusMatches = [
+    match(0, home: 'Eemdijk', away: 'Hollandia', status: MatchStatus.postponed),
+    match(1, status: MatchStatus.cancelled),
+    match(2, status: MatchStatus.abandoned),
+    match(3, status: MatchStatus.finished, homeScore: 2, awayScore: 1),
+  ];
+  for (final width in [360.0, 390.0, 412.0, 1300.0]) {
+    for (final preview in [false, true]) {
+      testWidgets(
+          'uitslagstatussen zonder overflow op $width, preview=$preview',
+          (tester) async {
+        await tester.binding.setSurfaceSize(Size(width, 1700));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        final value = data(matches: statusMatches);
+        await tester.pumpWidget(preview
+            ? MaterialApp(
+                home: Scaffold(
+                    body: SingleChildScrollView(
+                        child: SocialMediaPreview(
+                            child: SocialMediaExportCanvas(
+                                divisionName: 'Derde Divisie A',
+                                round: 1,
+                                mode: SocialCardMode.results,
+                                data: value)))))
+            : canvas(mode: SocialCardMode.results, value: value));
+        for (final label in ['Uitgesteld', 'Afgelast', 'Gestaakt', '2 - 1']) {
+          expect(find.text(label), findsOneWidget);
+          final paragraph =
+              tester.renderObject<RenderParagraph>(find.text(label));
+          expect(paragraph.didExceedMaxLines, isFalse);
+        }
+        expect(find.text('15:00'), findsNothing);
+        expect(find.text('Eemdijk'), findsOneWidget);
+        expect(find.text('Hollandia'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      });
+    }
+  }
+
+  testWidgets('statussen worden op het daadwerkelijke PNG-canvas geschilderd',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1080, 1350));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final key = GlobalKey();
+    await tester.pumpWidget(MaterialApp(
+        home: RepaintBoundary(
+            key: key,
+            child: SocialMediaExportCanvas(
+                divisionName: 'Derde Divisie A',
+                round: 1,
+                mode: SocialCardMode.results,
+                data: data(matches: statusMatches)))));
+    await tester.pumpAndSettle();
+    for (final label in ['Uitgesteld', 'Afgelast', 'Gestaakt', '2 - 1']) {
+      expect(find.descendant(of: find.byKey(key), matching: find.text(label)),
+          findsOneWidget);
+    }
+    final boundary =
+        key.currentContext!.findRenderObject()! as RenderRepaintBoundary;
+    await tester.runAsync(() async {
+      final image = await boundary.toImage(pixelRatio: 1);
+      expect(image.width, 1080);
+      expect(image.height, 1350);
+      final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+      expect(bytes, isNotNull);
+      expect(bytes!.buffer.asUint8List().take(8),
+          [137, 80, 78, 71, 13, 10, 26, 10]);
+      image.dispose();
+    });
+    expect(tester.takeException(), isNull);
+  });
+
   group('vaste exportcanvas', () {
     for (final width in [360.0, 390.0, 412.0, 1300.0]) {
       testWidgets('blijft 1080x1350 bij viewport $width', (tester) async {
