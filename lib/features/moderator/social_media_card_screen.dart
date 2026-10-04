@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:ui' as ui;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -6,7 +5,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
-import 'package:universal_html/html.dart' as html;
 
 import 'package:derde_divisie/core/design/app_design.dart';
 import 'package:derde_divisie/core/widgets/derde_div_logo.dart';
@@ -16,10 +14,12 @@ import 'package:derde_divisie/data/firestore/season_paths.dart';
 import 'package:derde_divisie/data/services/activity_log_service.dart';
 import 'package:derde_divisie/data/services/analytics_service.dart';
 import 'package:derde_divisie/features/moderator/social_media_models.dart';
+import 'package:derde_divisie/features/moderator/social_png_delivery.dart';
+import 'package:derde_divisie/features/moderator/social_png_save_dialog.dart';
 
 export 'package:derde_divisie/features/moderator/social_media_models.dart';
 
-const socialExportSize = Size(1080, 1350);
+const socialExportSize = Size(1600, 900);
 
 class SocialMediaCardScreen extends StatefulWidget {
   const SocialMediaCardScreen({super.key});
@@ -34,6 +34,7 @@ class _SocialMediaCardScreenState extends State<SocialMediaCardScreen> {
   SocialCardMode mode = SocialCardMode.program;
   bool exporting = false;
   int refresh = 0;
+  final pngDelivery = SocialPngDeliveryService();
 
   Future<SocialCardData> load() async {
     final all = await Future.wait([
@@ -131,21 +132,28 @@ class _SocialMediaCardScreenState extends State<SocialMediaCardScreen> {
       if (boundary == null) throw StateError('Exportcanvas ontbreekt.');
       final image = await boundary.toImage(pixelRatio: 1);
       final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+      image.dispose();
       if (bytes == null) throw StateError('PNG kon niet worden gemaakt.');
-      downloadSocialPng(
+      if (!mounted) return;
+      final delivery = await downloadSocialPng(
+        context,
         bytes.buffer.asUint8List(),
         socialFileName(mode, division, round),
+        service: pngDelivery,
       );
+      if (delivery == null || delivery == SocialPngDeliveryResult.cancelled) {
+        return;
+      }
       await ActivityLogService().log(
         eventType: ActivityEventType.socialCardGenerated,
         metadata: {'division': division, 'round': round, 'mode': mode.name},
       );
       await AnalyticsService.instance
           .trackShareClicked(source: 'social_card_png');
-      if (mounted) {
+      if (mounted && delivery == SocialPngDeliveryResult.downloaded) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('PNG gereed. Op iPhone: bewaar via Delen.'),
+            content: Text('PNG-download gestart.'),
           ),
         );
       }
@@ -194,6 +202,9 @@ class _SocialMediaCardScreenState extends State<SocialMediaCardScreen> {
                           round: round,
                           mode: mode,
                           exporting: exporting,
+                          pngButtonLabel: pngDelivery.isIOS
+                              ? 'PNG opslaan'
+                              : 'PNG downloaden',
                           onDivision: (v) => setState(() => division = v),
                           onRound: (v) => setState(() => round = v),
                           onMode: (v) => setState(() => mode = v),
@@ -267,6 +278,7 @@ class SocialMediaControls extends StatelessWidget {
     required this.onDownload,
     required this.onCopy,
     required this.onRefresh,
+    this.pngButtonLabel = 'PNG downloaden',
   });
   final String division;
   final int round;
@@ -278,6 +290,7 @@ class SocialMediaControls extends StatelessWidget {
   final VoidCallback? onDownload;
   final VoidCallback? onCopy;
   final VoidCallback onRefresh;
+  final String pngButtonLabel;
 
   String label(SocialCardMode value) {
     if (value == SocialCardMode.program) return 'Programma';
@@ -345,7 +358,7 @@ class SocialMediaControls extends StatelessWidget {
                 FilledButton.icon(
                   onPressed: exporting ? null : onDownload,
                   icon: const Icon(Icons.download_outlined),
-                  label: const Text('PNG downloaden'),
+                  label: Text(pngButtonLabel),
                 ),
                 OutlinedButton.icon(
                   onPressed: onCopy,
@@ -512,38 +525,54 @@ class MatchStandContent extends StatelessWidget {
   final SocialCardMode mode;
 
   @override
-  Widget build(BuildContext context) => Column(
+  Widget build(BuildContext context) => Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SizedBox(
-            height: 396,
-            child: matches.isEmpty
-                ? const Center(
-                    child: Text(
-                      'Geen wedstrijden voor deze selectie',
-                      style: TextStyle(color: Colors.white, fontSize: 24),
-                    ),
-                  )
-                : Column(
-                    children: [
-                      for (final match in matches)
-                        Expanded(
-                          child: MatchRow(match: match, mode: mode),
-                        ),
-                    ],
-                  ),
-          ),
-          const SizedBox(height: 15),
-          const Text(
-            'STAND',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 29,
-              fontWeight: FontWeight.w900,
+          Expanded(
+            flex: 11,
+            child: Column(
+              key: const ValueKey('social-matches-column'),
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(
+                    height: 42,
+                    child: Text('WEDSTRIJDEN',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 29,
+                            fontWeight: FontWeight.w900))),
+                Expanded(
+                  child: matches.isEmpty
+                      ? const Center(
+                          child: Text('Geen wedstrijden voor deze selectie',
+                              style:
+                                  TextStyle(color: Colors.white, fontSize: 24)))
+                      : Column(children: [
+                          for (final match in matches)
+                            Expanded(child: MatchRow(match: match, mode: mode)),
+                        ]),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 5),
-          Expanded(child: StandTable(standings: standings)),
+          const SizedBox(width: 24),
+          Expanded(
+            flex: 9,
+            child: Column(
+              key: const ValueKey('social-standings-column'),
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(
+                    height: 42,
+                    child: Text('STAND',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 29,
+                            fontWeight: FontWeight.w900))),
+                Expanded(child: StandTable(standings: standings)),
+              ],
+            ),
+          ),
         ],
       );
 }
@@ -639,6 +668,22 @@ class StandTable extends StatelessWidget {
     }
     return Column(
       children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+          child: Row(children: [
+            cell('#', 27, align: TextAlign.left),
+            const Expanded(
+                child: Text('Club',
+                    style: TextStyle(color: Colors.white, fontSize: 13))),
+            cell('G', 37),
+            cell('W', 37),
+            cell('GL', 37),
+            cell('V', 37),
+            cell('DV-DT', 61),
+            cell('DS', 38),
+            cell('Ptn', 38),
+          ]),
+        ),
         for (var i = 0; i < standings.length; i++)
           Expanded(
             child: Container(
@@ -811,23 +856,21 @@ class PredictionContent extends StatelessWidget {
   }
 }
 
-void downloadSocialPng(Uint8List data, String fileName) {
-  if (!kIsWeb) return;
-  final blob = html.Blob([data], 'image/png');
-  final url = html.Url.createObjectUrlFromBlob(blob);
-  final isiOS = RegExp(r'iphone|ipad|ipod')
-      .hasMatch(html.window.navigator.userAgent.toLowerCase());
-  if (isiOS) {
-    html.window.open(url, '_blank');
-    Timer(
-      const Duration(minutes: 1),
-      () => html.Url.revokeObjectUrl(url),
-    );
-  } else {
-    (html.AnchorElement(href: url)..download = fileName).click();
-    Timer(
-      const Duration(seconds: 2),
-      () => html.Url.revokeObjectUrl(url),
+/// PNG bytes are prepared before the iOS dialog button is tapped, preserving
+/// the user activation required by navigator.share even after slow rendering.
+Future<SocialPngDeliveryResult?> downloadSocialPng(
+  BuildContext context,
+  Uint8List data,
+  String fileName, {
+  SocialPngDeliveryService? service,
+}) {
+  final delivery = service ?? SocialPngDeliveryService();
+  if (delivery.isIOS) {
+    return showDialog<SocialPngDeliveryResult>(
+      context: context,
+      builder: (_) => SocialPngSaveDialog(
+          bytes: data, fileName: fileName, service: delivery),
     );
   }
+  return delivery.deliver(data, fileName);
 }
