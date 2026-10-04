@@ -139,6 +139,8 @@ void main() {
     match(1, status: MatchStatus.cancelled),
     match(2, status: MatchStatus.abandoned),
     match(3, status: MatchStatus.finished, homeScore: 2, awayScore: 1),
+    for (var i = 4; i < 9; i++)
+      match(i, status: MatchStatus.finished, homeScore: 0, awayScore: 0),
   ];
   for (final width in [360.0, 390.0, 412.0, 1300.0]) {
     for (final preview in [false, true]) {
@@ -166,6 +168,14 @@ void main() {
           expect(paragraph.didExceedMaxLines, isFalse);
         }
         expect(find.text('15:00'), findsNothing);
+        final left =
+            tester.getRect(find.byKey(const ValueKey('social-matches-column')));
+        final right = tester
+            .getRect(find.byKey(const ValueKey('social-standings-column')));
+        expect(left.right, lessThan(right.left));
+        expect(left.top, closeTo(right.top, 0.01));
+        expect(find.byType(MatchRow), findsNWidgets(9));
+        expect(find.text('Club 17'), findsOneWidget);
         expect(find.text('Eemdijk'), findsOneWidget);
         expect(find.text('Hollandia'), findsOneWidget);
         expect(tester.takeException(), isNull);
@@ -175,7 +185,7 @@ void main() {
 
   testWidgets('statussen worden op het daadwerkelijke PNG-canvas geschilderd',
       (tester) async {
-    await tester.binding.setSurfaceSize(const Size(1080, 1350));
+    await tester.binding.setSurfaceSize(const Size(1600, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final key = GlobalKey();
     await tester.pumpWidget(MaterialApp(
@@ -195,8 +205,8 @@ void main() {
         key.currentContext!.findRenderObject()! as RenderRepaintBoundary;
     await tester.runAsync(() async {
       final image = await boundary.toImage(pixelRatio: 1);
-      expect(image.width, 1080);
-      expect(image.height, 1350);
+      expect(image.width, 1600);
+      expect(image.height, 900);
       final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
       expect(bytes, isNotNull);
       expect(bytes!.buffer.asUint8List().take(8),
@@ -208,14 +218,14 @@ void main() {
 
   group('vaste exportcanvas', () {
     for (final width in [360.0, 390.0, 412.0, 1300.0]) {
-      testWidgets('blijft 1080x1350 bij viewport $width', (tester) async {
+      testWidgets('blijft 1600x900 bij viewport $width', (tester) async {
         await tester.binding.setSurfaceSize(Size(width, 1600));
         addTearDown(() => tester.binding.setSurfaceSize(null));
         await tester.pumpWidget(canvas());
         final size = tester.getSize(
           find.byKey(const ValueKey('social-export-canvas')),
         );
-        expect(size, socialExportSize);
+        expect(size, const Size(1600, 900));
         expect(tester.takeException(), isNull);
       });
     }
