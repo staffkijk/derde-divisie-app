@@ -4,7 +4,7 @@ import * as admin from "firebase-admin";
 import {FieldValue} from "firebase-admin/firestore";
 import {ACTIVE_SEASON, fingerprint} from "./result-domain";
 import {processMatch} from "./result-processor";
-import {rankingNameForUser} from "./ranking-fields";
+import {updateRankingMetadata} from "./ranking-fields";
 if (!admin.apps.length) admin.initializeApp();
 export const processMatchResult = functions.region("europe-west1").runWith({failurePolicy: true, timeoutSeconds: 540, memory: "512MB"})
   .firestore.document("seasons/{seasonId}/matches/{matchId}").onWrite(async (change, context) => {
@@ -49,19 +49,7 @@ export const rebuildDivisionStandings = functions.region("europe-west1").runWith
 });
 export const maintainRankingFields = functions.region("europe-west1").firestore.document("users/{uid}").onWrite(async (change) => {
   if (!change.after.exists) return;
-  // Ranking names are presentation metadata. Never initialize or normalize
-  // score fields here: historical balances may be incomplete or disputed.
-  const db = admin.firestore();
-  await db.runTransaction(async (tx) => {
-    const maintenance = await tx.get(db.doc("system/result_processing_maintenance"));
-    if (maintenance.data()?.enabled === true) return;
-    const current = await tx.get(change.after.ref);
-    const data = current.data();
-    if (!data) return;
-    const rankingName = rankingNameForUser(data);
-    if (data.rankingName === rankingName) return;
-    tx.update(change.after.ref, {rankingName});
-  });
+  await updateRankingMetadata(admin.firestore(), change.after.ref);
 });
 
 async function predictionSourceChanged(change: functions.Change<admin.firestore.DocumentSnapshot>): Promise<void> {
