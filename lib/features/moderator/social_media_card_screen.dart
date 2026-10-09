@@ -37,6 +37,27 @@ class _SocialMediaCardScreenState extends State<SocialMediaCardScreen> {
   final pngDelivery = SocialPngDeliveryService();
 
   Future<SocialCardData> load() async {
+    if (mode == SocialCardMode.program) {
+      final current = await SeasonPaths.systemCurrentSeasonDoc.get();
+      final seasonId = current.data()?['seasonId']?.toString().trim();
+      if (seasonId == null || seasonId.isEmpty || seasonId.contains('/')) {
+        throw StateError('system/current_season bevat geen geldig seasonId.');
+      }
+      final snapshot = await SeasonPaths.matches(seasonId).get();
+      final matches = snapshot.docs
+          .where((doc) => doc.id != '_meta')
+          .map(SocialCardMatch.fromDoc)
+          .where((match) =>
+              match.round == round &&
+              (match.division == 'A' || match.division == 'B'))
+          .toList()
+        ..sort(SocialCardMatch.compare);
+      return SocialCardData(
+        matches: matches,
+        standings: const [],
+        predictionSummary: const PredictionSummary(),
+      );
+    }
     final all = await Future.wait([
       SeasonPaths.currentSeasonMatches.get(),
       SeasonPaths.currentSeasonStandings.get(),
@@ -97,7 +118,9 @@ class _SocialMediaCardScreenState extends State<SocialMediaCardScreen> {
       final center = socialMatchCenterLabel(match, mode);
       return '${match.homeTeam} $center ${match.awayTeam}';
     }).join('\n');
-    final name = SeasonConfig.divisionName(division);
+    final name = mode == SocialCardMode.program
+        ? 'Derde Divisie A + B'
+        : SeasonConfig.divisionName(division);
     final ending = mode == SocialCardMode.program
         ? 'Bekijk het volledige programma en de stand'
         : 'Bekijk de stand';
@@ -138,7 +161,8 @@ class _SocialMediaCardScreenState extends State<SocialMediaCardScreen> {
       final delivery = await downloadSocialPng(
         context,
         bytes.buffer.asUint8List(),
-        socialFileName(mode, division, round),
+        socialFileName(
+            mode, mode == SocialCardMode.program ? 'AB' : division, round),
         service: pngDelivery,
       );
       if (delivery == null || delivery == SocialPngDeliveryResult.cancelled) {
@@ -308,20 +332,21 @@ class SocialMediaControls extends StatelessWidget {
               runSpacing: 10,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                SegmentedButton<String>(
-                  segments: const [
-                    ButtonSegment(
-                      value: SeasonConfig.divisionA,
-                      label: Text('A'),
-                    ),
-                    ButtonSegment(
-                      value: SeasonConfig.divisionB,
-                      label: Text('B'),
-                    ),
-                  ],
-                  selected: {division},
-                  onSelectionChanged: (v) => onDivision(v.first),
-                ),
+                if (mode != SocialCardMode.program)
+                  SegmentedButton<String>(
+                    segments: const [
+                      ButtonSegment(
+                        value: SeasonConfig.divisionA,
+                        label: Text('A'),
+                      ),
+                      ButtonSegment(
+                        value: SeasonConfig.divisionB,
+                        label: Text('B'),
+                      ),
+                    ],
+                    selected: {division},
+                    onSelectionChanged: (v) => onDivision(v.first),
+                  ),
                 DropdownButton<int>(
                   value: round,
                   items: [
@@ -418,64 +443,76 @@ class SocialMediaExportCanvas extends StatelessWidget {
             ),
           ),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(48, 38, 48, 38),
+            padding: mode == SocialCardMode.program
+                ? const EdgeInsets.fromLTRB(40, 24, 40, 28)
+                : const EdgeInsets.fromLTRB(48, 38, 48, 38),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Row(
-                  children: [
-                    DerdeDivLogo.full(
-                      width: 205,
-                      height: 53,
-                      responsive: false,
-                    ),
-                    Spacer(),
-                    Text(
-                      'derdediv.nl',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 23,
-                        fontWeight: FontWeight.w800,
+                if (mode == SocialCardMode.program)
+                  SocialExportHeader(
+                      title: 'PROGRAMMA',
+                      subtitle:
+                          'Speelronde $round  \u{2022}  Derde Divisie A + B',
+                      compact: true)
+                else ...[
+                  const Row(
+                    children: [
+                      DerdeDivLogo.full(
+                        width: 205,
+                        height: 53,
+                        responsive: false,
                       ),
+                      Spacer(),
+                      Text(
+                        'derdediv.nl',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 23,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 22),
+                  Text(
+                    mode == SocialCardMode.program
+                        ? 'PROGRAMMA'
+                        : mode == SocialCardMode.results
+                            ? 'UITSLAGEN'
+                            : 'VOORSPELPOULE',
+                    maxLines: 1,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 52,
+                      fontWeight: FontWeight.w900,
                     ),
-                  ],
-                ),
-                const SizedBox(height: 22),
-                Text(
-                  mode == SocialCardMode.program
-                      ? 'PROGRAMMA'
-                      : mode == SocialCardMode.results
-                          ? 'UITSLAGEN'
-                          : 'VOORSPELPOULE',
-                  maxLines: 1,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 52,
-                    fontWeight: FontWeight.w900,
                   ),
-                ),
-                Text(
-                  mode == SocialCardMode.predictions
-                      ? 'Speelronde $round'
-                      : 'Speelronde $round  \u{2022}  $divisionName',
-                  maxLines: 1,
-                  style: const TextStyle(
-                    color: Color(0xFFBDE8C8),
-                    fontSize: 25,
-                    fontWeight: FontWeight.w800,
+                  Text(
+                    mode == SocialCardMode.predictions
+                        ? 'Speelronde $round'
+                        : 'Speelronde $round  \u{2022}  $divisionName',
+                    maxLines: 1,
+                    style: const TextStyle(
+                      color: Color(0xFFBDE8C8),
+                      fontSize: 25,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 18),
+                ],
+                SizedBox(height: mode == SocialCardMode.program ? 12 : 18),
                 Expanded(
                   child: mode == SocialCardMode.predictions
                       ? PredictionContent(
                           summary: data.predictionSummary,
                         )
-                      : MatchStandContent(
-                          matches: data.matches,
-                          standings: data.standings,
-                          mode: mode,
-                        ),
+                      : mode == SocialCardMode.program
+                          ? ProgramContent(matches: data.matches)
+                          : MatchStandContent(
+                              matches: data.matches,
+                              standings: data.standings,
+                              mode: mode,
+                            ),
                 ),
               ],
             ),
@@ -511,6 +548,178 @@ class SocialMediaMatchCard extends StatelessWidget {
           predictionSummary: const PredictionSummary(),
         ),
       );
+}
+
+class SocialExportHeader extends StatelessWidget {
+  const SocialExportHeader({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    required this.compact,
+  });
+  final String title;
+  final String subtitle;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        height: compact ? 76 : 122,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: DerdeDivLogo.full(
+                width: 180,
+                height: 47,
+                responsive: false,
+              ),
+            ),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  title,
+                  key: const ValueKey('social-header-title'),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: compact ? 39 : 52,
+                    fontWeight: FontWeight.w900,
+                    height: 1,
+                  ),
+                ),
+                const SizedBox(height: 7),
+                Text(
+                  subtitle,
+                  key: const ValueKey('social-header-subtitle'),
+                  style: TextStyle(
+                    color: const Color(0xFFBDE8C8),
+                    fontSize: compact ? 20 : 25,
+                    fontWeight: FontWeight.w800,
+                    height: 1,
+                  ),
+                ),
+              ],
+            ),
+            const Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                'derdediv.nl',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 21,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+}
+
+class ProgramContent extends StatelessWidget {
+  const ProgramContent({super.key, required this.matches});
+  final List<SocialCardMatch> matches;
+
+  @override
+  Widget build(BuildContext context) => Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final division in const ['A', 'B']) ...[
+            Expanded(
+              child: ProgramDivisionColumn(
+                division: division,
+                matches: matches
+                    .where((match) => match.division == division)
+                    .toList(),
+              ),
+            ),
+            if (division == 'A') const SizedBox(width: 28),
+          ],
+        ],
+      );
+}
+
+class ProgramDivisionColumn extends StatelessWidget {
+  const ProgramDivisionColumn({
+    super.key,
+    required this.division,
+    required this.matches,
+  });
+  final String division;
+  final List<SocialCardMatch> matches;
+
+  @override
+  Widget build(BuildContext context) {
+    final groups = groupSocialMatchesByDate(matches);
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: .07),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'DERDE DIVISIE $division',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 28,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (groups.isEmpty)
+            const Expanded(
+              child: Center(
+                child: Text(
+                  'Geen wedstrijden',
+                  style: TextStyle(color: Colors.white70),
+                ),
+              ),
+            )
+          else
+            Expanded(
+              child: Column(
+                children: [
+                  for (final entry in groups.entries) ...[
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 5,
+                        horizontal: 10,
+                      ),
+                      color: const Color(0xFF2E7D4F),
+                      child: Text(
+                        socialDateHeader(entry.key),
+                        key: ValueKey(
+                          'date-$division-${socialDateHeader(entry.key)}',
+                        ),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    for (final match in entry.value)
+                      Expanded(
+                        child: MatchRow(
+                          match: match,
+                          mode: SocialCardMode.program,
+                        ),
+                      ),
+                    const SizedBox(height: 5),
+                  ],
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 }
 
 class MatchStandContent extends StatelessWidget {

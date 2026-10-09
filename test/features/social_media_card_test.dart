@@ -231,12 +231,12 @@ void main() {
     }
   });
 
-  testWidgets('programma bevat alle negen wedstrijden en volledige stand',
+  testWidgets('uitslagen bevat alle negen wedstrijden en volledige stand',
       (tester) async {
     await tester.binding.setSurfaceSize(const Size(1300, 1450));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    await tester.pumpWidget(canvas());
-    expect(find.text('PROGRAMMA'), findsOneWidget);
+    await tester.pumpWidget(canvas(mode: SocialCardMode.results));
+    expect(find.text('UITSLAGEN'), findsOneWidget);
     for (var i = 0; i < 9; i++) {
       expect(find.text('Thuisclub $i'), findsOneWidget);
       expect(find.text('Uitclub $i'), findsOneWidget);
