@@ -2,6 +2,7 @@
 
 import * as functions from "firebase-functions/v1";
 import * as admin from "firebase-admin";
+import {FieldValue, Timestamp} from "firebase-admin/firestore";
 import axios from "axios";
 import {BetaAnalyticsDataClient} from "@google-analytics/data";
 import {defineSecret, defineString} from "firebase-functions/params";
@@ -35,7 +36,7 @@ export const calendarFeed = functions.region(region).https.onRequest(async (req,
     const baseUrl = `${req.protocol}://${req.get("host")}`;
     const body = buildCalendar({...calendarCache.data, division, teamId: teamMatch?.[1], baseUrl});
     res.set("Content-Type", "text/calendar; charset=utf-8");
-    res.set("Cache-Control", "public, max-age=300, s-maxage=300, stale-while-revalidate=60");
+    res.set("Cache-Control", "no-cache, max-age=0, must-revalidate");
     res.set("Content-Disposition", "inline; filename=derdediv-programma.ics");
     res.status(200).send(body);
   } catch (error) {
@@ -56,14 +57,14 @@ async function getUserPouleIds(uid: string): Promise<string[]> {
 async function getSyncSettings(
   pouleId: string,
   uid: string
-): Promise<{ enabled: boolean; startAt?: admin.firestore.Timestamp | null }> {
+): Promise<{ enabled: boolean; startAt?: Timestamp | null }> {
   const ref = db.doc(`poules/${pouleId}/deelnemers/${uid}`);
   const snap = await ref.get();
   if (!snap.exists) return { enabled: false, startAt: null };
   const data = snap.data() || {};
   return {
     enabled: !!data.syncEnabled,
-    startAt: (data.syncStartAt as admin.firestore.Timestamp) || null,
+    startAt: (data.syncStartAt as Timestamp) || null,
   };
 }
 
@@ -110,20 +111,21 @@ function destDocRef(kind: PouleKind, pouleId: string, matchId: string, uid: stri
 
 export const syncVoorspellingToPoules = functions
   .region(region)
+  .runWith({failurePolicy: true})
   .firestore.document("voorspellingen/{voorspellingId}")
   .onWrite(async (change) => {
     if (!change.after.exists) return;
 
     const data = change.after.data() || {};
+    const sourceFields = (p: any) => p ? [p.gebruikerId,p.userId,p.wedstrijdId,p.matchId,p.scoreThuis,p.scoreUit,p.homeGoals,p.awayGoals,p.timestamp?.toMillis()] : null;
+    if (JSON.stringify(sourceFields(change.before.data())) === JSON.stringify(sourceFields(data))) return;
     const uid = String(data.gebruikerId || data.userId || "");
     const matchId = String(data.wedstrijdId || data.matchId || "");
-    const home = (data.scoreThuis ?? data.homeGoals ?? null) as number | null;
-    const away = (data.scoreUit ?? data.awayGoals ?? null) as number | null;
 
     const sourceTs =
-      (data.timestamp as admin.firestore.Timestamp) ||
-      (data.updatedAt as admin.firestore.Timestamp) ||
-      admin.firestore.Timestamp.now();
+      (data.timestamp as Timestamp) ||
+      (data.updatedAt as Timestamp) ||
+      Timestamp.now();
 
     if (!uid || !matchId) return;
 
@@ -143,22 +145,20 @@ export const syncVoorspellingToPoules = functions
           const destRef = destDocRef(kind, pouleId, matchId, uid);
           if (!destRef) return;
 
-          await destRef.set(
-            {
-              pouleId,
-              userId: uid,
-              matchId,
-              wedstrijdId: matchId,
-              homeGoals: home,
-              awayGoals: away,
-              scoreThuis: home,
-              scoreUit: away,
-              syncedFrom: "global",
-              syncedAt: admin.firestore.FieldValue.serverTimestamp(),
-              sourceUpdatedAt: sourceTs,
-            },
-            { merge: true }
-          );
+          await db.runTransaction(async (tx) => {
+            const maintenance=await tx.get(db.doc('system/result_processing_maintenance'));
+            if(maintenance.data()?.enabled)throw Error('Maintenance active');
+            const current=await tx.get(change.after.ref), live=current.data();
+            const destination=await tx.get(destRef);
+            if (!live || String(live.gebruikerId || live.userId || '')!==uid || String(live.wedstrijdId || live.matchId || '')!==matchId) return;
+            const submitted=live.timestamp || live.updatedAt;
+            if (!submitted || (settings.startAt && submitted.toMillis()<settings.startAt.toMillis())) return;
+            const home=live.scoreThuis ?? live.homeGoals,away=live.scoreUit ?? live.awayGoals;
+            if(destination.data()?.scoreThuis===home && destination.data()?.scoreUit===away && destination.data()?.timestamp?.toMillis()===submitted.toMillis()) return;
+            tx.set(destRef,{pouleId,userId:uid,matchId,wedstrijdId:matchId,homeGoals:home,awayGoals:away,
+              scoreThuis:home,scoreUit:away,timestamp:submitted,seasonId:live.seasonId ?? '2026-2027',
+              syncedFrom:'global',syncedAt:FieldValue.serverTimestamp(),sourceUpdatedAt:submitted},{merge:true});
+          });
         })()
       );
     }
@@ -208,7 +208,7 @@ async function fetchAndStoreTweets() {
         createdAt: new Date(t.created_at),
         url: `https://x.com/${USERNAME}/status/${t.id}`,
         mediaUrl,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
       },
       { merge: true }
     );
@@ -258,7 +258,7 @@ export const sendPredictionReminderPushes = functions
   .timeZone("Europe/Amsterdam")
   .onRun(async (): Promise<void> => {
     const users = await db.collection("users").get();
-    const now = admin.firestore.Timestamp.now();
+    const now = Timestamp.now();
 
     for (const user of users.docs) {
       const preferences = user.data().notificationPreferences;
@@ -302,7 +302,7 @@ export const sendPredictionReminderPushes = functions
         await notification.ref.set(
           {
             pushSentAt: now,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp(),
           },
           { merge: true }
         );
@@ -449,3 +449,8 @@ export const getModeratorGa4Analytics = functions
       );
     }
   });
+
+export {processMatchResult, retryMatchResult, rebuildDivisionStandings, maintainRankingFields} from './result-functions';
+
+export {processSeasonPredictionEdit, processGeneralPredictionEdit, processPouleAPredictionEdit, processPouleBPredictionEdit, processTeamPredictionEdit} from "./result-functions";
+export {processFinalStandings} from "./result-functions";

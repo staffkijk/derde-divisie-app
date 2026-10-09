@@ -561,7 +561,9 @@ class StandDerdeDivisie extends StatelessWidget {
   bool get _isActueel => seizoen == kActueelSeizoenWaarde;
 
   Stream<QuerySnapshot<Map<String, dynamic>>> _currentStandStream() {
-    return SeasonPaths.currentSeasonStandings.snapshots();
+    return SeasonPaths.currentSeasonStandings
+        .where('division', isEqualTo: _divisieCode(divisie))
+        .snapshots();
   }
 
   Stream<QuerySnapshot> _archiveStandStream() {
@@ -572,19 +574,6 @@ class StandDerdeDivisie extends StatelessWidget {
         .doc(_divisieCode(divisie))
         .collection('teams')
         .snapshots();
-  }
-
-  Future<Map<String, List<String>>> _vormMapFuture() async {
-    if (!_isActueel) return {};
-    final data = await const DivisionDataService().loadDivision(divisie);
-    return berekenVormPerTeam(
-      data.matches
-          .where(
-            (match) => (match.data['status'] ?? '').toString() == 'finished',
-          )
-          .map((match) => match.data)
-          .toList(),
-    );
   }
 
   bool _matchesDivision(Map<String, dynamic> data) {
@@ -614,6 +603,7 @@ class StandDerdeDivisie extends StatelessWidget {
         .toList();
 
     entries.sort((a, b) {
+      if (a.positie > 0 && b.positie > 0) return a.positie.compareTo(b.positie);
       int c;
 
       c = b.punten.compareTo(a.punten);
@@ -680,36 +670,20 @@ class StandDerdeDivisie extends StatelessWidget {
           final seasonEntries = standSnap.hasData
               ? _buildCurrentSeasonEntriesFromDocs(standSnap.data!.docs)
               : <StandEntry>[];
-          return FutureBuilder<DivisionData?>(
-            future: seasonEntries.isEmpty
-                ? const DivisionDataService()
-                    .loadDivision(divisie)
-                    .then<DivisionData?>((value) => value)
-                : Future<DivisionData?>.value(),
-            builder: (context, divisionSnap) {
-              if (seasonEntries.isEmpty && !divisionSnap.hasData) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              final entries = seasonEntries.isNotEmpty
-                  ? seasonEntries
-                  : (divisionSnap.data?.teams ?? const <DivisionTeam>[])
-                      .map(StandEntry.fromDivisionTeam)
-                      .toList();
-              return FutureBuilder<Map<String, List<String>>>(
-                future: _vormMapFuture(),
-                builder: (context, vormSnap) {
-                  if (!vormSnap.hasData) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  return _buildTable(
-                    context: context,
-                    entries: entries,
-                    vormMap: vormSnap.data ?? {},
-                  );
-                },
-              );
-            },
-          );
+          if (standSnap.hasError) {
+            return const Center(child: Text('Stand kon niet worden geladen.'));
+          }
+          final entries = seasonEntries.isNotEmpty
+              ? seasonEntries
+              : SeasonConfig.teamsForDivision(_divisieCode(divisie))
+                  .map((team) => StandEntry.fromSeasonTeam(team))
+                  .toList();
+          return _buildTable(context: context, entries: entries, vormMap: {
+            for (final entry in entries)
+              entry.code: ((entry.data['form'] as List?) ?? [])
+                  .map((v) => v.toString())
+                  .toList()
+          });
         },
       );
     }

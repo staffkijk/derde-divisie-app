@@ -1,6 +1,37 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function noDerivedPredictionFields() {
+      return !request.resource.data.keys().hasAny(['punten','verwerkt','processed','verwerktVoorUitslag']);
+    }
+    function keepsDerivedPredictionFields() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['punten','verwerkt','processed','verwerktVoorUitslag']);
+    }
+    function safeUserScores() {
+      return request.resource.data.get('punten_A',0) == 0 && request.resource.data.get('punten_B',0) == 0 && request.resource.data.get('totalen',0) == 0 && !request.resource.data.keys().hasAny(['rankingName','punten','eindstandA_awarded','eindstandB_awarded']);
+    }
+    function keepsUserScores() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['punten','punten_A','punten_B','totalen','rankingName','eindstandA_awarded','eindstandB_awarded']);
+    }
+    function processingMaintenance() {
+      return exists(/databases/$(database)/documents/system/result_processing_maintenance) &&
+        get(/databases/$(database)/documents/system/result_processing_maintenance).data.enabled == true;
+    }
+    function noBonusFields() {
+      return !request.resource.data.keys().hasAny(['eindstand_A_punten','eindstand_B_punten']);
+    }
+    function keepsBonusFields() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['eindstand_A_punten','eindstand_B_punten']);
+    }
+    function safeMatchCreate() {
+      return !request.resource.data.keys().hasAny(['processedInputKey','processingInputKey','processedAt','processingAttempts','processingFailedAt','processedResultKey','predictionSelectedUsers','predictionProcessedUsers','pouleProcessedUsers']) &&
+        request.resource.data.get('processed',false) == false && request.resource.data.get('verwerkt',false) == false && request.resource.data.get('predictionProcessingComplete',false) == false && request.resource.data.get('processingStatus','pending') == 'pending';
+    }
+    function safeMatchUpdate() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['processedInputKey','processingInputKey','processedAt','processingAttempts','processingFailedAt','processedResultKey','predictionSelectedUsers','predictionProcessedUsers','pouleProcessedUsers']) &&
+        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['processed','verwerkt','predictionProcessingComplete','processingStatus']) ||
+         (request.resource.data.get('processed',false) == false && request.resource.data.get('verwerkt',false) == false && request.resource.data.get('predictionProcessingComplete',false) == false && request.resource.data.get('processingStatus','pending') == 'pending'));
+    }
     function signedIn() {
       return request.auth != null;
     }
@@ -73,9 +104,9 @@ service cloud.firestore {
 
     match /users/{uid} {
       allow read: if true;
-      allow create: if isModerator() || (isOwner(uid) && hasNoModeratorClaims());
-      allow update: if isModerator() || (isOwner(uid) && keepsModeratorClaimsUnchanged());
-      allow delete: if isModerator();
+      allow create: if safeUserScores() && (isModerator() || (isOwner(uid) && hasNoModeratorClaims()));
+      allow update: if keepsUserScores() && (isModerator() || (isOwner(uid) && keepsModeratorClaimsUnchanged()));
+      allow delete: if !processingMaintenance() && isModerator();
 
       match /notifications/{notificationId} {
         allow read, update: if isOwner(uid);
@@ -117,18 +148,9 @@ service cloud.firestore {
 
     match /voorspellingen/{predictionId} {
       allow read: if signedIn();
-      allow create: if isModerator() ||
-        (
-          signedIn() &&
-          request.resource.data.gebruikerId == request.auth.uid
-        );
-      allow update: if isModerator() ||
-        (
-          signedIn() &&
-          resource.data.gebruikerId == request.auth.uid &&
-          request.resource.data.gebruikerId == request.auth.uid
-        );
-      allow delete: if isModerator();
+      allow create: if !processingMaintenance() && noDerivedPredictionFields() && (isModerator() || isNewPredictionOwner());
+      allow update: if !processingMaintenance() && keepsDerivedPredictionFields() && (isModerator() || (isExistingPredictionOwner() && isNewPredictionOwner()));
+      allow delete: if !processingMaintenance() && isModerator();
     }
 
     match /poules/{pouleId} {
@@ -139,46 +161,35 @@ service cloud.firestore {
 
       match /deelnemers/{uid} {
         allow read: if signedIn();
-        allow create, update: if isModerator() ||
-          isPouleOwner(pouleId) ||
-          (signedIn() &&
-            (
-              request.auth.uid == uid ||
-              request.resource.data.userId == request.auth.uid
-            ));
-        allow delete: if isModerator() ||
-          isPouleOwner(pouleId) ||
-          (signedIn() && request.auth.uid == uid);
+        allow create: if request.resource.data.get('punten',0) == 0 && (isModerator() || isPouleOwner(pouleId) || isOwner(uid));
+        allow update: if !request.resource.data.diff(resource.data).affectedKeys().hasAny(['punten']) && (isModerator() || isPouleOwner(pouleId) || isOwner(uid));
+        allow delete: if !processingMaintenance() && (isModerator() || isPouleOwner(pouleId) || isOwner(uid));
       }
-
-      match /{document=**} {
+      match /{collection}/{document=**} {
         allow read: if signedIn();
-        allow write: if isModerator() || isPouleOwner(pouleId);
+        allow write: if collection != 'deelnemers' && (isModerator() || isPouleOwner(pouleId));
       }
     }
 
     match /poule_predictions/{predictionId} {
       allow read: if signedIn();
-      allow create: if isModerator() || isNewPredictionOwner();
-      allow update: if isModerator() ||
-        (isExistingPredictionOwner() && isNewPredictionOwner());
-      allow delete: if isModerator();
+      allow create: if !processingMaintenance() && noDerivedPredictionFields() && (isModerator() || isNewPredictionOwner());
+      allow update: if !processingMaintenance() && keepsDerivedPredictionFields() && (isModerator() || (isExistingPredictionOwner() && isNewPredictionOwner()));
+      allow delete: if !processingMaintenance() && isModerator();
     }
 
     match /poule_voorspellingen/{predictionId} {
       allow read: if signedIn();
-      allow create: if isModerator() || isNewPredictionOwner();
-      allow update: if isModerator() ||
-        (isExistingPredictionOwner() && isNewPredictionOwner());
-      allow delete: if isModerator();
+      allow create: if !processingMaintenance() && noDerivedPredictionFields() && (isModerator() || isNewPredictionOwner());
+      allow update: if !processingMaintenance() && keepsDerivedPredictionFields() && (isModerator() || (isExistingPredictionOwner() && isNewPredictionOwner()));
+      allow delete: if !processingMaintenance() && isModerator();
     }
 
     match /predictions/{predictionId} {
       allow read: if signedIn();
-      allow create: if isModerator() || isNewPredictionOwner();
-      allow update: if isModerator() ||
-        (isExistingPredictionOwner() && isNewPredictionOwner());
-      allow delete: if isModerator();
+      allow create: if !processingMaintenance() && noDerivedPredictionFields() && (isModerator() || isNewPredictionOwner());
+      allow update: if !processingMaintenance() && keepsDerivedPredictionFields() && (isModerator() || (isExistingPredictionOwner() && isNewPredictionOwner()));
+      allow delete: if !processingMaintenance() && isModerator();
     }
 
     match /matches/{matchId} {
@@ -236,28 +247,31 @@ service cloud.firestore {
 
     match /eindstand_voorspellingen/{predictionId} {
       allow read: if signedIn();
-      allow create: if isModerator() || isNewPredictionOwner();
-      allow update: if isModerator() ||
-        (
-          (isExistingPredictionOwner() || isOwnerlessOwnEindstandDocument(predictionId)) &&
-          isNewPredictionOwner()
-        );
-      allow delete: if isModerator();
+      allow create: if !processingMaintenance() && noBonusFields() && (isModerator() || isNewPredictionOwner());
+      allow update: if !processingMaintenance() && keepsBonusFields() && (isModerator() ||
+        ((isExistingPredictionOwner() || isOwnerlessOwnEindstandDocument(predictionId)) && isNewPredictionOwner()));
+      allow delete: if !processingMaintenance() && isModerator();
     }
 
     match /voorspel_punten/{uid} {
       allow read: if isOwner(uid) || isModerator();
-      allow write: if isModerator();
+      allow write: if false;
     }
 
-    match /seasons/{seasonId}/{document=**} {
+    match /seasons/{seasonId} {
       allow read: if true;
       allow write: if isModerator();
+      match /{collection}/{document=**} {
+        allow read: if true;
+        allow create: if !processingMaintenance() && isModerator() && !(collection in ['standings','periodStandings','processingAggregates','predictionContributions','pouleContributions','endstandContributions']) && (collection != 'predictions' || noDerivedPredictionFields()) && (collection != 'matches' || safeMatchCreate());
+        allow update: if !processingMaintenance() && isModerator() && !(collection in ['standings','periodStandings','processingAggregates','predictionContributions','pouleContributions','endstandContributions']) && (collection != 'predictions' || keepsDerivedPredictionFields()) && (collection != 'matches' || safeMatchUpdate());
+        allow delete: if !processingMaintenance() && isModerator() && !(collection in ['standings','periodStandings','processingAggregates','predictionContributions','pouleContributions','endstandContributions','matches']);
+      }
     }
 
-    match /system/{document=**} {
+    match /system/{systemId}/{document=**} {
       allow read: if true;
-      allow write: if isModerator();
+      allow write: if systemId != 'result_processing_maintenance' && isModerator();
     }
 
     match /{document=**} {

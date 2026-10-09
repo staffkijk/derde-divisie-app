@@ -22,6 +22,13 @@ class _ModeratorMenuScreenState extends State<ModeratorMenuScreen> {
   String _division = 'A';
   int _round = 1;
   bool _savingAll = false;
+  late Stream<QuerySnapshot<Map<String, dynamic>>> _stream;
+  @override
+  void initState() {
+    super.initState();
+    _stream = _matchesQuery().snapshots();
+  }
+
   final _processor = const ResultProcessingService();
 
   final Map<String, TextEditingController> _homeControllers = {};
@@ -93,17 +100,24 @@ class _ModeratorMenuScreenState extends State<ModeratorMenuScreen> {
     final homeScore = int.tryParse(homeText);
     final awayScore = int.tryParse(awayText);
 
-    if (homeScore == null || awayScore == null) {
+    if (homeScore == null ||
+        awayScore == null ||
+        homeScore < 0 ||
+        awayScore < 0) {
       _showSnack('Gebruik alleen hele getallen als uitslag.');
       return;
     }
 
-    await _writeResult(
-      match: match,
-      homeScore: homeScore,
-      awayScore: awayScore,
-    );
-
+    try {
+      await _writeResult(
+        match: match,
+        homeScore: homeScore,
+        awayScore: awayScore,
+      );
+    } catch (_) {
+      _showSnack('Uitslag kon niet worden opgeslagen. Probeer opnieuw.');
+      return;
+    }
     if (!mounted) return;
 
     _showSnack('${match.homeTeam} tegen ${match.awayTeam} opgeslagen.');
@@ -129,7 +143,10 @@ class _ModeratorMenuScreenState extends State<ModeratorMenuScreen> {
       final homeScore = int.tryParse(homeText);
       final awayScore = int.tryParse(awayText);
 
-      if (homeScore == null || awayScore == null) {
+      if (homeScore == null ||
+          awayScore == null ||
+          homeScore < 0 ||
+          awayScore < 0) {
         _showSnack('Niet opgeslagen: gebruik alleen hele getallen.');
         return;
       }
@@ -290,6 +307,7 @@ class _ModeratorMenuScreenState extends State<ModeratorMenuScreen> {
                           setState(() {
                             _division = value;
                             _clearControllers();
+                            _stream = _matchesQuery().snapshots();
                           });
                         },
                         onRoundChanged: (value) {
@@ -297,6 +315,7 @@ class _ModeratorMenuScreenState extends State<ModeratorMenuScreen> {
                           setState(() {
                             _round = value;
                             _clearControllers();
+                            _stream = _matchesQuery().snapshots();
                           });
                         },
                       ),
@@ -304,7 +323,7 @@ class _ModeratorMenuScreenState extends State<ModeratorMenuScreen> {
                       Expanded(
                         child:
                             StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                          stream: _matchesQuery().snapshots(),
+                          stream: _stream,
                           builder: (context, snapshot) {
                             if (snapshot.hasError) {
                               return _StateCard(
@@ -608,7 +627,28 @@ class _ResultRow extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: const Color(0xFFE3EADF)),
       ),
-      child: compact ? _buildCompact(hasScore) : _buildWide(hasScore),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        compact ? _buildCompact(hasScore) : _buildWide(hasScore),
+        if (match.processingStatus.isNotEmpty)
+          Text(match.processingStatus == 'processed'
+              ? 'Verwerkt'
+              : match.processingStatus == 'failed'
+                  ? 'Verwerking mislukt'
+                  : 'Opgeslagen; verwerking bezig'),
+        if (match.processingStatus == 'failed')
+          TextButton(
+              onPressed: () async {
+                try {
+                  await ResultProcessingService.requestProcessing(match.id);
+                } catch (_) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        content: Text('Opnieuw verwerken aanvragen mislukt.')));
+                  }
+                }
+              },
+              child: const Text('Opnieuw verwerken')),
+      ]),
     );
   }
 
@@ -979,6 +1019,7 @@ class _MatchDoc {
     required this.homeTeamSlug,
     required this.awayTeamSlug,
     required this.status,
+    required this.processingStatus,
     required this.homeScore,
     required this.awayScore,
   });
@@ -993,6 +1034,7 @@ class _MatchDoc {
   final String homeTeamSlug;
   final String awayTeamSlug;
   final String status;
+  final String processingStatus;
   final int? homeScore;
   final int? awayScore;
 
@@ -1030,6 +1072,7 @@ class _MatchDoc {
         '',
       ),
       status: _string(data['status'], 'scheduled'),
+      processingStatus: _string(data['processingStatus'], ''),
       homeScore: _nullableInt(
         data['homeScore'] ?? data['uitslagThuis'],
       ),

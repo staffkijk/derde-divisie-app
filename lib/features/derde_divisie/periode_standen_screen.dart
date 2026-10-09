@@ -265,6 +265,8 @@ class _PeriodeStandCard extends StatelessWidget {
               .collection('seasons')
               .doc(SeasonConfig.activeSeasonId)
               .collection('periodStandings')
+              .where('division', isEqualTo: division)
+              .where('period', isEqualTo: period)
               .snapshots(),
           builder: (context, snapshot) {
             if (snapshot.hasError) {
@@ -400,6 +402,7 @@ class _PeriodeStandCard extends StatelessWidget {
           goalsFor - goalsAgainst;
 
       return _PeriodStandingRow(
+        position: _readInt(data ?? {}, const ['position', 'positie']),
         team: team,
         played: _readInt(data, const [
           'played',
@@ -435,6 +438,9 @@ class _PeriodeStandCard extends StatelessWidget {
     }).toList();
 
     rows.sort((a, b) {
+      if (a.position > 0 && b.position > 0) {
+        return a.position.compareTo(b.position);
+      }
       if (a.points != b.points) {
         return b.points.compareTo(a.points);
       }
@@ -751,6 +757,7 @@ class _ErrorState extends StatelessWidget {
 
 class _PeriodStandingRow {
   const _PeriodStandingRow({
+    this.position = 0,
     required this.team,
     required this.played,
     required this.won,
@@ -762,6 +769,7 @@ class _PeriodStandingRow {
     required this.goalDifference,
   });
 
+  final int position;
   final SeasonTeam team;
   final int played;
   final int won;

@@ -23,6 +23,8 @@ void main() {
     expect(find.text('Moderator content'), findsNothing);
     expect(find.text('Uitslagen invoeren'), findsNothing);
     expect(find.text('CSV-exports'), findsNothing);
+    completer.complete(false);
+    await tester.pumpAndSettle();
   });
 
   testWidgets('weigert normale gebruiker zonder moderatorrechten',

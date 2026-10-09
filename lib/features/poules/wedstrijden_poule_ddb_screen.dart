@@ -1,3 +1,4 @@
+import 'package:derde_divisie/data/firestore/season_paths.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -24,7 +25,6 @@ class WedstrijdenPouleDdbScreen extends StatefulWidget {
 }
 
 class _WedstrijdenPouleDdbScreenState extends State<WedstrijdenPouleDdbScreen> {
-  static const String _fsCompetitie = 'Derde Divisie B';
 
   int _huidigeSpeelronde = 1;
   DateTime? _deadline;
@@ -136,10 +136,9 @@ class _WedstrijdenPouleDdbScreenState extends State<WedstrijdenPouleDdbScreen> {
   void _listenMatchesFirestore(int speelronde) {
     _matchesSub?.cancel();
 
-    _matchesSub = FirebaseFirestore.instance
-        .collection('matches')
-        .where('competitie', isEqualTo: _fsCompetitie)
-        .where('speelronde', isEqualTo: speelronde)
+    _matchesSub = SeasonPaths.currentSeasonMatches
+        .where('division', isEqualTo: 'B')
+        .where('round', isEqualTo: speelronde)
         .snapshots()
         .listen((snap) {
       DateTime? earliest;
@@ -148,7 +147,10 @@ class _WedstrijdenPouleDdbScreenState extends State<WedstrijdenPouleDdbScreen> {
         final data = d.data();
 
         // datum (ondersteun 'datum' of 'timestamp')
-        final ts = data['datum'] ?? data['timestamp'];
+        final ts = data['scheduledAt'] ??
+            data['date'] ??
+            data['datum'] ??
+            data['timestamp'];
         if (ts is Timestamp) {
           final dt = ts.toDate();
           _fsDatums[d.id] = dt;
@@ -156,8 +158,9 @@ class _WedstrijdenPouleDdbScreenState extends State<WedstrijdenPouleDdbScreen> {
         }
 
         // officiële uitslag (kan null zijn)
-        _werkelijkeUitslagThuis[d.id] = data['uitslagThuis'];
-        _werkelijkeUitslagUit[d.id] = data['uitslagUit'];
+        _werkelijkeUitslagThuis[d.id] =
+            data['homeScore'] ?? data['uitslagThuis'];
+        _werkelijkeUitslagUit[d.id] = data['awayScore'] ?? data['uitslagUit'];
       }
 
       _deadline = (earliest != null)

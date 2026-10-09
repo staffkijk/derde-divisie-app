@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 
 import 'package:derde_divisie/core/utils/match_formatters.dart';
 import 'package:derde_divisie/data/config/season_config.dart';
-import 'package:derde_divisie/data/firestore/season_paths.dart';
+import 'package:derde_divisie/features/voorspellen/prediction_details_loader.dart';
 import 'package:derde_divisie/features/voorspellen/user_display_name.dart';
 
 class BekijkVoorspellingenScreen extends StatefulWidget {
@@ -50,14 +50,15 @@ class _BekijkVoorspellingenScreenState
   Future<void> _laadAlles() async {
     _laadFout = null;
     try {
-      await _laadGebruikerData();
-      await _laadVoorspellingenVoorContext();
+      await _laadGebruikerData().timeout(const Duration(seconds: 20));
+      await _laadVoorspellingenVoorContext()
+          .timeout(const Duration(seconds: 30));
 
       // Een eindstandvoorspelling is aanvullend. Als die niet kan worden
       // geladen, mogen de wedstrijdvoorspellingen niet op een spinner blijven
       // hangen.
       try {
-        await _laadEindstandVoorContext();
+        await _laadEindstandVoorContext().timeout(const Duration(seconds: 15));
       } catch (error, stackTrace) {
         developer.log(
           'Eindstandvoorspelling van gebruiker kon niet worden geladen',
@@ -98,27 +99,15 @@ class _BekijkVoorspellingenScreenState
     _perSpeelronde.clear();
     _tabsRondes.clear();
 
-    final predictionSnapshot = await FirebaseFirestore.instance
-        .collection('voorspellingen')
-        .where('gebruikerId', isEqualTo: widget.userId)
-        .get();
-
-    // De actuele wedstrijdbron staat onder seasons/<actief seizoen>/matches.
-    // Voorheen werd voor iedere voorspelling afzonderlijk een legacy
-    // /matches-document opgehaald. Dat veroorzaakte veel netwerkrequests en
-    // kon de detailpagina praktisch eindeloos laten laden.
-    final matchSnapshot = await SeasonPaths.currentSeasonMatches.get();
-    final matchesById = <String, Map<String, dynamic>>{
-      for (final doc in matchSnapshot.docs)
-        if (doc.id != '_meta') doc.id: doc.data(),
-    };
-
+    final details = await PredictionDetailsLoader().load(widget.userId);
+    final byMatch = details.predictions;
+    final matchesById = details.matches;
     final doelDivisie =
         widget.contextType == 'algemeen' ? _gekozenDivisie : widget.contextType;
 
-    for (final doc in predictionSnapshot.docs) {
-      final prediction = doc.data();
-      final wedstrijdId = (prediction['wedstrijdId'] ?? '').toString().trim();
+    for (final entry in byMatch.entries) {
+      final prediction = entry.value;
+      final wedstrijdId = entry.key;
       if (wedstrijdId.isEmpty) continue;
 
       final matchData = matchesById[wedstrijdId];
@@ -246,10 +235,9 @@ class _BekijkVoorspellingenScreenState
     final rawDivisie =
         (wedstrijd['division'] ?? wedstrijd['competitie'] ?? '').toString();
     final normalizedDivisie = SeasonConfig.normalizeDivisionCode(rawDivisie);
-    final divisie =
-        normalizedDivisie == 'A' || normalizedDivisie == 'B'
-            ? normalizedDivisie
-            : null;
+    final divisie = normalizedDivisie == 'A' || normalizedDivisie == 'B'
+        ? normalizedDivisie
+        : null;
 
     return _PredictionViewItem(
       wedstrijdId: wedstrijdId,
@@ -257,8 +245,7 @@ class _BekijkVoorspellingenScreenState
       wedstrijdDatum: datum,
       thuis: thuis,
       uit: uit,
-      uitslagThuis:
-          readInt(const ['homeScore', 'thuisScore', 'uitslagThuis']),
+      uitslagThuis: readInt(const ['homeScore', 'thuisScore', 'uitslagThuis']),
       uitslagUit: readInt(const ['awayScore', 'uitScore', 'uitslagUit']),
       divisie: divisie,
       scoreThuis: (voorspelling['scoreThuis']?.toString() ?? '-'),

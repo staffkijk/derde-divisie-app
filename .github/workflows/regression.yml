@@ -28,7 +28,7 @@ jobs:
       - name: Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: npm
 
       - name: Flutter
@@ -47,11 +47,25 @@ jobs:
       - name: Flutter dependencies
         run: flutter pub get
 
+      - name: Flutter analyze
+        run: flutter analyze
+
+      - name: Result processing emulator scenarios
+        run: npm run test:processing
+
       - name: Flutter tests
         run: flutter test -r expanded
 
       - name: Firestore security rules
         run: npm run test:security
+
+      - name: Local Functions parameters
+        run: node tools/regression/prepare_functions_emulator.cjs
+
+      - name: Authenticated client and actual Functions trigger chain
+        run: >-
+          npx firebase emulators:exec --only auth,firestore,functions --project derde-divisie-app
+          "node tools/regression/seed_emulator.cjs && node tools/regression/server_chain_smoke.cjs"
 
       - name: Web updater
         run: npm run test:web-update
@@ -94,11 +108,14 @@ jobs:
           npm ci
           flutter config --enable-windows-desktop
           flutter pub get
+          npm --prefix functions ci
+          npm --prefix functions run build
+          node tools/regression/prepare_functions_emulator.cjs
 
       - name: Firebase uitslagketen tegen emulators
         shell: powershell
         run: >
           npx firebase emulators:exec
           --project derde-divisie-app
-          --only auth,firestore
+          --only auth,firestore,functions
           "node tools/regression/seed_emulator.cjs && flutter test integration_test/firebase_result_processing_test.dart -d windows -r expanded"

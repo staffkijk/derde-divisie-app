@@ -1,7 +1,9 @@
 {
   "scripts": {
     "test:security": "firebase emulators:exec --only firestore \"node --test test/security/firestore-emulator.test.cjs\"",
-    "test:web-update": "node --test test/web_app_update_test.cjs"
+    "test:web-update": "node --test test/web_app_update_test.cjs",
+    "test:processing": "npm --prefix functions run build && firebase emulators:exec --only firestore --project demo-derdediv-processing \"node --test functions/integration/*.test.cjs\"",
+    "benchmark:processing": "npm --prefix functions run build && firebase emulators:exec --only firestore --project demo-derdediv-processing \"node tools/benchmark_result_processing.cjs\""
   },
   "dependencies": {
     "firebase-admin": "^14.0.0",

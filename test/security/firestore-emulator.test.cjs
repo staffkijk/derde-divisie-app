@@ -124,9 +124,9 @@ describe('Firestore emulator security rules', () => {
     await assertSucceeds(setDoc(doc(db, 'standen/acv'), {points: 3}));
     await assertSucceeds(setDoc(doc(db, 'periodestanden/dda/periode_1/acv'), {points: 3}));
     await assertSucceeds(setDoc(doc(db, 'sync_logs/test'), {message: 'ok'}));
-    await assertSucceeds(setDoc(doc(db, 'voorspel_punten/alice'), {punten_A: 10}));
+    await assertFails(setDoc(doc(db, 'voorspel_punten/alice'), {punten_A: 10}));
     await assertSucceeds(setDoc(doc(db, 'system/moderatorConfig'), {enabled: true}));
-    await assertSucceeds(updateDoc(doc(db, 'voorspellingen/bob-prediction'), {
+    await assertFails(updateDoc(doc(db, 'voorspellingen/bob-prediction'), {
       gebruikerId: 'bob',
       punten: 7,
       verwerkt: true,
@@ -270,7 +270,7 @@ describe('Firestore emulator security rules', () => {
       userId: 'bob',
       rol: 'deelnemer',
       syncEnabled: true,
-    }));
+    }, {merge: true}));
     await assertFails(updateDoc(doc(bobDb, 'poules/poule-alice'), {
       name: 'Overgenomen',
     }));
@@ -339,4 +339,31 @@ describe('Firestore emulator security rules', () => {
       division: 'A',
     }));
   });
+  it('derived scores and ledgers are server-owned even for a moderator', async () => {
+    const mod=authed('moderator'),alice=authed('alice');
+    for(const collection of ['standings','periodStandings','predictionContributions','pouleContributions','processingAggregates','endstandContributions']) {
+      await assertFails(setDoc(doc(mod,'seasons/2026-2027/'+collection+'/forged'),{points:999}));
+    }
+    await assertFails(updateDoc(doc(alice,'users/alice'),{punten_A:999}));
+    await assertFails(updateDoc(doc(mod,'users/alice'),{punten_A:999}));
+    await assertFails(setDoc(doc(alice,'voorspellingen/forged'),{gebruikerId:'alice',wedstrijdId:'A1',punten:999}));
+    await assertFails(setDoc(doc(alice,'poules/poule-alice/deelnemers/alice'),{punten:999}));
+  });
+  it('maintenance freezes result and prediction source writes', async () => {
+    await testEnv.withSecurityRulesDisabled(async ctx=>{
+      await setDoc(doc(ctx.firestore(),'system/result_processing_maintenance'),{enabled:true});
+    });
+    await assertFails(setDoc(doc(authed('moderator'),'seasons/2026-2027/matches/blocked'),{division:'A'}));
+    await assertFails(setDoc(doc(authed('alice'),'voorspellingen/blocked'),{gebruikerId:'alice',wedstrijdId:'A1',scoreThuis:1,scoreUit:0}));
+  });
+
+  it('moderators can queue source processing but cannot forge server completion',async()=>{
+    const db=authed('moderator'),ref=doc(db,'seasons/2026-2027/matches/status-guard');
+    await assertFails(setDoc(doc(db,'system/result_processing_maintenance'),{enabled:false}));
+    await assertSucceeds(setDoc(ref,{division:'A',status:'scheduled'}));
+    await assertSucceeds(updateDoc(ref,{status:'finished',processed:false,verwerkt:false,predictionProcessingComplete:false,processingStatus:'pending'}));
+    await assertFails(updateDoc(ref,{processed:true,processingStatus:'processed',predictionProcessingComplete:true}));
+    await assertFails(updateDoc(ref,{processedInputKey:'forged'}));
+  });
+
 });

@@ -19,7 +19,6 @@ class PoulePrediction {
       'wedstrijdId': wedstrijdId,
       'scoreThuis': scoreThuis,
       'scoreUit': scoreUit,
-      'punten': punten,
     };
   }
 

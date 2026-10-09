@@ -1,3 +1,4 @@
+import 'package:derde_divisie/data/firestore/season_paths.dart';
 // lib/helpers/sync_service.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -17,17 +18,6 @@ class SyncService {
   // ---------------------------------------------------------------------------
   // Helpers
   // ---------------------------------------------------------------------------
-
-  String _fsCompetitionName(String code) {
-    switch (code.toLowerCase()) {
-      case 'dda':
-        return 'Derde Divisie A';
-      case 'ddb':
-        return 'Derde Divisie B';
-      default:
-        return code; // al leesbare vorm?
-    }
-  }
 
   String _poolCollectionFor(String competition) {
     // DDA -> poule_predictions, DDB -> poule_voorspellingen
@@ -110,12 +100,9 @@ class SyncService {
     required String competition, // 'dda' | 'ddb'
     required int round,
   }) async {
-    final fsComp = _fsCompetitionName(competition);
-    final qs = await _db
-        .collection('matches')
-        .where('competitie', isEqualTo: fsComp)
-        .where('speelronde', isEqualTo: round)
-        .orderBy('datum')
+    final qs = await SeasonPaths.currentSeasonMatches
+        .where('division', isEqualTo: competition == 'ddb' ? 'B' : 'A')
+        .where('round', isEqualTo: round)
         .get();
 
     final ids = <String>[];
@@ -123,7 +110,8 @@ class SyncService {
 
     for (final d in qs.docs) {
       ids.add(d.id);
-      final ts = d.data()['datum'];
+      final ts =
+          d.data()['scheduledAt'] ?? d.data()['date'] ?? d.data()['datum'];
       if (ts is Timestamp) {
         final dt = ts.toDate().toUtc();
         if (earliest == null || dt.isBefore(earliest)) earliest = dt;
@@ -328,12 +316,10 @@ class SyncService {
     final teamCode = _normTeamCode(teamCodeRaw);
     if (teamCode.isEmpty) return;
 
-    final qHome = await _db
-        .collection('matches')
+    final qHome = await SeasonPaths.currentSeasonMatches
         .where('homeTeamCode', isEqualTo: teamCode)
         .get();
-    final qAway = await _db
-        .collection('matches')
+    final qAway = await SeasonPaths.currentSeasonMatches
         .where('awayTeamCode', isEqualTo: teamCode)
         .get();
 
@@ -493,7 +479,7 @@ class SyncService {
     required Map<String, dynamic> generalPrediction,
   }) async {
     // haal match op om deadline + teamcodes te bepalen
-    final m = await _db.collection('matches').doc(matchId).get();
+    final m = await SeasonPaths.currentSeasonMatches.doc(matchId).get();
     if (!m.exists) return;
     final md = m.data()!;
     final ts = (md['datum'] ?? md['timestamp']);
