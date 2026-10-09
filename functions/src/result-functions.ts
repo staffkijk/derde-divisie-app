@@ -4,6 +4,7 @@ import * as admin from "firebase-admin";
 import {FieldValue} from "firebase-admin/firestore";
 import {ACTIVE_SEASON, fingerprint} from "./result-domain";
 import {processMatch} from "./result-processor";
+import {rankingNameForUser} from "./ranking-fields";
 if (!admin.apps.length) admin.initializeApp();
 export const processMatchResult = functions.region("europe-west1").runWith({failurePolicy: true, timeoutSeconds: 540, memory: "512MB"})
   .firestore.document("seasons/{seasonId}/matches/{matchId}").onWrite(async (change, context) => {
@@ -57,9 +58,7 @@ export const maintainRankingFields = functions.region("europe-west1").firestore.
     const current = await tx.get(change.after.ref);
     const data = current.data();
     if (!data) return;
-    const name = [data.username, data.usernameLower, data.usernameKey]
-      .find((value) => typeof value === "string" && value.trim()) ?? "Onbekend";
-    const rankingName = name.trim().toLowerCase();
+    const rankingName = rankingNameForUser(data);
     if (data.rankingName === rankingName) return;
     tx.update(change.after.ref, {rankingName});
   });
