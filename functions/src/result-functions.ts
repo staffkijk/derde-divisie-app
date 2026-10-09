@@ -48,15 +48,20 @@ export const rebuildDivisionStandings = functions.region("europe-west1").runWith
 });
 export const maintainRankingFields = functions.region("europe-west1").firestore.document("users/{uid}").onWrite(async (change) => {
   if (!change.after.exists) return;
-  const d=change.after.data() ?? {};
-  const name = [d.username, d.usernameLower, d.usernameKey].find((v)=>typeof v==="string" && v.trim()) ?? "Onbekend";
-  const fields={rankingName: name.trim().toLowerCase(), punten_A: Number(d.punten_A ?? 0), punten_B: Number(d.punten_B ?? 0), totalen: Math.max(Number(d.punten_A ?? 0), Number(d.punten_B ?? 0))};
-  if (Object.entries(fields).every(([k, v])=>d[k]===v)) return;
-  // Read again transactionally: an older user event may not overwrite newer scores.
-  await admin.firestore().runTransaction(async (tx) => {
-    const current=await tx.get(change.after.ref); const c=current.data(); if (!c) return;
-    const n=[c.username, c.usernameLower, c.usernameKey].find((v)=>typeof v==="string" && v.trim()) ?? "Onbekend";
-    tx.update(change.after.ref, {rankingName: n.trim().toLowerCase(), punten_A: Number(c.punten_A ?? 0), punten_B: Number(c.punten_B ?? 0), totalen: Math.max(Number(c.punten_A ?? 0), Number(c.punten_B ?? 0))});
+  // Ranking names are presentation metadata. Never initialize or normalize
+  // score fields here: historical balances may be incomplete or disputed.
+  const db = admin.firestore();
+  await db.runTransaction(async (tx) => {
+    const maintenance = await tx.get(db.doc("system/result_processing_maintenance"));
+    if (maintenance.data()?.enabled === true) return;
+    const current = await tx.get(change.after.ref);
+    const data = current.data();
+    if (!data) return;
+    const name = [data.username, data.usernameLower, data.usernameKey]
+      .find((value) => typeof value === "string" && value.trim()) ?? "Onbekend";
+    const rankingName = name.trim().toLowerCase();
+    if (data.rankingName === rankingName) return;
+    tx.update(change.after.ref, {rankingName});
   });
 });
 
