@@ -88,6 +88,15 @@ async function applyPrediction(db: Firestore, matchRef: DocumentReference, expec
     // Adopt legacy contributions once. An existing zero ledger remains authoritative on retry.
     const old = previous ? integer(previous.points) : p?.verwerkt === true ? integer(p.punten) : 0;
     const delta = next-old; const div = division(m); const userData = user.data() ?? {};
+    // Never implicitly repair or overwrite historical balances during match
+    // processing. A separate reviewed migration must reconcile such accounts.
+    if (!pouleId) {
+      const valid = ["punten_A", "punten_B", "totalen"].every((field) =>
+        Number.isSafeInteger(userData[field]) && userData[field] >= 0);
+      if (!valid || userData.totalen !== Math.max(userData.punten_A, userData.punten_B)) {
+        throw new Error("Unreconciled user points: migration review required");
+      }
+    }
     if (previous?.inputKey === expected && previous.predictionPath === selectedPath && previous.points === next &&
       (!p || (p.punten === next && p.verwerkt === processed)) &&
       (pouleId || userData.totalen === Math.max(integer(userData.punten_A), integer(userData.punten_B)))) return;
