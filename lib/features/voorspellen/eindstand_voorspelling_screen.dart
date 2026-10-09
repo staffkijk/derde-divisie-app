@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:developer' as developer;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -5,9 +6,19 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import 'package:derde_divisie/data/config/season_config.dart';
-import 'package:derde_divisie/data/firestore/season_paths.dart';
 import 'package:derde_divisie/features/voorspellen/eindstand_prediction_parser.dart';
 import 'package:derde_divisie/features/voorspellen/latest_save_queue.dart';
+
+@visibleForTesting
+const Duration eindstandPredictionLoadTimeout = Duration(seconds: 6);
+
+@visibleForTesting
+Future<T> loadEindstandPredictionRequest<T>(
+  Future<T> request, {
+  Duration timeout = eindstandPredictionLoadTimeout,
+}) {
+  return request.timeout(timeout);
+}
 
 @visibleForTesting
 List<String> reorderEindstandClubs(
@@ -47,6 +58,7 @@ class _EindstandVoorspellingScreenState
 
   List<String> _clubs = [];
   bool _loading = true;
+  bool _loadFailed = false;
   bool _saving = false;
   int _points = 0;
   late DateTime _deadline;
@@ -94,37 +106,36 @@ class _EindstandVoorspellingScreenState
   Future<void> _load() async {
     final user = _auth.currentUser;
     if (user == null) {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _loadFailed = false;
+        });
+      }
+      return;
+    }
+
+    final configuredTeams =
+        List<String>.from(SeasonConfig.teamNamesForDivision(widget.divisie));
+
+    if (configuredTeams.isEmpty) {
+      if (mounted) {
+        setState(() {
+          _clubs = [];
+          _loading = false;
+          _loadFailed = false;
+        });
+      }
       return;
     }
 
     try {
-      final teamSnapshot = await SeasonPaths.currentSeasonTeams.get();
-      final configuredTeams = teamSnapshot.docs
-          .where((doc) {
-            if (doc.id == '_meta') return false;
-            final data = doc.data();
-            final division =
-                (data['division'] ?? data['divisie'] ?? '').toString();
-            return SeasonConfig.normalizeDivisionCode(division) ==
-                widget.divisie;
-          })
-          .map((doc) {
-            final data = doc.data();
-            final name =
-                (data['teamName'] ?? data['name'] ?? data['team'] ?? doc.id)
-                    .toString();
-            return SeasonConfig.displayNameForTeam(name);
-          })
-          .where((name) => name.trim().isNotEmpty)
-          .toSet()
-          .toList()
-        ..sort();
-
-      final prediction = await _db
-          .collection('eindstand_voorspellingen')
-          .doc('${user.uid}_${widget.divisie}')
-          .get();
+      final prediction = await loadEindstandPredictionRequest(
+        _db
+            .collection('eindstand_voorspellingen')
+            .doc('${user.uid}_${widget.divisie}')
+            .get(),
+      );
       final parsed = parseEindstandPrediction(
         data: prediction.data(),
         configuredTeams: configuredTeams,
@@ -137,6 +148,7 @@ class _EindstandVoorspellingScreenState
         _saveStatus =
             parsed.hasValidSavedPrediction ? SaveStatus.saved : SaveStatus.idle;
         _points = parsed.points;
+        _loadFailed = false;
         _loading = false;
       });
     } catch (error, stackTrace) {
@@ -148,14 +160,22 @@ class _EindstandVoorspellingScreenState
       );
       if (!mounted) return;
       setState(() {
-        _clubs = List<String>.from(
-          SeasonConfig.teamNamesForDivision(widget.divisie),
-        );
+        _clubs = [];
         _saveStatus = SaveStatus.idle;
         _points = 0;
+        _loadFailed = true;
         _loading = false;
       });
     }
+  }
+
+  Future<void> _retryLoad() async {
+    if (!mounted) return;
+    setState(() {
+      _loading = true;
+      _loadFailed = false;
+    });
+    await _load();
   }
 
   Future<void> _save() async {
@@ -191,82 +211,84 @@ class _EindstandVoorspellingScreenState
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : _clubs.isEmpty
-              ? const _MissingDivisionState()
-              : LayoutBuilder(
-                  builder: (context, constraints) {
-                    return Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 820),
-                        child: Column(
-                          children: [
-                            PredictionStatusBar(
-                              locked: _locked,
-                              points: _points,
-                              saveStatus: _saveStatus,
-                              saving: _saving,
-                              onRetry: _save,
-                            ),
-                            Expanded(
-                              child: ReorderableListView.builder(
-                                padding: EdgeInsets.all(
-                                  constraints.maxWidth < 600 ? 10 : 18,
+          : _loadFailed
+              ? _PredictionLoadErrorState(onRetry: _retryLoad)
+              : _clubs.isEmpty
+                  ? const _MissingDivisionState()
+                  : LayoutBuilder(
+                      builder: (context, constraints) {
+                        return Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 820),
+                            child: Column(
+                              children: [
+                                PredictionStatusBar(
+                                  locked: _locked,
+                                  points: _points,
+                                  saveStatus: _saveStatus,
+                                  saving: _saving,
+                                  onRetry: _save,
                                 ),
-                                buildDefaultDragHandles: false,
-                                itemCount: _clubs.length,
-                                onReorderStart: (index) {
-                                  final club =
-                                      index >= 0 && index < _clubs.length
-                                          ? _clubs[index]
-                                          : '<ongeldige index>';
-                                  _logReorder(
-                                    'start index=$index club=$club',
-                                  );
-                                },
-                                onReorder: (oldIndex, newIndex) async {
-                                  _logReorder(
-                                    'drop oldIndex=$oldIndex rawNewIndex=$newIndex '
-                                    'locked=$_locked saving=$_saving',
-                                  );
-                                  if (_locked) {
-                                    _logReorder('drop genegeerd');
-                                    return;
-                                  }
+                                Expanded(
+                                  child: ReorderableListView.builder(
+                                    padding: EdgeInsets.all(
+                                      constraints.maxWidth < 600 ? 10 : 18,
+                                    ),
+                                    buildDefaultDragHandles: false,
+                                    itemCount: _clubs.length,
+                                    onReorderStart: (index) {
+                                      final club =
+                                          index >= 0 && index < _clubs.length
+                                              ? _clubs[index]
+                                              : '<ongeldige index>';
+                                      _logReorder(
+                                        'start index=$index club=$club',
+                                      );
+                                    },
+                                    onReorder: (oldIndex, newIndex) async {
+                                      _logReorder(
+                                        'drop oldIndex=$oldIndex rawNewIndex=$newIndex '
+                                        'locked=$_locked saving=$_saving',
+                                      );
+                                      if (_locked) {
+                                        _logReorder('drop genegeerd');
+                                        return;
+                                      }
 
-                                  setState(() {
-                                    _clubs = reorderEindstandClubs(
-                                      _clubs,
-                                      oldIndex,
-                                      newIndex,
-                                    );
-                                  });
+                                      setState(() {
+                                        _clubs = reorderEindstandClubs(
+                                          _clubs,
+                                          oldIndex,
+                                          newIndex,
+                                        );
+                                      });
 
-                                  _logReorder(
-                                    'lokaal toegepast newIndex=$newIndex '
-                                    'volgorde=${_clubs.join(' | ')}',
-                                  );
-                                  await _save();
-                                },
-                                onReorderEnd: (index) {
-                                  _logReorder('einde index=$index');
-                                },
-                                itemBuilder: (context, index) {
-                                  final club = _clubs[index];
-                                  return PredictionClubRow(
-                                    key: ValueKey(club),
-                                    index: index,
-                                    club: club,
-                                    locked: _locked,
-                                  );
-                                },
-                              ),
+                                      _logReorder(
+                                        'lokaal toegepast newIndex=$newIndex '
+                                        'volgorde=${_clubs.join(' | ')}',
+                                      );
+                                      await _save();
+                                    },
+                                    onReorderEnd: (index) {
+                                      _logReorder('einde index=$index');
+                                    },
+                                    itemBuilder: (context, index) {
+                                      final club = _clubs[index];
+                                      return PredictionClubRow(
+                                        key: ValueKey(club),
+                                        index: index,
+                                        club: club,
+                                        locked: _locked,
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
+                          ),
+                        );
+                      },
+                    ),
     );
   }
 }
@@ -311,9 +333,6 @@ class PredictionStatusBar extends StatelessWidget {
             onRetry: onRetry,
           );
 
-          // Keep enough room for the complete date on the first line. On
-          // narrower screens the status gets its own line instead of squeezing
-          // the Expanded date text down to a handful of pixels.
           if (constraints.maxWidth < 600) {
             return Column(
               mainAxisSize: MainAxisSize.min,
@@ -503,6 +522,48 @@ class PredictionClubRow extends StatelessWidget {
               child: Icon(Icons.lock_outline, size: 20),
             ),
         ],
+      ),
+    );
+  }
+}
+
+class _PredictionLoadErrorState extends StatelessWidget {
+  const _PredictionLoadErrorState({required this.onRetry});
+
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 560),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.cloud_off_outlined, size: 44),
+              const SizedBox(height: 12),
+              const Text(
+                'Eindstand laden lukt niet',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Je opgeslagen voorspelling is niet gewijzigd. Probeer het opnieuw.',
+                textAlign: TextAlign.center,
+                style: TextStyle(height: 1.5),
+              ),
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                onPressed: onRetry,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Opnieuw proberen'),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
