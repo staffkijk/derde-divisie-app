@@ -58,3 +58,24 @@ test('legacy scored prediction and duplicate old ledger never credit the same re
   assert.equal(stored.totalen,10);
   assert.equal((await db.doc(base + '/predictionContributions/A__legacy__' + matchId).get()).data().points,10);
 });
+
+test('a failed match retry preserves disputed balance and never awards healthy user twice', async () => {
+  const matchId=await arrange('mixed','disputed',{punten_A:10,punten_B:5,totalen:212});
+  await db.doc('users/healthy').set({username:'Healthy',punten_A:0,punten_B:0,totalen:0});
+  await db.doc(base + '/predictions/healthy_' + matchId).set({
+    gebruikerId:'healthy',wedstrijdId:matchId,scoreThuis:2,scoreUit:1,
+    timestamp:predicted,
+  });
+  for (let attempt=0;attempt<2;attempt++) {
+    await assert.rejects(processMatch(db,matchId),/Unreconciled user points/);
+    const disputed=(await db.doc('users/disputed').get()).data();
+    const healthy=(await db.doc('users/healthy').get()).data();
+    assert.deepEqual(
+      {a:disputed.punten_A,b:disputed.punten_B,total:disputed.totalen},
+      {a:10,b:5,total:212}
+    );
+    assert.equal(healthy.punten_A,10);
+    assert.equal(healthy.totalen,10);
+    assert.equal((await db.doc(base+'/matches/'+matchId).get()).data().processingStatus,'failed');
+  }
+});
