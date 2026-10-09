@@ -59,6 +59,14 @@ jobs:
       - name: Firestore security rules
         run: npm run test:security
 
+      - name: Local Functions parameters
+        run: node tools/regression/prepare_functions_emulator.cjs
+
+      - name: Authenticated client and actual Functions trigger chain
+        run: >-
+          npx firebase emulators:exec --only auth,firestore,functions --project derde-divisie-app
+          "node tools/regression/seed_emulator.cjs && node tools/regression/server_chain_smoke.cjs"
+
       - name: Web updater
         run: npm run test:web-update
 
@@ -102,6 +110,7 @@ jobs:
           flutter pub get
           npm --prefix functions ci
           npm --prefix functions run build
+          node tools/regression/prepare_functions_emulator.cjs
 
       - name: Firebase uitslagketen tegen emulators
         shell: powershell

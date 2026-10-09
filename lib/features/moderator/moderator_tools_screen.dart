@@ -338,7 +338,7 @@ class _ModeratorToolsScreenState extends State<ModeratorToolsScreen> {
                       if (!confirmed) return;
 
                       await _runTool(
-                        action: volledigeResetAllesNaarNul,
+                        action: resetEindstandPuntenBeide,
                         successMessage:
                             'Verwerking aangevraagd. Volg de status bij de wedstrijden.',
                         errorPrefix: 'Fout bij reset',
@@ -362,7 +362,7 @@ class _ModeratorToolsScreenState extends State<ModeratorToolsScreen> {
                       if (!confirmed) return;
 
                       await _runTool(
-                        action: tools.hardeResetEnHerberekenAlles,
+                        action: volledigeResetAllesNaarNul,
                         successMessage:
                             'Verwerking aangevraagd. Volg de status bij de wedstrijden.',
                         errorPrefix: 'Fout bij volledige reset',

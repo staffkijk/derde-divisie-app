@@ -66,3 +66,8 @@ firestore_exports/
 # Tijdelijke Excel lock-bestanden
 ~$*.xlsx
 functions/.env.derde-divisie-app
+
+# Local emulator parameters and result-processing audit reports
+functions/.env.local
+functions/.secret.local
+result-processing-audit*.json

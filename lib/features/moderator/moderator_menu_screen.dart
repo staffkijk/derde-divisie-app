@@ -24,7 +24,11 @@ class _ModeratorMenuScreenState extends State<ModeratorMenuScreen> {
   bool _savingAll = false;
   late Stream<QuerySnapshot<Map<String, dynamic>>> _stream;
   @override
-  void initState() { super.initState(); _stream = _matchesQuery().snapshots(); }
+  void initState() {
+    super.initState();
+    _stream = _matchesQuery().snapshots();
+  }
+
   final _processor = const ResultProcessingService();
 
   final Map<String, TextEditingController> _homeControllers = {};
@@ -96,19 +100,24 @@ class _ModeratorMenuScreenState extends State<ModeratorMenuScreen> {
     final homeScore = int.tryParse(homeText);
     final awayScore = int.tryParse(awayText);
 
-    if (homeScore == null || awayScore == null || homeScore < 0 || awayScore < 0) {
+    if (homeScore == null ||
+        awayScore == null ||
+        homeScore < 0 ||
+        awayScore < 0) {
       _showSnack('Gebruik alleen hele getallen als uitslag.');
       return;
     }
 
     try {
-    await _writeResult(
-      match: match,
-      homeScore: homeScore,
-      awayScore: awayScore,
-    );
-
-    } catch (_) { _showSnack('Uitslag kon niet worden opgeslagen. Probeer opnieuw.'); return; }
+      await _writeResult(
+        match: match,
+        homeScore: homeScore,
+        awayScore: awayScore,
+      );
+    } catch (_) {
+      _showSnack('Uitslag kon niet worden opgeslagen. Probeer opnieuw.');
+      return;
+    }
     if (!mounted) return;
 
     _showSnack('${match.homeTeam} tegen ${match.awayTeam} opgeslagen.');
@@ -134,7 +143,10 @@ class _ModeratorMenuScreenState extends State<ModeratorMenuScreen> {
       final homeScore = int.tryParse(homeText);
       final awayScore = int.tryParse(awayText);
 
-      if (homeScore == null || awayScore == null || homeScore < 0 || awayScore < 0) {
+      if (homeScore == null ||
+          awayScore == null ||
+          homeScore < 0 ||
+          awayScore < 0) {
         _showSnack('Niet opgeslagen: gebruik alleen hele getallen.');
         return;
       }
@@ -618,12 +630,24 @@ class _ResultRow extends StatelessWidget {
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         compact ? _buildCompact(hasScore) : _buildWide(hasScore),
         if (match.processingStatus.isNotEmpty)
-          Text(match.processingStatus == 'processed' ? 'Verwerkt' : match.processingStatus == 'failed' ? 'Verwerking mislukt' : 'Opgeslagen; verwerking bezig'),
+          Text(match.processingStatus == 'processed'
+              ? 'Verwerkt'
+              : match.processingStatus == 'failed'
+                  ? 'Verwerking mislukt'
+                  : 'Opgeslagen; verwerking bezig'),
         if (match.processingStatus == 'failed')
-          TextButton(onPressed: () async {
-            try { await ResultProcessingService.requestProcessing(match.id); }
-            catch (_) { if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Opnieuw verwerken aanvragen mislukt.'))); }
-          }, child: const Text('Opnieuw verwerken')),
+          TextButton(
+              onPressed: () async {
+                try {
+                  await ResultProcessingService.requestProcessing(match.id);
+                } catch (_) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        content: Text('Opnieuw verwerken aanvragen mislukt.')));
+                  }
+                }
+              },
+              child: const Text('Opnieuw verwerken')),
       ]),
     );
   }
@@ -873,7 +897,6 @@ class _StatusPill extends StatelessWidget {
   const _StatusPill({required this.status});
 
   final String status;
-
 
   @override
   Widget build(BuildContext context) {

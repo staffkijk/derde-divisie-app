@@ -23,6 +23,15 @@ service cloud.firestore {
     function keepsBonusFields() {
       return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['eindstand_A_punten','eindstand_B_punten']);
     }
+    function safeMatchCreate() {
+      return !request.resource.data.keys().hasAny(['processedInputKey','processingInputKey','processedAt','processingAttempts','processingFailedAt','processedResultKey','predictionSelectedUsers','predictionProcessedUsers','pouleProcessedUsers']) &&
+        request.resource.data.get('processed',false) == false && request.resource.data.get('verwerkt',false) == false && request.resource.data.get('predictionProcessingComplete',false) == false && request.resource.data.get('processingStatus','pending') == 'pending';
+    }
+    function safeMatchUpdate() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['processedInputKey','processingInputKey','processedAt','processingAttempts','processingFailedAt','processedResultKey','predictionSelectedUsers','predictionProcessedUsers','pouleProcessedUsers']) &&
+        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['processed','verwerkt','predictionProcessingComplete','processingStatus']) ||
+         (request.resource.data.get('processed',false) == false && request.resource.data.get('verwerkt',false) == false && request.resource.data.get('predictionProcessingComplete',false) == false && request.resource.data.get('processingStatus','pending') == 'pending'));
+    }
     function signedIn() {
       return request.auth != null;
     }
@@ -254,15 +263,15 @@ service cloud.firestore {
       allow write: if isModerator();
       match /{collection}/{document=**} {
         allow read: if true;
-        allow create: if !processingMaintenance() && isModerator() && !(collection in ['standings','periodStandings','processingAggregates','predictionContributions','pouleContributions','endstandContributions']) && (collection != 'predictions' || noDerivedPredictionFields());
-        allow update: if !processingMaintenance() && isModerator() && !(collection in ['standings','periodStandings','processingAggregates','predictionContributions','pouleContributions','endstandContributions']) && (collection != 'predictions' || keepsDerivedPredictionFields());
+        allow create: if !processingMaintenance() && isModerator() && !(collection in ['standings','periodStandings','processingAggregates','predictionContributions','pouleContributions','endstandContributions']) && (collection != 'predictions' || noDerivedPredictionFields()) && (collection != 'matches' || safeMatchCreate());
+        allow update: if !processingMaintenance() && isModerator() && !(collection in ['standings','periodStandings','processingAggregates','predictionContributions','pouleContributions','endstandContributions']) && (collection != 'predictions' || keepsDerivedPredictionFields()) && (collection != 'matches' || safeMatchUpdate());
         allow delete: if !processingMaintenance() && isModerator() && !(collection in ['standings','periodStandings','processingAggregates','predictionContributions','pouleContributions','endstandContributions','matches']);
       }
     }
 
-    match /system/{document=**} {
+    match /system/{systemId}/{document=**} {
       allow read: if true;
-      allow write: if isModerator();
+      allow write: if systemId != 'result_processing_maintenance' && isModerator();
     }
 
     match /{document=**} {

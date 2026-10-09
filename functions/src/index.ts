@@ -2,6 +2,7 @@
 
 import * as functions from "firebase-functions/v1";
 import * as admin from "firebase-admin";
+import {FieldValue, Timestamp} from "firebase-admin/firestore";
 import axios from "axios";
 import {BetaAnalyticsDataClient} from "@google-analytics/data";
 import {defineSecret, defineString} from "firebase-functions/params";
@@ -56,14 +57,14 @@ async function getUserPouleIds(uid: string): Promise<string[]> {
 async function getSyncSettings(
   pouleId: string,
   uid: string
-): Promise<{ enabled: boolean; startAt?: admin.firestore.Timestamp | null }> {
+): Promise<{ enabled: boolean; startAt?: Timestamp | null }> {
   const ref = db.doc(`poules/${pouleId}/deelnemers/${uid}`);
   const snap = await ref.get();
   if (!snap.exists) return { enabled: false, startAt: null };
   const data = snap.data() || {};
   return {
     enabled: !!data.syncEnabled,
-    startAt: (data.syncStartAt as admin.firestore.Timestamp) || null,
+    startAt: (data.syncStartAt as Timestamp) || null,
   };
 }
 
@@ -110,6 +111,7 @@ function destDocRef(kind: PouleKind, pouleId: string, matchId: string, uid: stri
 
 export const syncVoorspellingToPoules = functions
   .region(region)
+  .runWith({failurePolicy: true})
   .firestore.document("voorspellingen/{voorspellingId}")
   .onWrite(async (change) => {
     if (!change.after.exists) return;
@@ -121,9 +123,9 @@ export const syncVoorspellingToPoules = functions
     const matchId = String(data.wedstrijdId || data.matchId || "");
 
     const sourceTs =
-      (data.timestamp as admin.firestore.Timestamp) ||
-      (data.updatedAt as admin.firestore.Timestamp) ||
-      admin.firestore.Timestamp.now();
+      (data.timestamp as Timestamp) ||
+      (data.updatedAt as Timestamp) ||
+      Timestamp.now();
 
     if (!uid || !matchId) return;
 
@@ -144,6 +146,8 @@ export const syncVoorspellingToPoules = functions
           if (!destRef) return;
 
           await db.runTransaction(async (tx) => {
+            const maintenance=await tx.get(db.doc('system/result_processing_maintenance'));
+            if(maintenance.data()?.enabled)throw Error('Maintenance active');
             const current=await tx.get(change.after.ref), live=current.data();
             const destination=await tx.get(destRef);
             if (!live || String(live.gebruikerId || live.userId || '')!==uid || String(live.wedstrijdId || live.matchId || '')!==matchId) return;
@@ -153,7 +157,7 @@ export const syncVoorspellingToPoules = functions
             if(destination.data()?.scoreThuis===home && destination.data()?.scoreUit===away && destination.data()?.timestamp?.toMillis()===submitted.toMillis()) return;
             tx.set(destRef,{pouleId,userId:uid,matchId,wedstrijdId:matchId,homeGoals:home,awayGoals:away,
               scoreThuis:home,scoreUit:away,timestamp:submitted,seasonId:live.seasonId ?? '2026-2027',
-              syncedFrom:'global',syncedAt:admin.firestore.FieldValue.serverTimestamp(),sourceUpdatedAt:submitted},{merge:true});
+              syncedFrom:'global',syncedAt:FieldValue.serverTimestamp(),sourceUpdatedAt:submitted},{merge:true});
           });
         })()
       );
@@ -204,7 +208,7 @@ async function fetchAndStoreTweets() {
         createdAt: new Date(t.created_at),
         url: `https://x.com/${USERNAME}/status/${t.id}`,
         mediaUrl,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
       },
       { merge: true }
     );
@@ -254,7 +258,7 @@ export const sendPredictionReminderPushes = functions
   .timeZone("Europe/Amsterdam")
   .onRun(async (): Promise<void> => {
     const users = await db.collection("users").get();
-    const now = admin.firestore.Timestamp.now();
+    const now = Timestamp.now();
 
     for (const user of users.docs) {
       const preferences = user.data().notificationPreferences;
@@ -298,7 +302,7 @@ export const sendPredictionReminderPushes = functions
         await notification.ref.set(
           {
             pushSentAt: now,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp(),
           },
           { merge: true }
         );

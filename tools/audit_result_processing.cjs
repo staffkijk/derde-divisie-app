@@ -6,6 +6,7 @@ const {getFirestore,FieldPath,FieldValue}=adminRequire('firebase-admin/firestore
 const {ACTIVE_SEASON,division,result,contribution,standings,selectLatest,uid,score,points,integer,fingerprint}=require('../functions/lib/result-domain');
 const {predictionDocs}=require('../functions/lib/result-processor');
 const args=process.argv.slice(2),value=name=>args.findLast(a=>a.startsWith(name+'='))?.slice(name.length+1);
+const runId=require('node:crypto').randomUUID();
 const project=value('--project');
 if(!project || !['derde-divisie-app','demo-derdediv-processing'].includes(project))throw Error('Use an explicit approved --project=derde-divisie-app or demo-derdediv-processing');
 const apply=args.includes('--apply'),emulator=!!process.env.FIRESTORE_EMULATOR_HOST;
@@ -22,7 +23,7 @@ async function all(collection) {
 async function main() {
  let locked=false,writesStarted=false,completed=false,resuming=false;
  try {
-  if(apply){await db.runTransaction(async tx=>{const state=await tx.get(lock);if(state.data()?.enabled && !args.includes('--resume-maintenance'))throw Error('Maintenance active. Inspect the previous backup/report before --resume-maintenance');resuming=state.data()?.enabled===true;tx.set(lock,{enabled:true,seasonId:ACTIVE_SEASON,startedAt:FieldValue.serverTimestamp()});});locked=true;}
+  if(apply){await db.runTransaction(async tx=>{const state=await tx.get(lock);if(state.data()?.enabled && !args.includes('--resume-maintenance'))throw Error('Maintenance active. Inspect the previous backup/report before --resume-maintenance');resuming=state.data()?.enabled===true;if(resuming && state.data()?.phase!=='interrupted' && value('--takeover-run')!==state.data()?.owner)throw Error('Active repair ownership cannot be resumed. Verify the old process is stopped before --takeover-run=<owner>');tx.set(lock,{enabled:true,owner:runId,phase:'active',seasonId:ACTIVE_SEASON,startedAt:FieldValue.serverTimestamp()});});locked=true;}
   const matches=(await all(`${base}/matches`)).filter(d=>d.id!=='_meta');
   const users=await all('users'),userById=new Map(users.map(d=>[d.id,d]));
   const bonus=await all('eindstand_voorspellingen');
@@ -52,6 +53,7 @@ async function main() {
    const m=match.data();let div,r;try{div=division(m);r=result(m);}catch(_){continue;}
    const generalDocs=await predictionDocs(db,match.id,[`${base}/predictions`,'voorspellingen']);
    const pouleDocs=await predictionDocs(db,match.id,['poule_predictions','poule_voorspellingen','predictions']);
+   for(const doc of [...generalDocs,...pouleDocs])if((!doc.data.seasonId || doc.data.seasonId===ACTIVE_SEASON)&&!uid(doc.data))issues.push({path:doc.path,error:'Missing prediction owner; verify manually'});
    const selected=selectLatest(generalDocs,m),poules=selectLatest(pouleDocs,m,true);
    for(const [user,doc]of selected) {
     try {
@@ -102,6 +104,7 @@ async function main() {
    if(expectedLedgers.has(doc.ref.path))continue;
    if(!desired.has(doc.ref.path))plan(doc.ref.path,{points:0,processed:false,resultKey:''},d);
   }
+  for(const match of matches){const m=match.data();try{if(m.status==='finished')plan(match.ref.path,{processed:true,verwerkt:true,processingStatus:'processed',predictionProcessingComplete:true,processedInputKey:fingerprint(m),processedResultKey:result(m)?.join('-')??''},m);}catch(_){} }
   const report={season:ACTIVE_SEASON,project,mode:apply?'apply':'dry-run',matchCounts:Object.fromEntries(Object.entries(byDivision).map(([d,c])=>[d,Object.keys(c).length])),issues,changes};
   for(const id of expectedTotals.keys())if(!userById.has(id))issues.push({path:'users/'+id,error:'Missing prediction owner'});
   const out=value('--output')??'result-processing-audit.json';fs.writeFileSync(out,JSON.stringify(report,null,2));
@@ -110,9 +113,9 @@ async function main() {
   if(issues.length && !(emulator && args.includes('--allow-fixture') && issues.every(i=>i.error.startsWith('Expected 306'))))throw Error('Audit has unresolved issues; no corrections written');
   for(const change of changes){const doc=await db.doc(change.path).get();backup.push({path:change.path,exists:doc.exists,data:doc.data()??null});}
   fs.writeFileSync(out+'.backup.json',JSON.stringify(backup,null,2),{flag:'wx'});
-  for(let i=0;i<changes.length;i+=400){writesStarted=true;const batch=db.batch();for(const c of changes.slice(i,i+400))batch.set(db.doc(c.path),c.data,{merge:true});await batch.commit();if(emulator && value('--fail-after-batch')===String(Math.floor(i/400)+1))throw Error('Injected emulator-only interruption after committed batch');}
+  for(let i=0;i<changes.length;i+=400){writesStarted=true;await db.runTransaction(async tx=>{const state=await tx.get(lock);if(!state.data()?.enabled || state.data()?.owner!==runId)throw Error('Maintenance ownership lost; correction batch refused');for(const c of changes.slice(i,i+400))tx.set(db.doc(c.path),c.data,{merge:true});});if(emulator && value('--fail-after-batch')===String(Math.floor(i/400)+1))throw Error('Injected emulator-only interruption after committed batch');}
   completed=true;
   console.log('Corrections completed. Run dry-run again to verify. Source predictions and match results were preserved.');
- }finally{if(locked && (completed || (!writesStarted && !resuming)))await lock.set({enabled:false,completedAt:FieldValue.serverTimestamp()},{merge:true});}
+ }finally{if(locked)await db.runTransaction(async tx=>{const state=await tx.get(lock);if(state.data()?.owner!==runId)return;const release=completed || (!writesStarted && !resuming);tx.set(lock,{enabled:!release,phase:release?'completed':'interrupted',completedAt:FieldValue.serverTimestamp()},{merge:true});});}
 }
 main().catch(error=>{console.error(error);process.exitCode=1;});

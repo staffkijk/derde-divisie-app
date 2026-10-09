@@ -1,3 +1,4 @@
+import 'package:derde_divisie/data/firestore/season_paths.dart';
 // lib/screens/admin/seed_bulk_fake_v2_screen.dart
 //
 // Admin-only tool: bulk fake accounts + retro & future predictions met strikte regels.
@@ -179,14 +180,21 @@ class _SeedBulkFakeV2ScreenState extends State<SeedBulkFakeV2Screen> {
     return admins.contains(user.email);
   }
 
+  Timestamp _fixtureTimestamp(Map<String, dynamic> data) {
+    final value = data['scheduledAt'] ?? data['datum'] ?? data['date'];
+    final date = value is Timestamp
+        ? value.toDate()
+        : DateTime.tryParse(value.toString());
+    if (date == null) throw StateError('Wedstrijddatum ontbreekt.');
+    return Timestamp.fromDate(date.subtract(const Duration(days: 1)));
+  }
   // -------- data helpers --------
 
   // Alle matches per competitie
   Future<List<QueryDocumentSnapshot>> _fetchMatchesByCompetition(
       String ab) async {
-    final snap = await _firestore
-        .collection('matches')
-        .where('competitie', isEqualTo: _compLabel(ab))
+    final snap = await SeasonPaths.currentSeasonMatches
+        .where('division', isEqualTo: ab)
         .get();
     return snap.docs;
   }
@@ -198,12 +206,12 @@ class _SeedBulkFakeV2ScreenState extends State<SeedBulkFakeV2Screen> {
     final byRound = <int, List<QueryDocumentSnapshot>>{};
     for (final m in matches) {
       final d = m.data() as Map<String, dynamic>;
-      final hasResult = d['uitslagThuis'] != null && d['uitslagUit'] != null;
+      final hasResult = (d['homeScore'] ?? d['uitslagThuis']) != null && (d['awayScore'] ?? d['uitslagUit']) != null;
       if (onlyFinished && !hasResult) continue;
       if (!onlyFinished && hasResult) {
         continue; // voor future: alleen zonder uitslag
       }
-      final r = (d['speelronde'] ?? 0) as int;
+      final r = (d['round'] ?? d['speelronde'] ?? 0) as int;
       byRound.putIfAbsent(r, () => []);
       byRound[r]!.add(m);
     }
@@ -605,8 +613,8 @@ class _SeedBulkFakeV2ScreenState extends State<SeedBulkFakeV2Screen> {
 
               final pred = _generatePredictionForMatch(userId, m);
               final md = m.data() as Map<String, dynamic>;
-              final realHome = (md['uitslagThuis'] as num).toInt();
-              final realAway = (md['uitslagUit'] as num).toInt();
+              final realHome = ((md['homeScore'] ?? md['uitslagThuis']) as num).toInt();
+              final realAway = ((md['awayScore'] ?? md['uitslagUit']) as num).toInt();
 
               final pts = _calcPoints(
                 predHome: pred['homeGoals']!,
@@ -622,7 +630,7 @@ class _SeedBulkFakeV2ScreenState extends State<SeedBulkFakeV2Screen> {
 
               var apply = pts;
               final room = cap - current;
-              if (apply > room) apply = room;
+              if (apply > room) continue;
 
               final docId = '${userId}_${m.id}';
               await _firestore.collection('voorspellingen').doc(docId).set({
@@ -630,17 +638,11 @@ class _SeedBulkFakeV2ScreenState extends State<SeedBulkFakeV2Screen> {
                 'wedstrijdId': m.id,
                 'scoreThuis': pred['homeGoals'],
                 'scoreUit': pred['awayGoals'],
-                'timestamp': FieldValue.serverTimestamp(),
-                'punten': apply,
-                'verwerkt': true,
-                'verwerktVoorUitslag': '$realHome-$realAway',
+                'timestamp': _fixtureTimestamp(md),
                 'isFake': true,
               }, SetOptions(merge: true));
 
               final userRef = _firestore.collection('users').doc(userId);
-              final veld = isA ? 'punten_A' : 'punten_B';
-              await userRef.set(
-                  {veld: FieldValue.increment(apply)}, SetOptions(merge: true));
               await userRef.set({'predictionsMade': FieldValue.increment(1)},
                   SetOptions(merge: true));
 
@@ -649,15 +651,13 @@ class _SeedBulkFakeV2ScreenState extends State<SeedBulkFakeV2Screen> {
               } else {
                 curB += apply;
               }
-              final total = max(curA, curB);
-              await userRef.set({'totalen': total}, SetOptions(merge: true));
             }
           }
         }
       }
 
       setState(() =>
-          _status = 'Retro klaar — punten toegepast onder cap, geen dubbelen.');
+          _status = 'Retrovoorspellingen opgeslagen. De server verwerkt de punten.');
     } catch (e) {
       setState(() => _status = 'Fout bij retro: $e');
     } finally {
@@ -723,7 +723,6 @@ class _SeedBulkFakeV2ScreenState extends State<SeedBulkFakeV2Screen> {
                     'scoreThuis': pred['homeGoals'],
                     'scoreUit': pred['awayGoals'],
                     'timestamp': FieldValue.serverTimestamp(),
-                    'verwerkt': false,
                     'isFake': true,
                   },
                   SetOptions(merge: true));

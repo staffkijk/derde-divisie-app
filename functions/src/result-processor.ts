@@ -113,8 +113,13 @@ export async function processMatch(db: Firestore, matchId: string,
   const matchRef = db.doc(pathFor(matchId));
   const initial = await matchRef.get(); const m = initial.data(); if (!m) return;
   let expected: string;
-  try { expected=fingerprint(m); } catch(error) {
-    await db.runTransaction(async tx=>{await checkMaintenance(tx,db);const current=await tx.get(matchRef);if(JSON.stringify(current.data())===JSON.stringify(m))tx.update(matchRef,{processed:false,verwerkt:false,processingStatus:"failed",predictionProcessingComplete:false,processingError:String(error)});});throw error;
+  try {
+    expected=fingerprint(m);
+  } catch (error) {
+    if (m.processingStatus==="failed" && m.processingError===String(error)) throw error;
+    await db.runTransaction(async (tx)=>{
+      await checkMaintenance(tx, db); const current=await tx.get(matchRef); if (JSON.stringify(current.data())===JSON.stringify(m))tx.update(matchRef, {processed: false, verwerkt: false, processingStatus: "failed", predictionProcessingComplete: false, processingError: String(error)});
+    }); throw error;
   }
   if (m.processingStatus === "processed" && m.processedInputKey === expected) return;
   const base = `seasons/${ACTIVE_SEASON}`; const div = division(m);

@@ -36,7 +36,6 @@ String _normAudit(String s) {
       .toUpperCase();
 }
 
-
 Future<void> _deleteCollectionDocs(
   CollectionReference<Map<String, dynamic>> collectionRef,
 ) async {
@@ -161,7 +160,6 @@ class _AuditWriter {
   }
 }
 
-
 Future<void> herberekenAlleWedstrijden() async {
   final matches = await SeasonPaths.currentSeasonMatches.get();
   for (final match in matches.docs.where((doc) => doc.id != '_meta')) {
@@ -170,7 +168,10 @@ Future<void> herberekenAlleWedstrijden() async {
 }
 
 Future<void> herstelVoorspellingenSpeelronde18A() async {
-  final matches = await SeasonPaths.currentSeasonMatches.where('division', isEqualTo: 'A').where('round', isEqualTo: 18).get();
+  final matches = await SeasonPaths.currentSeasonMatches
+      .where('division', isEqualTo: 'A')
+      .where('round', isEqualTo: 18)
+      .get();
   for (final match in matches.docs.where((doc) => doc.id != '_meta')) {
     await ResultProcessingService.requestProcessing(match.id);
   }
@@ -385,12 +386,12 @@ Future<void> voerVolledigeEindcontroleAuditUit() async {
 
   try {
     final usersSnap = await _db.collection('users').get();
-    final matchesSnap = await _db.collection('matches').get();
+    final matchesSnap = await SeasonPaths.currentSeasonMatches.get();
     final voorspellingenSnap = await _db.collection('voorspellingen').get();
     final voorspelPuntenSnap = await _db.collection('voorspel_punten').get();
     final eindstandVoorspellingenSnap =
         await _db.collection('eindstand_voorspellingen').get();
-    final standenSnap = await _db.collection('standen').get();
+    final standenSnap = await SeasonPaths.currentSeasonStandings.get();
     final poulesSnap = await _db.collection('poules').get();
 
     usersCount = usersSnap.docs.length;
@@ -1103,12 +1104,9 @@ Future<void> _auditPeriodestanden({
         matchesById: matchesById,
       );
 
-      final divisieDocId = divisieCode == 'A' ? 'dda' : 'ddb';
-
-      final snap = await _db
-          .collection('periodestanden')
-          .doc(divisieDocId)
-          .collection('periode_$periode')
+      final snap = await SeasonPaths.currentSeasonPeriodStandings
+          .where('division', isEqualTo: divisieCode)
+          .where('period', isEqualTo: periode)
           .get();
 
       final actualByClub = <String, Map<String, dynamic>>{};
@@ -1136,7 +1134,7 @@ Future<void> _auditPeriodestanden({
             type: 'PERIODESTAND_CLUB_ONTBREEKT',
             message: 'Club ontbreekt in periodestand.',
             club: club,
-            divisie: '$divisieDocId periode_$periode',
+            divisie: '$divisieCode periode_$periode',
             expected: expectedStats,
           );
           continue;
@@ -1152,7 +1150,7 @@ Future<void> _auditPeriodestanden({
               type: 'PERIODESTAND_VELD_FOUT',
               message: 'Periodestandveld $field wijkt af.',
               club: club,
-              divisie: '$divisieDocId periode_$periode',
+              divisie: '$divisieCode periode_$periode',
               expected: expectedValue,
               actual: actualValue,
               difference: actualValue - expectedValue,
@@ -1485,7 +1483,6 @@ Future<void> verwerkEindstandPuntenBeide() async {
 
   developer.log('✅ [MOD] Eindstandpunten A & B verwerkt');
 }
-
 
 Future<void> hardeResetEnHerberekenAlles() async {
   final matches = await SeasonPaths.currentSeasonMatches.get();

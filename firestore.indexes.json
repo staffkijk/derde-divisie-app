@@ -241,6 +241,20 @@
           "order": "DESCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "periodStandings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "division",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "period",
+          "order": "ASCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []

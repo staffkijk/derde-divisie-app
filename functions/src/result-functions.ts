@@ -1,6 +1,7 @@
 /* eslint-disable max-len, require-jsdoc, @typescript-eslint/no-explicit-any */
 import * as functions from "firebase-functions/v1";
 import * as admin from "firebase-admin";
+import {FieldValue} from "firebase-admin/firestore";
 import {ACTIVE_SEASON, fingerprint} from "./result-domain";
 import {processMatch} from "./result-processor";
 if (!admin.apps.length) admin.initializeApp();
@@ -9,7 +10,14 @@ export const processMatchResult = functions.region("europe-west1").runWith({fail
     if (context.params.seasonId !== ACTIVE_SEASON || context.params.matchId === "_meta" || !change.after.exists) return;
     const before=change.before.data(); const after=change.after.data() ?? {};
     // Metadata writes and same-day kickoff edits never launch a score rebuild.
-    try { if (before && fingerprint(before) === fingerprint(after)) return; } catch (_) { /* Process current data and report invalid source. */ }
+    try {
+      if (before && fingerprint(before) === fingerprint(after)) return;
+    } catch (_) {
+      const raw=(d:any)=>{
+        const copy={...d}; for (const k of ["processed", "verwerkt", "processingStatus", "predictionProcessingComplete", "processingError", "processingFailedAt", "processingAttempts", "processingInputKey", "processedInputKey", "processedAt", "processedResultKey", "predictionSelectedUsers", "predictionProcessedUsers", "pouleProcessedUsers", "updatedAt", "updatedBy"]) delete copy[k]; return JSON.stringify(copy);
+      };
+      if (before && raw(before)===raw(after)) return;
+    }
     await processMatch(admin.firestore(), context.params.matchId);
   });
 export const retryMatchResult = functions.region("europe-west1").https.onCall(async (data, context) => {
@@ -19,10 +27,10 @@ export const retryMatchResult = functions.region("europe-west1").https.onCall(as
   if (typeof data?.matchId !== "string" || data.matchId.includes("/") || !data.matchId || data.matchId==="_meta") {
     throw new functions.https.HttpsError("invalid-argument", "Invalid matchId.");
   }
-  await db.runTransaction(async tx=>{
-    const lock=await tx.get(db.doc('system/result_processing_maintenance'));if(lock.data()?.enabled)throw new functions.https.HttpsError('failed-precondition','Maintenance active.');
-    tx.update(db.doc(`seasons/${ACTIVE_SEASON}/matches/${data.matchId}`),{processingRequest: admin.firestore.FieldValue.increment(1),
-    processed: false, verwerkt: false, processingStatus: "pending", predictionProcessingComplete: false});
+  await db.runTransaction(async (tx)=>{
+    const lock=await tx.get(db.doc("system/result_processing_maintenance")); if (lock.data()?.enabled) throw new functions.https.HttpsError("failed-precondition", "Maintenance active.");
+    tx.update(db.doc(`seasons/${ACTIVE_SEASON}/matches/${data.matchId}`), {processingRequest: FieldValue.increment(1),
+      processed: false, verwerkt: false, processingStatus: "pending", predictionProcessingComplete: false});
   });
   return {queued: true};
 });
@@ -63,7 +71,7 @@ async function predictionSourceChanged(change: functions.Change<admin.firestore.
     await db.runTransaction(async (tx) => {
       const lock=await tx.get(db.doc("system/result_processing_maintenance")); if (lock.data()?.enabled) throw Error("Maintenance active");
       const match=await tx.get(ref); if (!match.exists || match.data()?.status !== "finished") return;
-      tx.update(ref, {processingRequest: admin.firestore.FieldValue.increment(1), processed: false, verwerkt: false, processingStatus: "pending", predictionProcessingComplete: false});
+      tx.update(ref, {processingRequest: FieldValue.increment(1), processed: false, verwerkt: false, processingStatus: "pending", predictionProcessingComplete: false});
     });
   }
 }

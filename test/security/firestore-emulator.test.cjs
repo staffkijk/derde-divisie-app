@@ -357,5 +357,13 @@ describe('Firestore emulator security rules', () => {
     await assertFails(setDoc(doc(authed('alice'),'voorspellingen/blocked'),{gebruikerId:'alice',wedstrijdId:'A1',scoreThuis:1,scoreUit:0}));
   });
 
-});
+  it('moderators can queue source processing but cannot forge server completion',async()=>{
+    const db=authed('moderator'),ref=doc(db,'seasons/2026-2027/matches/status-guard');
+    await assertFails(setDoc(doc(db,'system/result_processing_maintenance'),{enabled:false}));
+    await assertSucceeds(setDoc(ref,{division:'A',status:'scheduled'}));
+    await assertSucceeds(updateDoc(ref,{status:'finished',processed:false,verwerkt:false,predictionProcessingComplete:false,processingStatus:'pending'}));
+    await assertFails(updateDoc(ref,{processed:true,processingStatus:'processed',predictionProcessingComplete:true}));
+    await assertFails(updateDoc(ref,{processedInputKey:'forged'}));
+  });
 
+});

@@ -8,3 +8,6 @@ const entries = [...text.matchAll(/SeasonTeam\(\s*id: '([^']+)',\s*name: '((?:\\
 });
 if(entries.length!==36) throw Error(`Expected 36 teams, got ${entries.length}`);
 fs.writeFileSync('functions/src/season-teams.ts','// Mirrors SeasonConfig for the active season. Verified against Dart in tests.\nexport const teams = '+JSON.stringify(entries,null,2)+';\n');
+
+const {spawnSync}=require('node:child_process');const path=require('node:path');
+const formatted=spawnSync(process.execPath,[path.resolve('functions/node_modules/eslint/bin/eslint.js'),'--fix','src/season-teams.ts'],{cwd:path.resolve('functions'),stdio:'inherit'});if(formatted.status)throw Error('Team source formatting failed');

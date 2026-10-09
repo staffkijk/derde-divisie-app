@@ -92,7 +92,7 @@ test('L: dry-run, backed-up repair and repeated verification converge without so
  const output=path.join(dir,'audit.json');
  const matchBefore=(await db.doc(`${base}/matches/A0`).get()).data();
  await db.doc('users/u').update({punten_A:999,totalen:999});
- function audit(...args){const child=spawnSync(process.execPath,['tools/audit_result_processing.cjs','--project=demo-derdediv-processing',`--output=${output}`,...args],{cwd:path.resolve(__dirname,'../..'),env:process.env,encoding:'utf8'});assert.equal(child.status,args.includes('--fail-after-batch=1')?1:0,child.stdout+child.stderr);return JSON.parse(fs.readFileSync(output));}
+ function audit(...args){const child=spawnSync(process.execPath,['tools/audit_result_processing.cjs','--project=demo-derdediv-processing',`--output=${output}`,...args],{cwd:path.resolve(__dirname,'../..'),env:process.env,encoding:'utf8'});assert.equal(child.status,args.includes('--fail-after-batch=1')?1:0,child.stdout+child.stderr);return JSON.parse(fs.readFileSync(args.findLast(a=>a.startsWith('--output='))?.slice(9) ?? output));}
  const dry=audit();assert.ok(dry.changes.some(c=>c.path==='users/u'));assert.equal((await db.doc('users/u').get()).data().punten_A,999);
  audit('--apply','--allow-fixture');assert.ok(fs.existsSync(output+'.backup.json'));
  assert.equal(audit().changes.length,0);
@@ -140,4 +140,15 @@ test('B: nine quick sequential moderator saves complete concurrently without los
  console.log(JSON.stringify({measurement:'9 source saves only, local emulator',milliseconds:performance.now()-started}));
  await Promise.all(division.map(m=>processMatch(db,m.id)));await invariant();
  assert.equal((await db.doc('users/u').get()).data().punten_A,90);
+});
+
+
+test('invalid source becomes failed without recursively processing its failure metadata',async()=>{
+ const f=require('../lib/result-functions'),ref=db.doc(base+'/matches/bad');
+ await ref.set({...fixture[0].data,homeTeamSlug:'unknown-club'});const before=await ref.get();
+ await assert.rejects(processMatch(db,'bad'),/Unknown team/);const after=await ref.get();
+ assert.equal(after.data().processingStatus,'failed');
+ await f.processMatchResult.run({before,after},{params:{seasonId:'2026-2027',matchId:'bad'}});
+ await assert.rejects(processMatch(db,'bad'),/Unknown team/);
+ assert.deepEqual((await ref.get()).data(),after.data());await ref.delete();
 });

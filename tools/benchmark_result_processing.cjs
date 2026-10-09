@@ -19,6 +19,10 @@ async function main(){
  result.comparisons.dashboard={before:await measure(async()=>{const r=await Promise.all([db.collection(base+'/matches').get(),db.collection('activityLogs').limit(100).get()]);return r.reduce((n,s)=>n+s.size,0);}),after:await measure(async()=>{const matches=db.collection(base+'/matches');await Promise.all([matches.count().get(),matches.where('processed','==',true).where('status','==','finished').count().get(),matches.where('processingStatus','==','failed').count().get(),db.collection('activityLogs').orderBy('createdAt','desc').limit(100).count().get(),matches.where('status','==','scheduled').count().get(),matches.where('status','==','postponed').count().get()]);return 0;})};
  result.comparisons.relevantRound={before:await measure(async()=> (await db.collection(base+'/matches').where('division','==','A').get()).size),after:await measure(async()=> (await db.collection(base+'/matches').where('division','==','A').where('status','in',['scheduled','postponed']).orderBy('round').limit(1).get()).size)};
  result.comparisons.predictionMatches={before:await measure(async()=> (await db.collection(base+'/matches').get()).size),after:await measure(async()=> (await db.collection(base+'/matches').where(FieldPath.documentId(),'in',Array.from({length:9},(_,i)=>'m'+i)).get()).size)};
+ // Keep non-measured matches valid and unfinished for the pipeline bootstrap.
+
+ // Firestore batches are capped at 500 writes.
+ for(let i=9;i<612;i+=400){const batch=db.batch();for(let j=i;j<Math.min(i+400,612);j++)batch.update(db.doc(base+'/matches/m'+j),{status:'scheduled'});await batch.commit();}
  // Measure source writes separately from completion of the new pipeline.
  const {processMatch}=require('../functions/lib/result-processor');
  const clubs=teams.filter(t=>t.division==='A');await db.doc('users/u').set({punten_A:0,punten_B:0,totalen:0,rankingName:'u'});

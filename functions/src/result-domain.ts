@@ -88,12 +88,12 @@ export function standings(div: string, contributions: Data, period = 0): Data[] 
       ...(period ? {period} : {}),
     };
   }
-  for (const c of (Object.values(contributions) as Data[]).filter(Boolean).sort((a,b)=>(b.day ?? b.round)-(a.day ?? a.round))) {
+  for (const c of (Object.values(contributions) as Data[]).filter(Boolean).sort((a, b)=>(b.day ?? b.round)-(a.day ?? a.round))) {
     if (!c || (period && (c.round <= 12 ? 1 : c.round <= 23 ? 2 : 3) !== period)) continue;
     for (const [id, gf, ga] of [[c.home, c.h, c.a], [c.away, c.a, c.h]]) {
       const row = rows[id]; if (!row) throw new Error(`Unknown standings team ${id}`);
       row.played++; row.goalsFor += gf; row.goalsAgainst += ga;
-      if(row.form.length<5)row.form.push(gf>ga?"W":gf===ga?"G":"V");
+      if (row.form.length<5)row.form.push(gf>ga?"W":gf===ga?"G":"V");
       if (gf > ga) {
         row.wins++; row.points += 3;
       } else if (gf === ga) {
