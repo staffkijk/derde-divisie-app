@@ -4,6 +4,7 @@ import * as admin from "firebase-admin";
 import {FieldValue} from "firebase-admin/firestore";
 import {ACTIVE_SEASON, fingerprint} from "./result-domain";
 import {processMatch} from "./result-processor";
+import {updateRankingMetadata} from "./ranking-fields";
 if (!admin.apps.length) admin.initializeApp();
 export const processMatchResult = functions.region("europe-west1").runWith({failurePolicy: true, timeoutSeconds: 540, memory: "512MB"})
   .firestore.document("seasons/{seasonId}/matches/{matchId}").onWrite(async (change, context) => {
@@ -48,16 +49,7 @@ export const rebuildDivisionStandings = functions.region("europe-west1").runWith
 });
 export const maintainRankingFields = functions.region("europe-west1").firestore.document("users/{uid}").onWrite(async (change) => {
   if (!change.after.exists) return;
-  const d=change.after.data() ?? {};
-  const name = [d.username, d.usernameLower, d.usernameKey].find((v)=>typeof v==="string" && v.trim()) ?? "Onbekend";
-  const fields={rankingName: name.trim().toLowerCase(), punten_A: Number(d.punten_A ?? 0), punten_B: Number(d.punten_B ?? 0), totalen: Math.max(Number(d.punten_A ?? 0), Number(d.punten_B ?? 0))};
-  if (Object.entries(fields).every(([k, v])=>d[k]===v)) return;
-  // Read again transactionally: an older user event may not overwrite newer scores.
-  await admin.firestore().runTransaction(async (tx) => {
-    const current=await tx.get(change.after.ref); const c=current.data(); if (!c) return;
-    const n=[c.username, c.usernameLower, c.usernameKey].find((v)=>typeof v==="string" && v.trim()) ?? "Onbekend";
-    tx.update(change.after.ref, {rankingName: n.trim().toLowerCase(), punten_A: Number(c.punten_A ?? 0), punten_B: Number(c.punten_B ?? 0), totalen: Math.max(Number(c.punten_A ?? 0), Number(c.punten_B ?? 0))});
-  });
+  await updateRankingMetadata(admin.firestore(), change.after.ref);
 });
 
 async function predictionSourceChanged(change: functions.Change<admin.firestore.DocumentSnapshot>): Promise<void> {
