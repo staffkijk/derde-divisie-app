@@ -60,37 +60,48 @@ class GeneralPredictionPointsService {
     for (final entry in selectedByUser.entries) {
       final userId = entry.key;
       final doc = entry.value;
-      final data = doc.data();
-      final previousProcessed = data['verwerkt'] == true;
-      final previousResult = (data['verwerktVoorUitslag'] ?? '').toString();
-      final previousPoints = _int(data['punten']);
-
-      if (previousProcessed && previousResult == resultKey) continue;
-
-      final predictionHome = _int(data['scoreThuis']);
-      final predictionAway = _int(data['scoreUit']);
+      final predictionHome = _int(doc.data()['scoreThuis']);
+      final predictionAway = _int(doc.data()['scoreUit']);
       final newPoints = berekenPunten(
         voorspeldThuis: predictionHome,
         voorspeldUit: predictionAway,
         echtThuis: homeScore,
         echtUit: awayScore,
       );
-      final delta = newPoints - (previousProcessed ? previousPoints : 0);
+      final userRef = _db.collection('users').doc(userId);
 
-      await doc.reference.set({
-        'punten': newPoints,
-        'verwerkt': true,
-        'verwerktVoorUitslag': resultKey,
-      }, SetOptions(merge: true));
+      // Prediction state and user totals must be committed atomically.
+      // Firestore retries this transaction if another match updates this user.
+      final changed = await _db.runTransaction<bool>((transaction) async {
+        final currentPrediction = await transaction.get(doc.reference);
+        final currentUser = await transaction.get(userRef);
+        final prediction = currentPrediction.data() ?? const <String, dynamic>{};
+        final user = currentUser.data() ?? const <String, dynamic>{};
+        final wasProcessed = prediction['verwerkt'] == true;
+        final oldResult = (prediction['verwerktVoorUitslag'] ?? '').toString();
+        if (wasProcessed && oldResult == resultKey) return false;
 
-      if (delta != 0) {
-        final userRef = _db.collection('users').doc(userId);
-        await userRef.set(
-          {userPointsField: FieldValue.increment(delta)},
-          SetOptions(merge: true),
-        );
-        await _updateGlobalTotal(userRef);
-      }
+        final oldPoints = wasProcessed ? _int(prediction['punten']) : 0;
+        final delta = newPoints - oldPoints;
+        transaction.set(doc.reference, {
+          'punten': newPoints,
+          'verwerkt': true,
+          'verwerktVoorUitslag': resultKey,
+        }, SetOptions(merge: true));
+
+        if (delta != 0) {
+          final nextA = _int(user['punten_A']) +
+              (userPointsField == 'punten_A' ? delta : 0);
+          final nextB = _int(user['punten_B']) +
+              (userPointsField == 'punten_B' ? delta : 0);
+          transaction.set(userRef, {
+            userPointsField: userPointsField == 'punten_A' ? nextA : nextB,
+            'totalen': nextA > nextB ? nextA : nextB,
+          }, SetOptions(merge: true));
+        }
+        return true;
+      });
+      if (!changed) continue;
 
       processed++;
     }
@@ -135,19 +146,6 @@ class GeneralPredictionPointsService {
     );
 
     return byPath.values.toList();
-  }
-
-  Future<void> _updateGlobalTotal(
-    DocumentReference<Map<String, dynamic>> userRef,
-  ) async {
-    final snapshot = await userRef.get();
-    final data = snapshot.data() ?? const <String, dynamic>{};
-    final a = _int(data['punten_A']);
-    final b = _int(data['punten_B']);
-    await userRef.set(
-      {'totalen': a > b ? a : b},
-      SetOptions(merge: true),
-    );
   }
 
   static String _userId(Map<String, dynamic> data) {
