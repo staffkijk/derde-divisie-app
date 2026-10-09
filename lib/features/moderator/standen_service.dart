@@ -15,13 +15,9 @@ class StandenService {
       matches: matches.docs.map((doc) => doc.data()),
     );
 
-    final existing = await SeasonPaths.currentSeasonStandings
-        .where('division', isEqualTo: division)
-        .get();
+    // Keep stable team documents. Deleting and recreating every row causes
+    // unnecessary writes and a temporary empty standings collection.
     final batch = FirebaseFirestore.instance.batch();
-    for (final doc in existing.docs) {
-      batch.delete(doc.reference);
-    }
     for (final entry in standings) {
       batch.set(
         SeasonPaths.currentSeasonStandings.doc(
