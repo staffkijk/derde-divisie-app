@@ -36,7 +36,13 @@ export async function awardFinalPoints(db: Firestore, div: string, reset = false
         }
       }
       const marker=`eindstand_${div}_punten`; const old=integer(ledger.data()?.points ?? p[marker]); const delta=next-old;
-      const u=user.data() ?? {}; const a=integer(u.punten_A)+(div==="A"?delta:0); const b=integer(u.punten_B)+(div==="B"?delta:0);
+      const u=user.data() ?? {};
+      const valid = ["punten_A", "punten_B", "totalen"].every((field) =>
+        Number.isSafeInteger(u[field]) && u[field] >= 0);
+      if (!valid || u.totalen !== Math.max(u.punten_A, u.punten_B)) {
+        throw Error("Unreconciled user points: migration review required");
+      }
+      const a=integer(u.punten_A)+(div==="A"?delta:0); const b=integer(u.punten_B)+(div==="B"?delta:0);
       tx.update(userRef, {punten_A: a, punten_B: b, totalen: Math.max(a, b), [div==="A"?"eindstandA_awarded":"eindstandB_awarded"]: !reset});
       tx.update(doc.ref, {[marker]: next});
       tx.set(db.doc(`voorspel_punten/${userId}`), {[marker]: next}, {merge: true});
