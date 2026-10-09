@@ -5,7 +5,7 @@ const {getFirestore} = require('firebase-admin/firestore');
 const {updateRankingMetadata} = require('../lib/ranking-fields');
 
 if (!process.env.FIRESTORE_EMULATOR_HOST) throw Error('Firestore emulator required');
-const app = initializeApp({projectId: 'demo-derdediv-processing', name: 'ranking-maintenance-test'});
+const app = initializeApp({projectId: 'demo-ranking-maintenance-isolated', name: 'ranking-maintenance-test'});
 const db = getFirestore(app);
 after(async () => { await deleteApp(app); });
 
