@@ -1,0 +1,233 @@
+00:00 +0: loading C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/core/analytics_navigation_mapping_test.dart
+00:00 +0: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/core/analytics_navigation_mapping_test.dart: main navigation maps to stable analytics screen names
+00:00 +1: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/core/analytics_navigation_mapping_test.dart: main navigation analytics names remain unique
+00:01 +2: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/core/match_foundation_test.dart: MatchDateTimeFormatter combineert losse datum en aftraptijd
+00:01 +3: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/core/match_foundation_test.dart: MatchDateTimeFormatter toont geen onbedoelde middernachttijd
+00:01 +4: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/core/match_foundation_test.dart: MatchDateTimeFormatter sorteert binnen een datum op tijd
+00:01 +5: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/core/match_foundation_test.dart: matchstatus behoudt canonical Firestorewaarden en centrale editorlabels
+00:01 +6: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/core/match_foundation_test.dart: matchstatus ondersteunt de vijf publieke statussen
+00:01 +7: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/core/match_foundation_test.dart: matchstatus normaliseert oude leeswaarden zonder live terug te brengen
+00:01 +8: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/core/match_foundation_test.dart: matchstatus toont geen badge-label voor geplande of afgelopen wedstrijden
+00:03 +9: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/core/media_navigation_config_test.dart: MediaConfig bewaart de introfilm URL centraal als Firebase Storage Uri
+00:03 +10: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/core/media_navigation_config_test.dart: MainNavigationConfig houdt menu-indexen stabiel zonder Introfilm-menuitem
+00:03 +11: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/core/media_navigation_config_test.dart: MainNavigationConfig houdt schermmapping gelijk aan menu-items
+00:03 +12: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/core/media_navigation_config_test.dart: IntroVideoErrorPanel toont Nederlandse fouttekst en retryknop
+00:04 +13: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/core/media_navigation_config_test.dart: IntroVideoErrorPanel toont Nederlandse fouttekst en retryknop
+00:04 +14: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/core/media_navigation_config_test.dart: IntroVideoErrorPanel toont Nederlandse fouttekst en retryknop
+00:06 +15: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/data/activity_analytics_test.dart: aggregeert moderator dashboard datasets
+00:07 +16: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/data/activity_event_utils_test.dart: ActivityEventUtils toont alle events
+00:07 +17: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/data/activity_event_utils_test.dart: ActivityEventUtils filtert logins lokaal
+00:07 +18: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/data/activity_event_utils_test.dart: ActivityEventUtils filtert voorspellingen lokaal
+00:07 +19: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/data/activity_event_utils_test.dart: ActivityEventUtils normaliseert hoofdletterverschillen
+00:07 +20: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/data/activity_event_utils_test.dart: ActivityEventUtils crasht niet op ontbrekende eventvelden
+00:07 +21: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/data/activity_event_utils_test.dart: ActivityEventUtils geeft lege resultaten terug als niets matcht
+00:09 +22: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/data/analytics_service_test.dart: web visitors start with analytics disabled until consent is granted
+00:09 +23: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/data/analytics_service_test.dart: denied consent disables later events and resets screen tracking
+00:09 +24: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/data/analytics_service_test.dart: screen views are de-duplicated until the screen changes
+00:09 +25: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/data/analytics_service_test.dart: first accepted consent logs the current screen view once
+00:09 +26: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/data/analytics_service_test.dart: analytics failures never escape to app code
+Analytics initialisatie overgeslagen: Bad state: boom
+Analytics toestemming niet opgeslagen: Bad state: boom
+00:09 +27: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/data/analytics_service_test.dart: parameters exclude direct identifiers and free text keys
+00:10 +28: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/data/division_data_integrity_test.dart: definitieve divisie-indeling 2026/2027 beide divisies bevatten exact 18 unieke clubs
+00:10 +29: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/data/division_data_integrity_test.dart: definitieve divisie-indeling 2026/2027 bekende zuidelijke clubs staan in B
+00:10 +30: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/data/division_data_integrity_test.dart: divisiefilter toont een B-wedstrijd nooit in A
+00:10 +31: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/data/division_data_integrity_test.dart: divisiefilter blokkeert een verkeerd gelabelde kruisdivisiewedstrijd
+00:10 +32: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/data/division_data_integrity_test.dart: divisiefilter leidt een ontbrekende divisie alleen af bij twee clubs uit dezelfde divisie
+00:10 +33: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/data/division_data_integrity_test.dart: standpositie binnen divisie negeert verkeerd gelabelde clubs en blijft tussen 1 en 18
+00:10 +34: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/data/division_data_integrity_test.dart: poule predictionScope oude documenten vallen veilig terug op wedstrijden
+00:10 +35: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/data/division_data_integrity_test.dart: poule predictionScope alle ondersteunde waarden maken een roundtrip
+00:11 +36: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/data/notification_collection_utils_test.dart: selecteert beide missing prediction notificaties
+00:11 +37: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/data/notification_collection_utils_test.dart: laat andere notificatietypen ongemoeid
+00:11 +38: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/data/notification_collection_utils_test.dart: badge telt alleen resterende ongelezen notificaties
+00:11 +39: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/data/notification_collection_utils_test.dart: alle bekende legacy reminder types worden opgeschoond
+00:11 +40: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/data/notification_collection_utils_test.dart: badge wordt nul wanneer alleen reminders overblijven voor cleanup
+00:11 +41: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/data/notification_collection_utils_test.dart: reeds gelezen en opgeloste reminders blijven in de historie
+00:11 +42: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/data/notification_collection_utils_test.dart: cleanup verwijdert moderne en metadata-arme legacy reminder en badge
+00:13 +43: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/data/notification_preferences_test.dart: registratie legt de gekozen reminder voorkeur expliciet vast
+00:13 +44: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/data/notification_preferences_test.dart: missing field allows missing prediction reminders
+00:13 +45: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/data/notification_preferences_test.dart: explicit true allows missing prediction reminders
+00:13 +46: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/data/notification_preferences_test.dart: explicit false blocks missing prediction reminders
+00:13 +47: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/data/notification_preferences_test.dart: copyWith can disable and enable reminders again
+00:13 +48: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/data/notification_preferences_test.dart: other notification preferences remain intact when reminders are off
+00:13 +49: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/data/notification_preferences_test.dart: division filters block disabled competitions
+00:13 +50: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/data/notification_preferences_test.dart: favorite team scope only allows favorite club matches
+00:13 +51: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/data/notification_preferences_test.dart: selected team scope only allows selected teams
+00:14 +52: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/data/prediction_reminder_status_test.dart: A reminder noemt Derde Divisie A
+00:14 +53: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/data/prediction_reminder_status_test.dart: B reminder noemt Derde Divisie B
+00:14 +54: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/data/prediction_reminder_status_test.dart: A en B bestaan naast elkaar met deterministische unieke ids
+00:14 +55: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/data/prediction_reminder_status_test.dart: herkent geen voorspellingen ingevuld
+00:14 +56: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/data/prediction_reminder_status_test.dart: herkent gedeeltelijk en volledig ingevuld
+00:14 +57: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/data/prediction_reminder_status_test.dart: verlopen deadline wordt herkend
+00:14 +58: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/data/prediction_reminder_status_test.dart: A volledig en B onvolledig opent B met de juiste ronde
+00:14 +59: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/data/prediction_reminder_status_test.dart: B volledig en A onvolledig opent A met de juiste ronde
+00:14 +60: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/data/prediction_reminder_status_test.dart: expliciete melding voor B wint wanneer beide incompleet zijn
+00:14 +61: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/data/prediction_reminder_status_test.dart: legacy melding zonder divisie kiest eerste incomplete status
+00:14 +62: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/data/prediction_reminder_status_test.dart: oude melding terwijl alles compleet is valt veilig terug
+00:15 +63: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/calendar_subscription_dialog_test.dart: dialog has no overflow at 360.0
+00:17 +64: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/calendar_subscription_dialog_test.dart: dialog has no overflow at 360.0
+00:17 +65: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/calendar_subscription_dialog_test.dart: dialog has no overflow at 390.0
+00:17 +66: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/calendar_subscription_dialog_test.dart: dialog has no overflow at 412.0
+00:17 +67: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/calendar_subscription_dialog_test.dart: dialog has no overflow at 1000.0
+00:17 +68: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/calendar_subscription_dialog_test.dart: club choice enables copying
+00:18 +69: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/calendar_subscription_dialog_test.dart: club choice enables copying
+00:18 +70: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/calendar_subscription_dialog_test.dart: club choice enables copying
+00:18 +71: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/calendar_subscription_dialog_test.dart: club choice enables copying
+00:18 +72: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/calendar_subscription_dialog_test.dart: club choice enables copying
+00:18 +73: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/calendar_subscription_dialog_test.dart: club choice enables copying
+00:18 +74: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/calendar_subscription_dialog_test.dart: club choice enables copying
+00:18 +75: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/calendar_subscription_dialog_test.dart: club choice enables copying
+00:18 +76: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/calendar_subscription_dialog_test.dart: club choice enables copying
+00:19 +77: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/eindstand_voorspelling_drag_handle_test.dart: iedere club heeft een zichtbare 48px handle op TargetPlatform.iOS bij 360.0px
+00:21 +78: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/eindstand_voorspelling_status_bar_test.dart: keeps date readable and puts saved status below at 360px
+00:21 +79: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/eindstand_voorspelling_status_bar_test.dart: keeps date readable and puts saved status below at 360px
+00:21 +80: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/eindstand_voorspelling_status_bar_test.dart: keeps date readable and puts saved status below at 360px
+00:21 +81: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/eindstand_voorspelling_status_bar_test.dart: keeps date readable and puts saved status below at 360px
+00:21 +82: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/eindstand_voorspelling_status_bar_test.dart: keeps date readable and puts saved status below at 360px
+00:22 +83: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/eindstand_voorspelling_status_bar_test.dart: keeps date readable and puts saved status below at 360px
+00:22 +84: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/eindstand_voorspelling_status_bar_test.dart: keeps date readable and puts saved status below at 360px
+00:22 +85: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/full_season_regression_test.dart: Volledig seizoen regressie simuleert alle 306 wedstrijden van Divisie A correct
+00:22 +86: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/eindstand_voorspelling_drag_handle_test.dart: muis kan op desktop direct via de handle slepen
+00:22 +87: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/eindstand_voorspelling_drag_handle_test.dart: muis kan op desktop direct via de handle slepen
+00:22 +88: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/eindstand_voorspelling_drag_handle_test.dart: muis kan op desktop direct via de handle slepen
+00:22 +89: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/eindstand_voorspelling_drag_handle_test.dart: muis kan op desktop direct via de handle slepen
+00:22 +90: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/eindstand_voorspelling_drag_handle_test.dart: muis kan op desktop direct via de handle slepen
+00:22 +91: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/eindstand_voorspelling_drag_handle_test.dart: muis kan op desktop direct via de handle slepen
+00:22 +92: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/full_season_regression_test.dart: Volledig seizoen regressie simuleert alle 306 wedstrijden van Divisie B correct
+00:22 +93: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/eindstand_voorspelling_status_bar_test.dart: remains usable at 360.0px and 1.5x text
+00:22 +94: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/eindstand_voorspelling_status_bar_test.dart: remains usable at 360.0px and 1.5x text
+00:22 +95: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/eindstand_voorspelling_status_bar_test.dart: remains usable at 360.0px and 1.5x text
+00:22 +96: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/eindstand_voorspelling_status_bar_test.dart: remains usable at 360.0px and 1.5x text
+00:22 +97: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/eindstand_voorspelling_status_bar_test.dart: remains usable at 360.0px and 1.5x text
+00:22 +98: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/eindstand_voorspelling_status_bar_test.dart: remains usable at 360.0px and 1.5x text
+00:22 +99: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/eindstand_voorspelling_status_bar_test.dart: remains usable at 360.0px and 1.5x text
+00:23 +100: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/eindstand_voorspelling_status_bar_test.dart: remains usable at 360.0px and 2.0x text
+00:23 +101: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/eindstand_voorspelling_status_bar_test.dart: remains usable at 412.0px and 2.0x text
+00:23 +102: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/latest_save_queue_test.dart: pending nieuwste volgorde wordt na mislukte eerste write opgeslagen
+00:23 +103: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/latest_save_queue_test.dart: laatste mislukte write eindigt zonder loop en kan opnieuw
+00:25 +104: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/moderator_dashboard_access_test.dart: toont geen moderatorcontent terwijl rechten laden
+00:26 +105: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/moderator_dashboard_access_test.dart: toont geen moderatorcontent terwijl rechten laden
+00:26 +106: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/moderator_dashboard_access_test.dart: toont geen moderatorcontent terwijl rechten laden
+00:26 +107: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/moderator_dashboard_access_test.dart: weigert normale gebruiker zonder moderatorrechten
+00:26 +108: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/moderator_dashboard_access_test.dart: toont dashboard voor moderator
+00:27 +109: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/notification_auth_gate_test.dart: uitgelogd toont geen meldingenknop en geen badge
+00:28 +110: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/notification_auth_gate_test.dart: ingelogd toont de meldingenknop
+00:29 +111: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/notification_auth_gate_test.dart: uitloggen verbergt de knop en badge direct
+00:29 +112: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/notification_preferences_panel_test.dart: profiel en meldingsinstellingen delen direct dezelfde voorkeur
+00:30 +113: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/notification_preferences_panel_test.dart: profiel en meldingsinstellingen delen direct dezelfde voorkeur
+00:30 +114: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/notification_preferences_panel_test.dart: profiel en meldingsinstellingen delen direct dezelfde voorkeur
+00:30 +115: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/notification_preferences_panel_test.dart: profiel en meldingsinstellingen delen direct dezelfde voorkeur
+00:31 +116: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/notification_preferences_panel_test.dart: uitgeschakelde reminderfilters blijven zichtbaar maar disabled
+00:31 +117: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/notification_preferences_panel_test.dart: alle voorkeurvelden slaan direct op en overleven navigeren
+00:31 +118: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/notification_preferences_panel_test.dart: alle voorkeurvelden slaan direct op en overleven navigeren
+00:31 +119: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/notification_preferences_panel_test.dart: alle voorkeurvelden slaan direct op en overleven navigeren
+00:31 +120: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/notification_preferences_panel_test.dart: alle voorkeurvelden slaan direct op en overleven navigeren
+00:31 +121: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/notification_preferences_panel_test.dart: alle voorkeurvelden slaan direct op en overleven navigeren
+00:31 +122: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/notification_preferences_panel_test.dart: alle voorkeurvelden slaan direct op en overleven navigeren
+00:31 +123: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/notification_preferences_panel_test.dart: alle voorkeurvelden slaan direct op en overleven navigeren
+00:31 +124: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/notification_preferences_panel_test.dart: alle voorkeurvelden slaan direct op en overleven navigeren
+00:31 +125: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/notification_preferences_panel_test.dart: alle voorkeurvelden slaan direct op en overleven navigeren
+00:31 +126: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/notification_preferences_panel_test.dart: alle voorkeurvelden slaan direct op en overleven navigeren
+00:33 +127: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/prediction_round_resolver_test.dart: PredictionRoundResolver 12 juli 2026 selecteert speelronde 1
+00:33 +128: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/prediction_round_resolver_test.dart: PredictionRoundResolver een minuut voor deadline blijft ronde 1 geselecteerd
+00:33 +129: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/prediction_round_resolver_test.dart: PredictionRoundResolver een minuut na deadline selecteert volgende open ronde
+00:33 +130: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/prediction_round_resolver_test.dart: PredictionRoundResolver na de laatste deadline selecteert laatste ronde
+00:33 +131: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/prediction_round_resolver_test.dart: PredictionRoundResolver lege wedstrijdlijst geeft geen ronde terug
+00:33 +132: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/prediction_round_resolver_test.dart: PredictionRoundResolver filtert per divisie
+00:33 +133: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/prediction_round_resolver_test.dart: PredictionRoundResolver selecteert midden in het seizoen de eerste open ronde
+00:33 +134: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/prediction_round_resolver_test.dart: PredictionRoundResolver ronde 1 gespeeld, ronde 2 toekomst selecteert ronde 2
+00:33 +135: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/prediction_round_resolver_test.dart: PredictionRoundResolver gedeeltelijk gespeelde ronde blijft geselecteerd zolang open
+00:33 +136: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/prediction_round_resolver_test.dart: PredictionRoundResolver geen open voorspellingen maar wel ongespeeld kiest vroegste
+00:33 +137: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/prediction_round_resolver_test.dart: PredictionRoundResolver vroegste ongespeelde ronde wacht als latere ronde nog openstaat
+00:33 +138: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/prediction_round_resolver_test.dart: PredictionRoundResolver uitgestelde wedstrijd uit eerdere ronde wordt fallback
+00:33 +139: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/prediction_round_resolver_test.dart: PredictionRoundResolver volledig afgelopen seizoen kiest laatste beschikbare ronde
+00:34 +140: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/prediction_round_selection_test.dart: PredictionRoundSelection-integratie actief seizoen 2026/2027 voor de start selecteert ronde 1
+00:34 +141: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/prediction_round_selection_test.dart: PredictionRoundSelection-integratie Firestore wint van verouderde statische fallbackdata
+00:34 +142: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/prediction_round_selection_test.dart: PredictionRoundSelection-integratie ronde 1 gespeeld en ronde 2 toekomst selecteert ronde 2
+00:34 +143: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/prediction_round_selection_test.dart: PredictionRoundSelection-integratie uitgestelde eerdere ronde blijft relevant
+00:34 +144: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/prediction_round_selection_test.dart: PredictionRoundSelection-integratie handmatige ronde 5 blijft staan na snapshot-update
+00:36 +145: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/prediction_score_picker_test.dart: snelle uitslagen staan in logische groepen
+00:36 +146: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/prediction_score_picker_test.dart: snelle uitslag vult beide scores met een callback
+00:38 +147: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/profile_loading_test.dart: K: missing profile exits loading
+00:38 +148: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/profile_loading_test.dart: K: missing profile exits loading
+00:38 +149: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/profile_loading_test.dart: K: missing profile exits loading
+00:38 +150: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/profile_loading_test.dart: K: missing profile exits loading
+00:38 +151: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/prediction_score_picker_test.dart: Anders accepteert alleen geldige scores 0 tot en met 20
+00:39 +152: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/prediction_score_picker_test.dart: Anders accepteert alleen geldige scores 0 tot en met 20
+00:40 +153: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/ranking_logic_test.dart: ontbrekende, enkele en expliciete nulvelden worden als nul gelezen
+00:40 +154: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/ranking_logic_test.dart: globaal sorteert op beste score uit A of B en behoudt nulgebruikers
+00:40 +155: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/ranking_logic_test.dart: Divisie A sorteert A-only correct en bevat B-only met nul
+00:40 +156: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/ranking_logic_test.dart: Divisie B sorteert B-only correct en bevat A-only met nul
+00:40 +157: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/ranking_logic_test.dart: nieuwe gebruikers krijgen alle rankingvelden
+00:40 +158: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/ranking_logic_test.dart: globale score vertrouwt niet op een verouderd totalenveld
+00:40 +159: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/ranking_logic_test.dart: overzicht opent drie verschillende rankingtypes
+00:40 +160: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/ranking_logic_test.dart: rankingtypes geven de juiste voorspellingscontext door
+00:40 +161: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/ranking_logic_test.dart: gebruikersnaamhelper resolveert huidige en live legacy velden
+00:40 +162: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/ranking_logic_test.dart: sortering gebruikt exact dezelfde opgeloste naam als de weergave
+00:41 +163: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/ranking_navigation_test.dart: alle ranglijstheaders hebben een terugknop op 360.0 px
+00:43 +164: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/ranking_navigation_test.dart: alle ranglijstheaders hebben een terugknop op 390.0 px
+00:43 +165: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/ranking_pagination_test.dart: K: ranking failure exits spinner and can retry
+00:43 +166: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/ranking_pagination_test.dart: K: ranking failure exits spinner and can retry
+00:43 +167: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/ranking_pagination_test.dart: K: ranking failure exits spinner and can retry
+00:43 +168: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/ranking_pagination_test.dart: K: ranking failure exits spinner and can retry
+00:44 +169: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/ranking_pagination_test.dart: K: ranking failure exits spinner and can retry
+00:44 +170: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/ranking_pagination_test.dart: K: ranking failure exits spinner and can retry
+00:44 +171: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/ranking_pagination_test.dart: K: ranking failure exits spinner and can retry
+00:44 +172: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/ranking_pagination_test.dart: K: ranking failure exits spinner and can retry
+00:45 +173: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/ranking_pagination_test.dart: L: large ranking renders a page and loads another without refetching earlier rows
+00:46 +174: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_media_card_test.dart: gedeelde PNG- en X-statusformatter postponed in program, ook met oude scores
+00:46 +175: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_media_card_test.dart: gedeelde PNG- en X-statusformatter postponed in results, ook met oude scores
+00:46 +176: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_media_card_test.dart: gedeelde PNG- en X-statusformatter cancelled in program, ook met oude scores
+00:46 +177: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_media_card_test.dart: gedeelde PNG- en X-statusformatter cancelled in results, ook met oude scores
+00:46 +178: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_media_card_test.dart: gedeelde PNG- en X-statusformatter abandoned in program, ook met oude scores
+00:46 +179: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_media_card_test.dart: gedeelde PNG- en X-statusformatter abandoned in results, ook met oude scores
+00:46 +180: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_media_card_test.dart: gedeelde PNG- en X-statusformatter scores alleen in uitslagen; ontbrekende of ongeldige scores vallen terug
+00:46 +181: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_media_card_test.dart: uitslagstatussen zonder overflow op 360.0, preview=false
+00:47 +182: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_media_card_test.dart: uitslagstatussen zonder overflow op 360.0, preview=false
+00:47 +183: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_media_card_test.dart: uitslagstatussen zonder overflow op 360.0, preview=false
+00:47 +184: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_media_card_test.dart: uitslagstatussen zonder overflow op 360.0, preview=false
+00:47 +185: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_media_card_test.dart: uitslagstatussen zonder overflow op 360.0, preview=false
+00:48 +186: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_png_delivery_test.dart: iOS opent PNG-deelknop na voorbereiden op 360.0
+00:48 +187: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_png_delivery_test.dart: iOS opent PNG-deelknop na voorbereiden op 360.0
+00:49 +188: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_png_delivery_test.dart: iOS opent PNG-deelknop na voorbereiden op 360.0
+00:49 +189: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_png_delivery_test.dart: iOS opent PNG-deelknop na voorbereiden op 360.0
+00:49 +190: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_png_delivery_test.dart: iOS opent PNG-deelknop na voorbereiden op 360.0
+00:49 +191: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_png_delivery_test.dart: iOS opent PNG-deelknop na voorbereiden op 360.0
+00:49 +192: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_png_delivery_test.dart: iOS opent PNG-deelknop na voorbereiden op 360.0
+00:49 +193: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_png_delivery_test.dart: iOS opent PNG-deelknop na voorbereiden op 360.0
+00:49 +194: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_png_delivery_test.dart: iOS opent PNG-deelknop na voorbereiden op 360.0
+00:49 +195: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_png_delivery_test.dart: iOS opent PNG-deelknop na voorbereiden op 360.0
+00:49 +196: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_png_delivery_test.dart: iOS opent PNG-deelknop na voorbereiden op 360.0
+00:49 +197: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_png_delivery_test.dart: iOS opent PNG-deelknop na voorbereiden op 360.0
+00:49 +198: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_png_delivery_test.dart: iOS opent PNG-deelknop na voorbereiden op 360.0
+00:49 +199: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_png_delivery_test.dart: iOS opent PNG-deelknop na voorbereiden op 360.0
+00:49 +200: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_png_delivery_test.dart: iOS opent PNG-deelknop na voorbereiden op 360.0
+00:49 +201: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_media_card_test.dart: uitslagstatussen zonder overflow op 412.0, preview=true
+00:49 +202: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_png_delivery_test.dart: iOS opent PNG-deelknop na voorbereiden op 412.0
+00:49 +203: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_media_card_test.dart: uitslagstatussen zonder overflow op 1300.0, preview=false
+00:50 +204: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_media_card_test.dart: uitslagstatussen zonder overflow op 1300.0, preview=false
+00:50 +205: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_media_card_test.dart: uitslagstatussen zonder overflow op 1300.0, preview=false
+00:50 +206: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_png_delivery_test.dart: iOS failed heeft een bruikbare vervolgactie
+00:50 +207: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_media_card_test.dart: uitslagstatussen zonder overflow op 1300.0, preview=true
+00:50 +208: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_media_card_test.dart: uitslagstatussen zonder overflow op 1300.0, preview=true
+00:50 +209: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_media_card_test.dart: statussen worden op het daadwerkelijke PNG-canvas geschilderd
+00:50 +210: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_media_card_test.dart: statussen worden op het daadwerkelijke PNG-canvas geschilderd
+00:50 +211: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_media_card_test.dart: statussen worden op het daadwerkelijke PNG-canvas geschilderd
+00:50 +212: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_media_card_test.dart: statussen worden op het daadwerkelijke PNG-canvas geschilderd
+00:50 +213: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_media_card_test.dart: statussen worden op het daadwerkelijke PNG-canvas geschilderd
+00:50 +214: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_media_card_test.dart: statussen worden op het daadwerkelijke PNG-canvas geschilderd
+00:50 +215: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_media_card_test.dart: statussen worden op het daadwerkelijke PNG-canvas geschilderd
+00:51 +216: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_media_card_test.dart: vaste exportcanvas blijft 1600x900 bij viewport 360.0
+00:51 +217: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_media_card_test.dart: vaste exportcanvas blijft 1600x900 bij viewport 390.0
+00:51 +218: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_media_card_test.dart: vaste exportcanvas blijft 1600x900 bij viewport 412.0
+00:51 +219: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_media_card_test.dart: vaste exportcanvas blijft 1600x900 bij viewport 1300.0
+00:51 +220: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_media_card_test.dart: programma bevat alle negen wedstrijden en volledige stand
+00:52 +221: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_media_card_test.dart: uitslagen toont scores en lange namen op een regel
+00:52 +222: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_media_card_test.dart: filtert strikt op divisie en speelronde
+00:52 +223: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_media_card_test.dart: weekwinnaars gebruiken opgeslagen rondepunten en delen de winst
+00:52 +224: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_media_card_test.dart: voorspelpoule rendert weekwinnaar en top 5
+00:52 +225: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_media_card_test.dart: preview heeft geen overflow op 360.0 px
+00:52 +226: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_media_card_test.dart: preview heeft geen overflow op 390.0 px
+00:52 +227: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_media_card_test.dart: preview heeft geen overflow op 412.0 px
+00:52 +228: C:/Users/ngijs/.codex/worktrees/derdediv-reliability/derde_divisie/test/features/social_media_card_test.dart: bestandsnamen en PNG-extensie zijn stabiel
+00:52 +229: All tests passed!

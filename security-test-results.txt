@@ -1,0 +1,122 @@
+
+> test:security
+> firebase emulators:exec --only firestore "node --test test/security/firestore-emulator.test.cjs"
+
+i  emulators: Starting emulators: firestore
+i  firestore: Firestore Emulator logging to firestore-debug.log
++  firestore: Firestore Emulator was started in standard edition.
++  firestore: Firestore Emulator UI websocket is running on 9150.
+i  Running script: node --test test/security/firestore-emulator.test.cjs
+TAP version 13
+# Subtest: Firestore emulator security rules
+    # Subtest: blocks unauthenticated writes to protected and user-owned collections
+    ok 1 - blocks unauthenticated writes to protected and user-owned collections
+      ---
+      duration_ms: 1193.7711
+      type: 'test'
+      ...
+    # Subtest: blocks normal users from moderator-only writes
+    ok 2 - blocks normal users from moderator-only writes
+      ---
+      duration_ms: 577.0267
+      type: 'test'
+      ...
+    # Subtest: allows moderators to perform required moderator writes
+    ok 3 - allows moderators to perform required moderator writes
+      ---
+      duration_ms: 521.3087
+      type: 'test'
+      ...
+    # Subtest: allows normal users to create and update their own predictions only
+    ok 4 - allows normal users to create and update their own predictions only
+      ---
+      duration_ms: 210.6868
+      type: 'test'
+      ...
+    # Subtest: saves new, existing and legacy eindstand predictions for normal users
+    ok 5 - saves new, existing and legacy eindstand predictions for normal users
+      ---
+      duration_ms: 304.2563
+      type: 'test'
+      ...
+    # Subtest: uses the same own eindstand save flow for a moderator
+    ok 6 - uses the same own eindstand save flow for a moderator
+      ---
+      duration_ms: 148.9337
+      type: 'test'
+      ...
+    # Subtest: does not let a normal user claim another eindstand document
+    ok 7 - does not let a normal user claim another eindstand document
+      ---
+      duration_ms: 195.9683
+      type: 'test'
+      ...
+    # Subtest: allows profile, privacy and own notifications but blocks changing another user
+    ok 8 - allows profile, privacy and own notifications but blocks changing another user
+      ---
+      duration_ms: 272.8474
+      type: 'test'
+      ...
+    # Subtest: allows moderators, but not users, to change moderator claims
+    ok 9 - allows moderators, but not users, to change moderator claims
+      ---
+      duration_ms: 177.6981
+      type: 'test'
+      ...
+    # Subtest: allows normal poule creation, joining and owner-managed settings
+    ok 10 - allows normal poule creation, joining and owner-managed settings
+      ---
+      duration_ms: 198.9066
+      type: 'test'
+      ...
+    # Subtest: protects backward-compatible poule prediction collections by existing owner
+    ok 11 - protects backward-compatible poule prediction collections by existing owner
+      ---
+      duration_ms: 137.7989
+      type: 'test'
+      ...
+    # Subtest: allows safe activity log creation and blocks unsafe or mutable activity logs
+    ok 12 - allows safe activity log creation and blocks unsafe or mutable activity logs
+      ---
+      duration_ms: 238.8277
+      type: 'test'
+      ...
+    # Subtest: keeps season structure publicly readable but moderator-writable only
+    ok 13 - keeps season structure publicly readable but moderator-writable only
+      ---
+      duration_ms: 229.5749
+      type: 'test'
+      ...
+    # Subtest: derived scores and ledgers are server-owned even for a moderator
+    ok 14 - derived scores and ledgers are server-owned even for a moderator
+      ---
+      duration_ms: 286.1315
+      type: 'test'
+      ...
+    # Subtest: maintenance freezes result and prediction source writes
+    ok 15 - maintenance freezes result and prediction source writes
+      ---
+      duration_ms: 188.3529
+      type: 'test'
+      ...
+    1..15
+ok 1 - Firestore emulator security rules
+  ---
+  duration_ms: 7314.4413
+  type: 'suite'
+  ...
+1..1
+# tests 15
+# suites 1
+# pass 15
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 8009.4678
++  Script exited successfully (code 0)
+i  emulators: Shutting down emulators.
+i  firestore: Stopping Firestore Emulator
+!  Firestore Emulator has exited upon receiving signal: SIGINT
+i  hub: Stopping emulator hub
+i  logging: Stopping Logging Emulator

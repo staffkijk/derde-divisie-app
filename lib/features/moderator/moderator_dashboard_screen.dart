@@ -34,7 +34,7 @@ class _ModeratorDashboardScreenState extends State<ModeratorDashboardScreen> {
   @override
   void initState() {
     super.initState();
-    _accessFuture = widget.moderatorStatusLoader?.call() ?? _loadAccess();
+    _accessFuture = (widget.moderatorStatusLoader?.call() ?? _loadAccess()).timeout(const Duration(seconds:20));
   }
 
   Future<bool> _loadAccess() async {
@@ -52,6 +52,9 @@ class _ModeratorDashboardScreenState extends State<ModeratorDashboardScreen> {
     return FutureBuilder<bool>(
       future: _accessFuture,
       builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return const Scaffold(body: Center(child: Text('Moderatorrechten konden niet worden gecontroleerd.')));
+        }
         if (!snapshot.hasData) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
@@ -198,46 +201,33 @@ class _ModeratorDashboardContent extends StatelessWidget {
   }
 }
 
-class _ModeratorSummary extends StatelessWidget {
+class _ModeratorSummary extends StatefulWidget {
   const _ModeratorSummary();
+  @override
+  State<_ModeratorSummary> createState() => _ModeratorSummaryState();
+}
+class _ModeratorSummaryState extends State<_ModeratorSummary> {
+  late final Future<_SummaryData> _future = _load().timeout(const Duration(seconds:20));
 
   Future<_SummaryData> _load() async {
-    final results = await Future.wait([
-      SeasonPaths.currentSeasonMatches.get(),
-      FirebaseFirestore.instance
-          .collection('activityLogs')
-          .orderBy('createdAt', descending: true)
-          .limit(100)
-          .get(),
+    final matches = SeasonPaths.currentSeasonMatches;
+    final counts = await Future.wait([
+      matches.count().get(),
+      matches.where('processed', isEqualTo: true).where('status', isEqualTo: 'finished').count().get(),
+      matches.where('processingStatus', isEqualTo: 'failed').count().get(),
+      FirebaseFirestore.instance.collection('activityLogs').orderBy('createdAt', descending: true).limit(100).count().get(),
+      matches.where('status', isEqualTo: 'scheduled').count().get(),
+      matches.where('status', isEqualTo: 'postponed').count().get(),
     ]);
-    final matches = results[0];
-    final activities = results[1];
-    var processed = 0;
-    var errors = 0;
-    final statuses = <String, int>{};
-    for (final doc in matches.docs.where((doc) => doc.id != '_meta')) {
-      final data = doc.data();
-      final status = (data['status'] ?? 'scheduled').toString();
-      statuses[status] = (statuses[status] ?? 0) + 1;
-      if (data['processed'] == true || data['verwerkt'] == true) processed++;
-      if ((data['processingError'] ?? '').toString().trim().isNotEmpty) {
-        errors++;
-      }
-    }
-    return _SummaryData(
-      matches: matches.docs.where((doc) => doc.id != '_meta').length,
-      processed: processed,
-      errors: errors,
-      recentActivities: activities.docs.length,
-      scheduled: statuses['scheduled'] ?? 0,
-      postponed: statuses['postponed'] ?? 0,
-    );
+    return _SummaryData(matches: counts[0].count ?? 0, processed: counts[1].count ?? 0,
+      errors: counts[2].count ?? 0, recentActivities: counts[3].count ?? 0,
+      scheduled: counts[4].count ?? 0, postponed: counts[5].count ?? 0);
   }
 
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<_SummaryData>(
-      future: _load(),
+      future: _future,
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return const AppCard(

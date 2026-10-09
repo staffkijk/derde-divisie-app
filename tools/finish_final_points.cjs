@@ -1,0 +1,5 @@
+const fs=require('node:fs');
+let p='firestore.rules',s=fs.readFileSync(p,'utf8').replaceAll("'pouleContributions'","'pouleContributions','endstandContributions'");fs.writeFileSync(p,s);
+p='tools/audit_result_processing.cjs';s=fs.readFileSync(p,'utf8');
+s=s.replace("   const user=uid(d);if(!user)continue;", "   if(!d.seasonId && (integer(d.eindstand_A_punten)||integer(d.eindstand_B_punten))){issues.push({path:doc.ref.path,error:'Awarded bonus lacks a season; verify manually before repair'});continue;}\n   const user=uid(d);if(!user)continue;");
+s=s.replace("   const user=uid(d);if(!user)continue;const div=String(d.divisie??'');if(['A','B'].includes(div))expected(user)[`punten_${div}`]+=integer(d[`eindstand_${div}_punten`]);", "   const user=uid(d);if(!user)continue;const div=String(d.divisie??'');if(['A','B'].includes(div)){expected(user)[`punten_${div}`]+=integer(d[`eindstand_${div}_punten`]);\n     const path=`${base}/endstandContributions/${div}__${user}`;plan(path,{userId:user,division:div,points:integer(d[`eindstand_${div}_punten`]),predictionPath:doc.ref.path},(await db.doc(path).get()).data());}");fs.writeFileSync(p,s);

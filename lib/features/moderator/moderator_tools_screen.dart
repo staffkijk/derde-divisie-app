@@ -1,5 +1,6 @@
 // lib/moderator/moderator_tools_screen.dart
 import 'package:flutter/material.dart';
+import 'package:derde_divisie/features/moderator/reset_eindstand_punten.dart';
 import 'package:derde_divisie/helpers/fake_data_generator.dart';
 import 'package:derde_divisie/features/moderator/mod_tools.dart' as tools;
 
@@ -133,7 +134,7 @@ class _ModeratorToolsScreenState extends State<ModeratorToolsScreen> {
                         action: tools
                             .herstelAlleAlgemeneVoorspellingenEnUserTotalen,
                         successMessage:
-                            'Algemene voorspellingen en usertotalen zijn hersteld.',
+                            'Verwerking aangevraagd. Volg de status bij de wedstrijden.',
                         errorPrefix:
                             'Fout bij herstel algemene voorspellingen en usertotalen',
                       );
@@ -157,7 +158,8 @@ class _ModeratorToolsScreenState extends State<ModeratorToolsScreen> {
 
                       await _runTool(
                         action: tools.herstelAllePoulePunten,
-                        successMessage: 'Alle poulepunten zijn hersteld.',
+                        successMessage:
+                            'Verwerking aangevraagd. Volg de status bij de wedstrijden.',
                         errorPrefix: 'Fout bij herstel poulepunten',
                       );
                     },
@@ -180,7 +182,8 @@ class _ModeratorToolsScreenState extends State<ModeratorToolsScreen> {
 
                       await _runTool(
                         action: tools.herstelAllePeriodestanden,
-                        successMessage: 'Periodestanden zijn hersteld.',
+                        successMessage:
+                            'Verwerking aangevraagd. Volg de status bij de wedstrijden.',
                         errorPrefix: 'Fout bij herstel periodestanden',
                       );
                     },
@@ -230,7 +233,8 @@ class _ModeratorToolsScreenState extends State<ModeratorToolsScreen> {
 
                       await _runTool(
                         action: tools.herstelVoorspellingenSpeelronde18A,
-                        successMessage: 'Speelronde 18 A is opnieuw verwerkt.',
+                        successMessage:
+                            'Verwerking aangevraagd. Volg de status bij de wedstrijden.',
                         errorPrefix: 'Fout bij herstel speelronde 18 A',
                       );
                     },
@@ -255,7 +259,8 @@ class _ModeratorToolsScreenState extends State<ModeratorToolsScreen> {
 
                       await _runTool(
                         action: tools.herberekenAlleWedstrijden,
-                        successMessage: 'Sync afgerond.',
+                        successMessage:
+                            'Verwerking aangevraagd. Volg de status bij de wedstrijden.',
                         errorPrefix: 'Fout bij sync',
                       );
                     },
@@ -326,38 +331,40 @@ class _ModeratorToolsScreenState extends State<ModeratorToolsScreen> {
                       final confirmed = await _confirmAction(
                         title: 'Reset uitvoeren?',
                         message:
-                            'Let op: deze knop voert nu een harde reset en herberekening uit. Gebruik dit alleen als je exact weet wat je doet.',
+                            'Deze actie draait de eindstandbonussen van het actieve seizoen terug. Wedstrijdpunten blijven behouden.',
                         confirmText: 'Resetten',
                       );
 
                       if (!confirmed) return;
 
                       await _runTool(
-                        action: tools.hardeResetEnHerberekenAlles,
-                        successMessage: 'Reset uitgevoerd.',
+                        action: volledigeResetAllesNaarNul,
+                        successMessage:
+                            'Verwerking aangevraagd. Volg de status bij de wedstrijden.',
                         errorPrefix: 'Fout bij reset',
                       );
                     },
             ),
             _buildButton(
-              label: 'VOLLEDIGE RESET (alles naar 0)',
+              label: 'VOLLEDIGE RESET (actief seizoen)',
               icon: Icons.delete_forever,
               color: Colors.red,
               onPressed: _isBusy
                   ? null
                   : () async {
                       final confirmed = await _confirmAction(
-                        title: 'Volledige reset uitvoeren?',
+                        title: 'Actuele uitslagen verwijderen?',
                         message:
-                            'Deze actie zet gebruikerspunten en poulepunten terug en rekent daarna alles opnieuw door. Dit is een zware actie.',
-                        confirmText: 'Volledige reset',
+                            'Deze actie verwijdert alle actuele uitslagen en eindstandbonussen. De server draait bijbehorende wedstrijdpunten terug. Voorspellingen blijven behouden.',
+                        confirmText: 'Opnieuw verwerken',
                       );
 
                       if (!confirmed) return;
 
                       await _runTool(
                         action: tools.hardeResetEnHerberekenAlles,
-                        successMessage: 'Volledige reset uitgevoerd.',
+                        successMessage:
+                            'Verwerking aangevraagd. Volg de status bij de wedstrijden.',
                         errorPrefix: 'Fout bij volledige reset',
                       );
                     },

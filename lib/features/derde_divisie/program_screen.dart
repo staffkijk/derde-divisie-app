@@ -36,40 +36,43 @@ class _ProgramScreenState extends State<ProgramScreen> {
   int _selectedRound = 1;
   bool _isModerator = false;
   late final List<int> _rounds;
+  late Stream<QuerySnapshot<Map<String, dynamic>>> _matchStream;
 
   @override
   void initState() {
     super.initState();
     _rounds = List<int>.generate(34, (index) => index + 1);
+    _matchStream = _matchesQuery().snapshots();
     _loadModeratorStatus();
     _selectRelevantRound();
   }
 
   Future<void> _selectRelevantRound() async {
     try {
-      final snapshot = await SeasonPaths.matches(widget.season)
-          .where('division', isEqualTo: widget.division)
-          .get();
-      final openRounds = snapshot.docs
-          .where((doc) {
-            final status = (doc.data()['status'] ?? 'scheduled').toString();
-            return status == 'scheduled' || status == 'postponed';
-          })
-          .map((doc) => _MatchDoc._int(doc.data()['round'], 0))
-          .where((round) => round > 0)
-          .toList()
-        ..sort();
-      final allRounds = snapshot.docs
-          .map((doc) => _MatchDoc._int(doc.data()['round'], 0))
-          .where((round) => round > 0)
-          .toList()
-        ..sort();
-      final relevant = openRounds.isNotEmpty
-          ? openRounds.first
-          : allRounds.isNotEmpty
-              ? allRounds.last
-              : 1;
-      if (mounted) setState(() => _selectedRound = relevant);
+      final query = SeasonPaths.matches(widget.season)
+          .where('division', isEqualTo: widget.division);
+      final open = await query
+          .where('status', whereIn: ['scheduled', 'postponed'])
+          .orderBy('round')
+          .limit(1)
+          .get()
+          .timeout(const Duration(seconds: 20));
+      final latest = open.docs.isEmpty
+          ? await query
+              .orderBy('round', descending: true)
+              .limit(1)
+              .get()
+              .timeout(const Duration(seconds: 20))
+          : null;
+      final docs = open.docs.isNotEmpty ? open.docs : latest!.docs;
+      final relevant =
+          docs.isEmpty ? 1 : _MatchDoc._int(docs.first.data()['round'], 1);
+      if (mounted) {
+        setState(() {
+          _selectedRound = relevant;
+          _matchStream = _matchesQuery().snapshots();
+        });
+      }
     } catch (error) {
       debugPrint('Eerstvolgende speelronde kon niet worden bepaald: $error');
     }
@@ -124,20 +127,23 @@ class _ProgramScreenState extends State<ProgramScreen> {
                 showRoundSelector: !widget.showAllMatches,
                 onRoundChanged: (round) {
                   if (round == null) return;
-                  setState(() => _selectedRound = round);
+                  setState(() {
+                    _selectedRound = round;
+                    _matchStream = _matchesQuery().snapshots();
+                  });
                 },
               ),
               const SizedBox(height: 18),
               Expanded(
                 child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                  stream: _matchesQuery().snapshots(),
+                  stream: _matchStream,
                   builder: (context, snapshot) {
                     if (snapshot.hasError) {
                       return _StateCard(
                         icon: Icons.error_outline,
                         title: 'Programma kon niet worden geladen',
                         text:
-                            'Controleer de Firestore index voor division, round en roundMatchIndex.',
+                            'Het programma is tijdelijk niet beschikbaar. Probeer het scherm opnieuw te openen.',
                         color: Colors.red.shade700,
                       );
                     }

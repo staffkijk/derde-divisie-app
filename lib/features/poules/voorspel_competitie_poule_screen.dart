@@ -1,3 +1,4 @@
+import 'package:derde_divisie/data/firestore/season_paths.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -32,6 +33,11 @@ class _VoorspelCompetitiePouleScreenState
   Map<String, int?> werkelijkeUit = {};
 
   bool isLoading = true;
+  String? _error;
+  DateTime _date(Map<String, dynamic> data) {
+    final value = data['scheduledAt'] ?? data['date'] ?? data['datum'];
+    return value is Timestamp ? value.toDate() : DateTime(1970);
+  }
 
   String _mapCompetitie(String c) {
     switch (c.toLowerCase()) {
@@ -51,47 +57,52 @@ class _VoorspelCompetitiePouleScreenState
   }
 
   Future<void> _loadWedstrijdenEnVoorspellingen() async {
-    final comp = _mapCompetitie(widget.competitie);
+    try {
+      final comp = _mapCompetitie(widget.competitie);
 
-    final matchesSnapshot = await FirebaseFirestore.instance
-        .collection('matches')
-        .where('competitie', isEqualTo: comp)
-        .get();
+      final matchesSnapshot = await SeasonPaths.currentSeasonMatches
+          .where('division', isEqualTo: comp.endsWith('B') ? 'B' : 'A')
+          .get()
+          .timeout(const Duration(seconds: 20));
 
-    final predictionsSnapshot = await FirebaseFirestore.instance
-        .collection('poule_predictions')
-        .where('pouleId', isEqualTo: widget.pouleId)
-        .where('gebruikerId', isEqualTo: userId)
-        .get();
+      final predictionsSnapshot = await FirebaseFirestore.instance
+          .collection('poule_predictions')
+          .where('pouleId', isEqualTo: widget.pouleId)
+          .where('gebruikerId', isEqualTo: userId)
+          .get();
 
-    wedstrijden = matchesSnapshot.docs;
-    wedstrijden.sort((a, b) {
-      final aDate = (a['datum'] as Timestamp).toDate();
-      final bDate = (b['datum'] as Timestamp).toDate();
-      return aDate.compareTo(bDate);
-    });
+      wedstrijden = matchesSnapshot.docs;
+      wedstrijden.sort((a, b) {
+        final aDate = _date(a.data() as Map<String, dynamic>);
+        final bDate = _date(b.data() as Map<String, dynamic>);
+        return aDate.compareTo(bDate);
+      });
 
-    for (final doc in predictionsSnapshot.docs) {
-      final data = doc.data();
-      final wedstrijdId = data['wedstrijdId'];
-      voorspellingen[wedstrijdId] = {
-        'home': (data['scoreThuis'] ?? '').toString(),
-        'away': (data['scoreUit'] ?? '').toString(),
-      };
-      if (data.containsKey('punten')) {
-        behaaldePunten[wedstrijdId] = data['punten'];
+      for (final doc in predictionsSnapshot.docs) {
+        final data = doc.data();
+        final wedstrijdId = data['wedstrijdId'];
+        voorspellingen[wedstrijdId] = {
+          'home': (data['scoreThuis'] ?? '').toString(),
+          'away': (data['scoreUit'] ?? '').toString(),
+        };
+        if (data.containsKey('punten')) {
+          behaaldePunten[wedstrijdId] = data['punten'];
+        }
       }
-    }
 
-    for (final doc in wedstrijden) {
-      final data = doc.data() as Map<String, dynamic>;
-      final id = doc.id;
-      werkelijkeThuis[id] =
-          data['uitslagThuis'] is int ? data['uitslagThuis'] : null;
-      werkelijkeUit[id] = data['uitslagUit'] is int ? data['uitslagUit'] : null;
+      for (final doc in wedstrijden) {
+        final data = doc.data() as Map<String, dynamic>;
+        final id = doc.id;
+        werkelijkeThuis[id] =
+            data['uitslagThuis'] is int ? data['uitslagThuis'] : null;
+        werkelijkeUit[id] =
+            data['uitslagUit'] is int ? data['uitslagUit'] : null;
+      }
+    } catch (_) {
+      _error = 'Wedstrijden en voorspellingen konden niet worden geladen.';
+    } finally {
+      if (mounted) setState(() => isLoading = false);
     }
-
-    setState(() => isLoading = false);
   }
 
   bool _magNogVoorspellen(DateTime wedstrijdDatum) {
@@ -110,95 +121,97 @@ class _VoorspelCompetitiePouleScreenState
       appBar: AppBar(title: const Text('Voorspel teamwedstrijden')),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
-          : ListView.builder(
-              itemCount: wedstrijden.length,
-              itemBuilder: (context, index) {
-                final match = wedstrijden[index];
-                final data = match.data() as Map<String, dynamic>;
-                final wedstrijdId = match.id;
-                final date = (data['datum'] as Timestamp).toDate();
-                final magVoorspellen = _magNogVoorspellen(date);
+          : _error != null
+              ? Center(child: Text(_error!))
+              : ListView.builder(
+                  itemCount: wedstrijden.length,
+                  itemBuilder: (context, index) {
+                    final match = wedstrijden[index];
+                    final data = match.data() as Map<String, dynamic>;
+                    final wedstrijdId = match.id;
+                    final date = _date(data);
+                    final magVoorspellen = _magNogVoorspellen(date);
 
-                final homeText = voorspellingen[wedstrijdId]?['home'] ?? '';
-                final awayText = voorspellingen[wedstrijdId]?['away'] ?? '';
+                    final homeText = voorspellingen[wedstrijdId]?['home'] ?? '';
+                    final awayText = voorspellingen[wedstrijdId]?['away'] ?? '';
 
-                final thuisUitslag = werkelijkeThuis[wedstrijdId];
-                final uitUitslag = werkelijkeUit[wedstrijdId];
-                final punten = behaaldePunten[wedstrijdId];
+                    final thuisUitslag = werkelijkeThuis[wedstrijdId];
+                    final uitUitslag = werkelijkeUit[wedstrijdId];
+                    final punten = behaaldePunten[wedstrijdId];
 
-                return Card(
-                  margin:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('${data['thuisteam']} - ${data['uitteam']}',
-                            style:
-                                const TextStyle(fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Speeldatum: ${DateFormat('EEEE d-MM-yyyy – HH:mm', 'nl').format(date)}',
-                          style: const TextStyle(fontSize: 12),
-                        ),
-                        const SizedBox(height: 8),
-                        magVoorspellen
-                            ? Row(
-                                children: [
-                                  Expanded(
-                                    child: TextFormField(
-                                      initialValue: homeText,
-                                      decoration:
-                                          const InputDecoration(hintText: 'H'),
-                                      keyboardType: TextInputType.number,
-                                      onChanged: (val) {
-                                        voorspellingen[wedstrijdId] ??= {};
-                                        voorspellingen[wedstrijdId]!['home'] =
-                                            val;
-                                        _saveVoorspelling(wedstrijdId);
-                                      },
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: TextFormField(
-                                      initialValue: awayText,
-                                      decoration:
-                                          const InputDecoration(hintText: 'A'),
-                                      keyboardType: TextInputType.number,
-                                      onChanged: (val) {
-                                        voorspellingen[wedstrijdId] ??= {};
-                                        voorspellingen[wedstrijdId]!['away'] =
-                                            val;
-                                        _saveVoorspelling(wedstrijdId);
-                                      },
-                                    ),
-                                  ),
-                                ],
+                    return Card(
+                      margin: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('${data['thuisteam']} - ${data['uitteam']}',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Speeldatum: ${DateFormat('EEEE d-MM-yyyy – HH:mm', 'nl').format(date)}',
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                            const SizedBox(height: 8),
+                            magVoorspellen
+                                ? Row(
+                                    children: [
+                                      Expanded(
+                                        child: TextFormField(
+                                          initialValue: homeText,
+                                          decoration: const InputDecoration(
+                                              hintText: 'H'),
+                                          keyboardType: TextInputType.number,
+                                          onChanged: (val) {
+                                            voorspellingen[wedstrijdId] ??= {};
+                                            voorspellingen[wedstrijdId]![
+                                                'home'] = val;
+                                            _saveVoorspelling(wedstrijdId);
+                                          },
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: TextFormField(
+                                          initialValue: awayText,
+                                          decoration: const InputDecoration(
+                                              hintText: 'A'),
+                                          keyboardType: TextInputType.number,
+                                          onChanged: (val) {
+                                            voorspellingen[wedstrijdId] ??= {};
+                                            voorspellingen[wedstrijdId]![
+                                                'away'] = val;
+                                            _saveVoorspelling(wedstrijdId);
+                                          },
+                                        ),
+                                      ),
+                                    ],
+                                  )
+                                : const Text('Deadline voorbij'),
+                            const SizedBox(height: 6),
+                            if (thuisUitslag != null && uitUitslag != null)
+                              Text(
+                                'Uitslag: $thuisUitslag - $uitUitslag',
+                                style: const TextStyle(color: Colors.black87),
                               )
-                            : const Text('Deadline voorbij'),
-                        const SizedBox(height: 6),
-                        if (thuisUitslag != null && uitUitslag != null)
-                          Text(
-                            'Uitslag: $thuisUitslag - $uitUitslag',
-                            style: const TextStyle(color: Colors.black87),
-                          )
-                        else
-                          const Text('Uitslag nog niet bekend'),
-                        if (punten != null &&
-                            thuisUitslag != null &&
-                            uitUitslag != null)
-                          Text(
-                            'Behaalde punten: +$punten',
-                            style: const TextStyle(color: Colors.green),
-                          ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
+                            else
+                              const Text('Uitslag nog niet bekend'),
+                            if (punten != null &&
+                                thuisUitslag != null &&
+                                uitUitslag != null)
+                              Text(
+                                'Behaalde punten: +$punten',
+                                style: const TextStyle(color: Colors.green),
+                              ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
     );
   }
 

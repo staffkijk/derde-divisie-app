@@ -35,7 +35,7 @@ export const calendarFeed = functions.region(region).https.onRequest(async (req,
     const baseUrl = `${req.protocol}://${req.get("host")}`;
     const body = buildCalendar({...calendarCache.data, division, teamId: teamMatch?.[1], baseUrl});
     res.set("Content-Type", "text/calendar; charset=utf-8");
-    res.set("Cache-Control", "public, max-age=300, s-maxage=300, stale-while-revalidate=60");
+    res.set("Cache-Control", "no-cache, max-age=0, must-revalidate");
     res.set("Content-Disposition", "inline; filename=derdediv-programma.ics");
     res.status(200).send(body);
   } catch (error) {
@@ -115,10 +115,10 @@ export const syncVoorspellingToPoules = functions
     if (!change.after.exists) return;
 
     const data = change.after.data() || {};
+    const sourceFields = (p: any) => p ? [p.gebruikerId,p.userId,p.wedstrijdId,p.matchId,p.scoreThuis,p.scoreUit,p.homeGoals,p.awayGoals,p.timestamp?.toMillis()] : null;
+    if (JSON.stringify(sourceFields(change.before.data())) === JSON.stringify(sourceFields(data))) return;
     const uid = String(data.gebruikerId || data.userId || "");
     const matchId = String(data.wedstrijdId || data.matchId || "");
-    const home = (data.scoreThuis ?? data.homeGoals ?? null) as number | null;
-    const away = (data.scoreUit ?? data.awayGoals ?? null) as number | null;
 
     const sourceTs =
       (data.timestamp as admin.firestore.Timestamp) ||
@@ -143,22 +143,18 @@ export const syncVoorspellingToPoules = functions
           const destRef = destDocRef(kind, pouleId, matchId, uid);
           if (!destRef) return;
 
-          await destRef.set(
-            {
-              pouleId,
-              userId: uid,
-              matchId,
-              wedstrijdId: matchId,
-              homeGoals: home,
-              awayGoals: away,
-              scoreThuis: home,
-              scoreUit: away,
-              syncedFrom: "global",
-              syncedAt: admin.firestore.FieldValue.serverTimestamp(),
-              sourceUpdatedAt: sourceTs,
-            },
-            { merge: true }
-          );
+          await db.runTransaction(async (tx) => {
+            const current=await tx.get(change.after.ref), live=current.data();
+            const destination=await tx.get(destRef);
+            if (!live || String(live.gebruikerId || live.userId || '')!==uid || String(live.wedstrijdId || live.matchId || '')!==matchId) return;
+            const submitted=live.timestamp || live.updatedAt;
+            if (!submitted || (settings.startAt && submitted.toMillis()<settings.startAt.toMillis())) return;
+            const home=live.scoreThuis ?? live.homeGoals,away=live.scoreUit ?? live.awayGoals;
+            if(destination.data()?.scoreThuis===home && destination.data()?.scoreUit===away && destination.data()?.timestamp?.toMillis()===submitted.toMillis()) return;
+            tx.set(destRef,{pouleId,userId:uid,matchId,wedstrijdId:matchId,homeGoals:home,awayGoals:away,
+              scoreThuis:home,scoreUit:away,timestamp:submitted,seasonId:live.seasonId ?? '2026-2027',
+              syncedFrom:'global',syncedAt:admin.firestore.FieldValue.serverTimestamp(),sourceUpdatedAt:submitted},{merge:true});
+          });
         })()
       );
     }
@@ -449,3 +445,8 @@ export const getModeratorGa4Analytics = functions
       );
     }
   });
+
+export {processMatchResult, retryMatchResult, rebuildDivisionStandings, maintainRankingFields} from './result-functions';
+
+export {processSeasonPredictionEdit, processGeneralPredictionEdit, processPouleAPredictionEdit, processPouleBPredictionEdit, processTeamPredictionEdit} from "./result-functions";
+export {processFinalStandings} from "./result-functions";

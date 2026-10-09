@@ -16,6 +16,13 @@ void main() {
   late FirebaseAuth auth;
   const processor = ResultProcessingService();
   const matchId = 'A_REGRESSION_01';
+  Future<void> waitForProcessing(
+      DocumentReference<Map<String, dynamic>> ref) async {
+    await ref
+        .snapshots()
+        .firstWhere((s) => s.data()?['processingStatus'] == 'processed')
+        .timeout(const Duration(seconds: 60));
+  }
 
   setUpAll(() async {
     await Firebase.initializeApp(
@@ -57,6 +64,7 @@ void main() {
       awayTeamSlug: 'ado20',
     );
 
+    await waitForProcessing(matchRef);
     var match = (await matchRef.get()).data()!;
     expect(match['status'], 'finished');
     expect(match['homeScore'], 2);
@@ -64,8 +72,10 @@ void main() {
     expect(match['processed'], true);
     expect(match['verwerkt'], true);
 
-    var acv = (await SeasonPaths.currentSeasonStandings.doc('A_acv').get()).data()!;
-    var ado = (await SeasonPaths.currentSeasonStandings.doc('A_ado20').get()).data()!;
+    var acv =
+        (await SeasonPaths.currentSeasonStandings.doc('A_acv').get()).data()!;
+    var ado =
+        (await SeasonPaths.currentSeasonStandings.doc('A_ado20').get()).data()!;
     expect(acv['played'], 1);
     expect(acv['points'], 3);
     expect(acv['goalsFor'], 2);
@@ -73,15 +83,16 @@ void main() {
     expect(ado['played'], 1);
     expect(ado['points'], 0);
 
-    var periodAcv = (await SeasonPaths.currentSeasonPeriodStandings
-            .doc('A_P1_acv')
-            .get())
-        .data()!;
+    var periodAcv =
+        (await SeasonPaths.currentSeasonPeriodStandings.doc('A_P1_acv').get())
+            .data()!;
     expect(periodAcv['played'], 1);
     expect(periodAcv['points'], 3);
 
-    var alice = (await db.collection('users').doc('regression-alice').get()).data()!;
-    var bob = (await db.collection('users').doc('regression-bob').get()).data()!;
+    var alice =
+        (await db.collection('users').doc('regression-alice').get()).data()!;
+    var bob =
+        (await db.collection('users').doc('regression-bob').get()).data()!;
     expect(alice['punten_A'], 10);
     expect(alice['totalen'], 10);
     expect(bob['punten_A'], 0);
@@ -98,19 +109,25 @@ void main() {
       awayTeamSlug: 'ado20',
     );
 
+    await waitForProcessing(matchRef);
     acv = (await SeasonPaths.currentSeasonStandings.doc('A_acv').get()).data()!;
-    ado = (await SeasonPaths.currentSeasonStandings.doc('A_ado20').get()).data()!;
-    expect(acv['played'], 1, reason: 'gewijzigde uitslag mag niet dubbel tellen');
+    ado =
+        (await SeasonPaths.currentSeasonStandings.doc('A_ado20').get()).data()!;
+    expect(acv['played'], 1,
+        reason: 'gewijzigde uitslag mag niet dubbel tellen');
     expect(acv['points'], 0);
     expect(acv['goalsFor'], 0);
     expect(acv['goalsAgainst'], 3);
     expect(ado['played'], 1);
     expect(ado['points'], 3);
 
-    alice = (await db.collection('users').doc('regression-alice').get()).data()!;
+    alice =
+        (await db.collection('users').doc('regression-alice').get()).data()!;
     bob = (await db.collection('users').doc('regression-bob').get()).data()!;
-    expect(alice['punten_A'], 0, reason: 'oude 10 punten moeten zijn afgeboekt');
-    expect(bob['punten_A'], 7, reason: '0-2 voorspeld bij 0-3 levert 7 punten op');
+    expect(alice['punten_A'], 0,
+        reason: 'oude 10 punten moeten zijn afgeboekt');
+    expect(bob['punten_A'], 7,
+        reason: '0-2 voorspeld bij 0-3 levert 7 punten op');
     expect(bob['totalen'], 7);
 
     await processor.clearResultAndSetStatus(
@@ -118,31 +135,34 @@ void main() {
       status: 'scheduled',
     );
 
+    await waitForProcessing(matchRef);
     match = (await matchRef.get()).data()!;
     expect(match['status'], 'scheduled');
     expect(match.containsKey('homeScore'), isFalse);
     expect(match.containsKey('awayScore'), isFalse);
-    expect(match['processed'], false);
+    expect(match['processed'], true);
 
     acv = (await SeasonPaths.currentSeasonStandings.doc('A_acv').get()).data()!;
-    ado = (await SeasonPaths.currentSeasonStandings.doc('A_ado20').get()).data()!;
+    ado =
+        (await SeasonPaths.currentSeasonStandings.doc('A_ado20').get()).data()!;
     expect(acv['played'], 0);
     expect(acv['points'], 0);
     expect(ado['played'], 0);
     expect(ado['points'], 0);
 
-    periodAcv = (await SeasonPaths.currentSeasonPeriodStandings
-            .doc('A_P1_acv')
-            .get())
-        .data()!;
+    periodAcv =
+        (await SeasonPaths.currentSeasonPeriodStandings.doc('A_P1_acv').get())
+            .data()!;
     expect(periodAcv['played'], 0);
     expect(periodAcv['points'], 0);
 
-    alice = (await db.collection('users').doc('regression-alice').get()).data()!;
+    alice =
+        (await db.collection('users').doc('regression-alice').get()).data()!;
     bob = (await db.collection('users').doc('regression-bob').get()).data()!;
     expect(alice['punten_A'], 0);
     expect(alice['totalen'], 0);
-    expect(bob['punten_A'], 0, reason: 'punten van gewijzigde uitslag moeten rollbacken');
+    expect(bob['punten_A'], 0,
+        reason: 'punten van gewijzigde uitslag moeten rollbacken');
     expect(bob['totalen'], 0);
   });
 }

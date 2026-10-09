@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 
 class BekijkProfielScreen extends StatefulWidget {
   final String userId;
+  final Future<Map<String, dynamic>?> Function()? profileLoader;
 
-  const BekijkProfielScreen({super.key, required this.userId});
+  const BekijkProfielScreen(
+      {super.key, required this.userId, this.profileLoader});
 
   @override
   State<BekijkProfielScreen> createState() => _BekijkProfielScreenState();
@@ -18,6 +20,7 @@ class _BekijkProfielScreenState extends State<BekijkProfielScreen> {
   String? favorieteCompetitie;
   String? favorieteClub;
   bool isLoading = true;
+  String? _error;
 
   @override
   void initState() {
@@ -26,26 +29,35 @@ class _BekijkProfielScreenState extends State<BekijkProfielScreen> {
   }
 
   Future<void> _laadProfiel() async {
+    if (mounted) {
+      setState(() {
+        isLoading = true;
+        _error = null;
+      });
+    }
     try {
-      final doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(widget.userId)
-          .get();
-      final data = doc.data();
-
-      if (data != null) {
-        setState(() {
-          avatarUrl = data['avatarUrl'];
-          username = data['username'] ?? 'Gebruiker';
-          profielbeschrijving = data['profileDescription'];
-          woonplaats = data['woonplaats'];
-          favorieteCompetitie = data['favorieteCompetitie'];
-          favorieteClub = data['favorieteClub'];
-          isLoading = false;
-        });
+      final data = await (widget.profileLoader?.call() ??
+              FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(widget.userId)
+                  .get()
+                  .then((doc) => doc.data()))
+          .timeout(const Duration(seconds: 20));
+      if (!mounted) return;
+      if (data == null) {
+        _error = 'Dit profiel bestaat niet.';
+      } else {
+        avatarUrl = data['avatarUrl'];
+        username = data['username'] ?? 'Gebruiker';
+        profielbeschrijving = data['profileDescription'];
+        woonplaats = data['woonplaats'];
+        favorieteCompetitie = data['favorieteCompetitie'];
+        favorieteClub = data['favorieteClub'];
       }
-    } catch (e) {
-      debugPrint('Fout bij laden profiel: $e');
+    } catch (_) {
+      _error = 'Profiel kon niet worden geladen.';
+    } finally {
+      if (mounted) setState(() => isLoading = false);
     }
   }
 
@@ -57,6 +69,16 @@ class _BekijkProfielScreenState extends State<BekijkProfielScreen> {
       );
     }
 
+    if (_error != null) {
+      return Scaffold(
+          appBar: AppBar(title: const Text('Profiel')),
+          body: Center(
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Text(_error!),
+            TextButton(
+                onPressed: _laadProfiel, child: const Text('Opnieuw proberen'))
+          ])));
+    }
     return Scaffold(
       appBar: AppBar(
           title: Text(username ?? 'Profiel'), backgroundColor: Colors.green),

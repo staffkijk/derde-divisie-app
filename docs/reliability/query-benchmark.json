@@ -1,0 +1,51 @@
+{
+  "environment": "Windows, local Firestore emulator, warm median of 5 runs; excludes mobile network/rendering",
+  "fixture": {
+    "users": 1000,
+    "matches": 612,
+    "predictions": 612,
+    "logs": 100
+  },
+  "comparisons": {
+    "ranking": {
+      "before": {
+        "medianMs": 160.73,
+        "returnedDocuments": 1000
+      },
+      "after": {
+        "medianMs": 29.56,
+        "returnedDocuments": 50
+      }
+    },
+    "dashboard": {
+      "before": {
+        "medianMs": 50.1,
+        "returnedDocuments": 712
+      },
+      "after": {
+        "medianMs": 41.23,
+        "returnedDocuments": 0
+      }
+    },
+    "relevantRound": {
+      "before": {
+        "medianMs": 28.15,
+        "returnedDocuments": 306
+      },
+      "after": {
+        "medianMs": 28.42,
+        "returnedDocuments": 1
+      }
+    },
+    "predictionMatches": {
+      "before": {
+        "medianMs": 50.28,
+        "returnedDocuments": 612
+      },
+      "after": {
+        "medianMs": 97.98,
+        "returnedDocuments": 9
+      }
+    }
+  }
+}

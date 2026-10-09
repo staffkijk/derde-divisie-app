@@ -1,0 +1,168 @@
+
+> test
+> npm run build && node --test test/*.test.cjs
+
+
+> build
+> tsc
+
+TAP version 13
+# Subtest: all and division feeds filter
+ok 1 - all and division feeds filter
+  ---
+  duration_ms: 54.2307
+  type: 'test'
+  ...
+# Subtest: team feed has home and away only
+ok 2 - team feed has home and away only
+  ---
+  duration_ms: 1.837
+  type: 'test'
+  ...
+# Subtest: UID stays stable after change
+ok 3 - UID stays stable after change
+  ---
+  duration_ms: 0.9902
+  type: 'test'
+  ...
+# Subtest: Amsterdam timezone and DST
+ok 4 - Amsterdam timezone and DST
+  ---
+  duration_ms: 1.3537
+  type: 'test'
+  ...
+# Subtest: escaping
+ok 5 - escaping
+  ---
+  duration_ms: 0.5608
+  type: 'test'
+  ...
+# Subtest: central club venue is used
+ok 6 - central club venue is used
+  ---
+  duration_ms: 1.4793
+  type: 'test'
+  ...
+# Subtest: match venue overrides season and central club venue
+ok 7 - match venue overrides season and central club venue
+  ---
+  duration_ms: 1.1406
+  type: 'test'
+  ...
+# Subtest: season team venue overrides central club venue
+ok 8 - season team venue overrides central club venue
+  ---
+  duration_ms: 1.1484
+  type: 'test'
+  ...
+# Subtest: club without venue has no location
+ok 9 - club without venue has no location
+  ---
+  duration_ms: 2.1257
+  type: 'test'
+  ...
+# Subtest: unknown clubId has no central location
+ok 10 - unknown clubId has no central location
+  ---
+  duration_ms: 1.7407
+  type: 'test'
+  ...
+# Subtest: missing clubId falls back to existing team id
+ok 11 - missing clubId falls back to existing team id
+  ---
+  duration_ms: 1.0486
+  type: 'test'
+  ...
+# Subtest: missing clubId falls back to existing team name
+ok 12 - missing clubId falls back to existing team name
+  ---
+  duration_ms: 0.7222
+  type: 'test'
+  ...
+# Subtest: statuses and result
+ok 13 - statuses and result
+  ---
+  duration_ms: 1.3844
+  type: 'test'
+  ...
+# Subtest: venue data has 36 unique stable IDs and complete locations
+ok 14 - venue data has 36 unique stable IDs and complete locations
+  ---
+  duration_ms: 5.1778
+  type: 'test'
+  ...
+# Subtest: venue IDs equal app config, team import and actual match clubs
+ok 15 - venue IDs equal app config, team import and actual match clubs
+  ---
+  duration_ms: 107.7998
+  type: 'test'
+  ...
+# Subtest: venue importer dry run needs no credentials and performs no writes
+ok 16 - venue importer dry run needs no credentials and performs no writes
+  ---
+  duration_ms: 3805.788
+  type: 'test'
+  ...
+# Subtest: venue importer refuses another project before Firestore access
+ok 17 - venue importer refuses another project before Firestore access
+  ---
+  duration_ms: 903.1919
+  type: 'test'
+  ...
+# Subtest: explicit false blocks missing prediction push reminders
+ok 18 - explicit false blocks missing prediction push reminders
+  ---
+  duration_ms: 3.4099
+  type: 'test'
+  ...
+# Subtest: legacy users without preferences keep the existing opt-in default
+ok 19 - legacy users without preferences keep the existing opt-in default
+  ---
+  duration_ms: 0.5242
+  type: 'test'
+  ...
+# Subtest: all score combinations agree with the documented point rules
+ok 20 - all score combinations agree with the documented point rules
+  ---
+  duration_ms: 2.8474
+  type: 'test'
+  ...
+# Subtest: Amsterdam noon deadline works in winter and summer
+ok 21 - Amsterdam noon deadline works in winter and summer
+  ---
+  duration_ms: 37.7683
+  type: 'test'
+  ...
+# Subtest: same-day kickoff edits do not change score input; a new date does
+ok 22 - same-day kickoff edits do not change score input; a new date does
+  ---
+  duration_ms: 4.3101
+  type: 'test'
+  ...
+# Subtest: period boundaries, postponed results and 18 stable team rows
+ok 23 - period boundaries, postponed results and 18 stable team rows
+  ---
+  duration_ms: 6.1118
+  type: 'test'
+  ...
+# Subtest: duplicate predictions have deterministic selection and enforce deadline
+ok 24 - duplicate predictions have deterministic selection and enforce deadline
+  ---
+  duration_ms: 3.8792
+  type: 'test'
+  ...
+# Subtest: configured teams match the Flutter active season
+ok 25 - configured teams match the Flutter active season
+  ---
+  duration_ms: 3.4281
+  type: 'test'
+  ...
+1..25
+# tests 25
+# suites 0
+# pass 25
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 5075.882

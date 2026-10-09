@@ -1,3 +1,4 @@
+import 'package:derde_divisie/data/firestore/season_paths.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
@@ -202,8 +203,7 @@ class PouleVoorspellingenScreen extends StatelessWidget {
     for (var i = 0; i < matchIds.length; i += chunk) {
       final slice = matchIds.sublist(
           i, (i + chunk > matchIds.length) ? matchIds.length : i + chunk);
-      final snap = await FirebaseFirestore.instance
-          .collection('matches')
+      final snap = await SeasonPaths.currentSeasonMatches
           .where(FieldPath.documentId, whereIn: slice)
           .get();
       for (final doc in snap.docs) {
@@ -216,8 +216,7 @@ class PouleVoorspellingenScreen extends StatelessWidget {
     for (var i = 0; i < missing1.length; i += chunk) {
       final slice = missing1.sublist(
           i, (i + chunk > missing1.length) ? missing1.length : i + chunk);
-      final snap = await FirebaseFirestore.instance
-          .collection('matches')
+      final snap = await SeasonPaths.currentSeasonMatches
           .where('matchId', whereIn: slice)
           .get();
       for (final doc in snap.docs) {
@@ -232,8 +231,7 @@ class PouleVoorspellingenScreen extends StatelessWidget {
     for (var i = 0; i < missing2.length; i += chunk) {
       final slice = missing2.sublist(
           i, (i + chunk > missing2.length) ? missing2.length : i + chunk);
-      final snap = await FirebaseFirestore.instance
-          .collection('matches')
+      final snap = await SeasonPaths.currentSeasonMatches
           .where('wedstrijdId', whereIn: slice)
           .get();
       for (final doc in snap.docs) {
@@ -254,6 +252,9 @@ class PouleVoorspellingenScreen extends StatelessWidget {
       body: FutureBuilder<bool>(
         future: _deelnemerDeelt(),
         builder: (context, shareSnap) {
+          if (shareSnap.hasError) {
+            return const Center(child: Text('Poule kon niet worden geladen.'));
+          }
           if (!shareSnap.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
@@ -262,6 +263,10 @@ class PouleVoorspellingenScreen extends StatelessWidget {
           return FutureBuilder<List<Map<String, dynamic>>>(
             future: _getVoorspellingen(),
             builder: (context, predSnap) {
+              if (predSnap.hasError) {
+                return const Center(
+                    child: Text('Voorspellingen konden niet worden geladen.'));
+              }
               if (!predSnap.hasData) {
                 return const Center(child: CircularProgressIndicator());
               }
@@ -279,6 +284,10 @@ class PouleVoorspellingenScreen extends StatelessWidget {
               return FutureBuilder<Map<String, Map<String, dynamic>>>(
                 future: _getMatchesByIds(matchIds),
                 builder: (context, matchesSnap) {
+                  if (matchesSnap.hasError) {
+                    return const Center(
+                        child: Text('Wedstrijden konden niet worden geladen.'));
+                  }
                   if (!matchesSnap.hasData) {
                     return const Center(child: CircularProgressIndicator());
                   }

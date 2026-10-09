@@ -1,0 +1,33 @@
+
+> benchmark:processing
+> npm --prefix functions run build && firebase emulators:exec --only firestore --project demo-derdediv-processing "node tools/benchmark_result_processing.cjs"
+
+
+> build
+> tsc
+
+i  emulators: Starting emulators: firestore
+i  emulators: Detected demo project ID "demo-derdediv-processing", emulated services will use a demo configuration and attempts to access non-emulated services for this project will fail.
+i  firestore: Firestore Emulator logging to firestore-debug.log
++  firestore: Firestore Emulator was started in standard edition.
++  firestore: Firestore Emulator UI websocket is running on 9150.
+i  Running script: node tools/benchmark_result_processing.cjs
+Error: Invalid finished result
+    at result (C:\Users\ngijs\.codex\worktrees\derdediv-reliability\derde_divisie\functions\lib\result-domain.js:61:15)
+    at contribution (C:\Users\ngijs\.codex\worktrees\derdediv-reliability\derde_divisie\functions\lib\result-domain.js:119:15)
+    at C:\Users\ngijs\.codex\worktrees\derdediv-reliability\derde_divisie\functions\lib\result-processor.js:62:143
+    at Array.map (<anonymous>)
+    at db.runTransaction.maxAttempts (C:\Users\ngijs\.codex\worktrees\derdediv-reliability\derde_divisie\functions\lib\result-processor.js:62:92)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Transaction.runTransactionOnce (C:\Users\ngijs\derde_divisie\functions\node_modules\@google-cloud\firestore\build\src\transaction.js:440:28)
+    at async C:\Users\ngijs\derde_divisie\functions\node_modules\@google-cloud\firestore\build\src\transaction.js:412:28
+    at async updateStandings (C:\Users\ngijs\.codex\worktrees\derdediv-reliability\derde_divisie\functions\lib\result-processor.js:47:5)
+    at async processMatch (C:\Users\ngijs\.codex\worktrees\derdediv-reliability\derde_divisie\functions\lib\result-processor.js:176:9)
+!  Script exited unsuccessfully (code 1)
+i  emulators: Shutting down emulators.
+i  firestore: Stopping Firestore Emulator
+!  Firestore Emulator has exited upon receiving signal: SIGINT
+i  hub: Stopping emulator hub
+i  logging: Stopping Logging Emulator
+
+Error: Script "node tools/benchmark_result_processing.cjs" exited with code 1
