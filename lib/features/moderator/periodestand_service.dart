@@ -28,14 +28,8 @@ class PeriodestandService {
     );
 
     final prefix = '${division}_P${period}_';
-    final existing = await SeasonPaths.currentSeasonPeriodStandings
-        .where('division', isEqualTo: division)
-        .where('period', isEqualTo: period)
-        .get();
+    // Update stable documents rather than deleting every period row.
     final batch = FirebaseFirestore.instance.batch();
-    for (final doc in existing.docs) {
-      batch.delete(doc.reference);
-    }
     for (var index = 0; index < sorted.length; index++) {
       final entry = sorted[index];
       final data = entry;
